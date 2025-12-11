@@ -32,7 +32,15 @@ SECRET_KEY = 'django-insecure-aw2$6c$gw!##1du0md+_@wfaf^(25e_a+2+d$8ts8)z&p0^9$n
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['*']
+# settings.py
+
+# IMPORTANT: Replace 'your-backend-name.onrender.com' with the actual domain you copied.
+ALLOWED_HOSTS = [
+    'localhost',          # For local testing
+    '127.0.0.1',          # For local testing
+    '.onrender.com',      # Allows ALL domains ending with .onrender.com (easy, less secure)
+    'https://ubakala-league.onrender.com' # Use your specific domain (better security)
+]
 
 
 
@@ -90,7 +98,7 @@ CORS_ALLOWED_ORIGINS = [
 CORS_ALLOW_ALL_ORIGINS = True
 
 
-WSGI_APPLICATION = 'ubakala_league.wsgi.application'
+WSGI_APPLICATION = 'backend.wsgi.application'
 
 
 # Database
