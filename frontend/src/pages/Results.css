@@ -1,0 +1,35 @@
+/* Small highlight animation for matches that just resolved */
+.match-highlight {
+  animation: ubakala-highlight 1.2s ease both;
+  box-shadow: 0 6px 18px rgba(99, 102, 241, 0.18);
+  border-color: #d1fae5 !important;
+}
+
+@keyframes ubakala-highlight {
+  0% {
+    background-color: #fff;
+  }
+  40% {
+    background-color: #fef3c7;
+  }
+  100% {
+    background-color: #fff;
+  }
+}
+
+/* Placeholder pill for non-played slots */
+.placeholder-pill {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    rgba(148, 163, 184, 0.08),
+    rgba(99, 102, 241, 0.06)
+  );
+  color: #475569;
+  font-weight: 700;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
