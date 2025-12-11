@@ -9,7 +9,7 @@ https://docs.djangoproject.com/en/6.0/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
-
+# Import at the top
 import os
 import dj_database_url
 from dotenv import load_dotenv
@@ -53,6 +53,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -89,7 +90,7 @@ CORS_ALLOWED_ORIGINS = [
 CORS_ALLOW_ALL_ORIGINS = True
 
 
-WSGI_APPLICATION = 'backend.wsgi.application'
+WSGI_APPLICATION = 'ubakala_league.wsgi.application'
 
 
 # Database
@@ -97,12 +98,11 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 
 if os.getenv('DATABASE_URL'):
     DATABASES = {
-        'default': dj_database_url.config(
-            default=os.getenv('DATABASE_URL'),
-            conn_max_age=600,
-            ssl_require=(os.getenv('DB_SSL_REQUIRE', 'False') == 'True')
-        )
-    }
+    'default': dj_database_url.config(
+        default=os.environ.get('DATABASE_URL'), # Use the URL provided by Render
+        conn_max_age=600
+    )
+}
 else:
     # Use SQLite for local development
     DATABASES = {
@@ -162,8 +162,6 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
-STATIC_URL = 'static/'
-
+STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-
-
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
