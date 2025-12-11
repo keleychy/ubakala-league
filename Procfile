@@ -1,2 +1,2 @@
-web: gunicorn ubakala_league.wsgi:application
+web: gunicorn backend.wsgi:application
 release: python manage.py migrate
