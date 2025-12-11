@@ -1,0 +1,40 @@
+name: Render — configure and deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      start_command:
+        description: "Start command to set (leave empty to keep current)"
+        required: false
+      env_file_path:
+        description: "Path to env file in repo (optional). Format: KEY=VALUE per line"
+        required: false
+
+jobs:
+  render-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Run Render deploy script
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          RENDER_SERVICE_ID: ${{ secrets.RENDER_SERVICE_ID }}
+        run: |
+          chmod +x ./scripts/render_deploy.sh
+          START_CMD="${{ github.event.inputs.start_command }}"
+          ENV_FILE="${{ github.event.inputs.env_file_path }}"
+          if [ -n "$START_CMD" ] && [ -n "$ENV_FILE" ]; then
+            ./scripts/render_deploy.sh --start-command "$START_CMD" --env-file "$ENV_FILE"
+          elif [ -n "$START_CMD" ]; then
+            ./scripts/render_deploy.sh --start-command "$START_CMD"
+          elif [ -n "$ENV_FILE" ]; then
+            ./scripts/render_deploy.sh --env-file "$ENV_FILE"
+          else
+            echo "No inputs provided — triggering deploy only"
+            ./scripts/render_deploy.sh
+          fi
