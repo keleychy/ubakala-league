@@ -1,0 +1,116 @@
+{% extends "admin/change_list.html" %}
+
+{% block object-tools %}
+  {{ block.super }}
+  <li style="margin-left:12px;">
+    <button id="toggle-filters" class="button" type="button" title="Toggle filter sidebar" style="padding:4px 8px;">Toggle Filters</button>
+  </li>
+  <li style="margin-right: 16px;">
+    <style>
+      .import-note-collapsible { max-width:540px; background:#f9f9f9; border:1px solid #eee; border-radius:4px; margin-bottom:8px; }
+      .import-note-content { display:none; padding:8px; }
+      .import-note-toggle { cursor:pointer; color:#0d6efd; text-decoration:underline; font-weight:bold; margin:8px 0; display:inline-block; }
+    </style>
+    <div class="import-note-collapsible">
+      <span class="import-note-toggle" onclick="var c=document.getElementById('import-note-content');c.style.display=c.style.display==='none'?'block':'none';this.innerText=c.style.display==='none'?'Show Import Instructions':'Hide Import Instructions';">Show Import Instructions</span>
+      <div id="import-note-content" class="import-note-content">
+        <strong>Import note:</strong> Upload an Excel file where the first row is the header. <span style="color:red">Required columns (case-insensitive): <code>Season</code>, <code>Home Team</code>, <code>Away Team</code>, <code>Match Date</code></span>. Optional: <code>Matchday</code>, <code>Venue</code>.<br>
+        <div style="margin-top:6px; font-size:12px; color:#444">
+          <b>Header row example (single datetime column):</b>
+          <pre style="background:#fff;padding:6px;border:1px solid #eee;margin:6px 0;">Season | Home Team | Away Team | Match Date | Matchday | Venue</pre>
+          <ul style="margin:8px 0 0 16px;">
+            <li><b>Match Date</b> must be in the format <code>6/12/2025 4:00:00 PM</code> (day/month/year hour:minute:second AM/PM). <span style="color:red">No other formats are accepted.</span></li>
+            <li>Rows with missing or invalid date/time will be <span style="color:red">rejected and reported in the error CSV</span>.</li>
+            <li><b>Matchday</b> is optional. If present, it must be an integer.</li>
+          </ul>
+          <b>Example data row:</b>
+          <pre style="background:#fff;padding:6px;border:1px solid #eee;margin:6px 0;">1 | ABAM | AMIGBO | 6/12/2025 4:00:00 PM | 1 | Main Field</pre>
+        </div>
+        </div>
+      </div>
+    </div>
+  </li>
+  <li>
+    <form action="import-matches/" method="post" enctype="multipart/form-data" style="display:inline; margin-left:8px;">
+      {% csrf_token %}
+      <input type="file" name="match_file" accept=".xlsx,.xls" required />
+      <input type="submit" value="Import Matches" class="button" />
+    </form>
+  </li>
+  
+{% endblock %}
+
+{% block extrahead %}
+  {{ block.super }}
+  <style>
+    /* Collapsible sidebar: when body has .filters-collapsed, hide the filter column and expand the changelist */
+    #changelist-filter {
+      width: 260px;
+      transition: width .25s cubic-bezier(.4,0,.2,1), opacity .18s ease, transform .25s cubic-bezier(.4,0,.2,1);
+    }
+    body.filters-collapsed #changelist-filter {
+      width: 0 !important;
+      opacity: 0;
+      overflow: hidden;
+      display: none;
+      transition: width .25s cubic-bezier(.4,0,.2,1), opacity .18s ease, transform .25s cubic-bezier(.4,0,.2,1);
+    }
+    /* Aggressively expand the main content and tables when filters hidden */
+    body.filters-collapsed #content,
+    body.filters-collapsed #content-main,
+    body.filters-collapsed #content > .module,
+    body.filters-collapsed .module,
+    body.filters-collapsed .admin-changelist,
+    body.filters-collapsed .change-list,
+    body.filters-collapsed .results,
+    body.filters-collapsed #changelist-form,
+    body.filters-collapsed table,
+    body.filters-collapsed .object-tools {
+      width: 100% !important;
+      max-width: none !important;
+      margin-right: 0 !important;
+      padding-right: 0 !important;
+    }
+    /* Some admin themes use columns; force the right column to collapse */
+    body.filters-collapsed .col-right,
+    body.filters-collapsed .sidebar,
+    body.filters-collapsed .filter-box {
+      display: none !important;
+    }
+    /* Small visual hint for collapsed state */
+    #toggle-filters[aria-pressed="true"] { background:#eee; }
+  </style>
+  <script>
+    (function(){
+      try{
+        var btnId = 'toggle-filters';
+        function setState(collapsed){
+          if(collapsed){
+            document.body.classList.add('filters-collapsed');
+            document.getElementById(btnId).setAttribute('aria-pressed','true');
+            localStorage.setItem('admin_filters_collapsed','1');
+            // force a resize event so tables recalculate column widths
+            setTimeout(function(){ window.dispatchEvent(new Event('resize')); }, 120);
+          } else {
+            document.body.classList.remove('filters-collapsed');
+            document.getElementById(btnId).setAttribute('aria-pressed','false');
+            localStorage.removeItem('admin_filters_collapsed');
+            setTimeout(function(){ window.dispatchEvent(new Event('resize')); }, 120);
+          }
+        }
+        function toggle(){ setState(!document.body.classList.contains('filters-collapsed')); }
+        document.addEventListener('DOMContentLoaded', function(){
+          var btn = document.getElementById(btnId);
+          if(!btn) return;
+          btn.addEventListener('click', toggle);
+          // restore state
+          if(localStorage.getItem('admin_filters_collapsed')){
+            setState(true);
+          } else {
+            setState(false);
+          }
+        });
+      }catch(e){ console && console.warn && console.warn('filter toggle init failed', e); }
+    })();
+  </script>
+{% endblock %}

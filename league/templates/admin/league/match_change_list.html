@@ -1,0 +1,41 @@
+{% extends "admin/change_list.html" %}
+
+{% load i18n admin_urls %}
+
+{% block object-tools %}
+    {{ block.super }}
+    <div class="object-tools">
+        <ul class="object-tools">
+            <li>
+                <a href="{% url 'admin:league_bracket' %}" class="addlink">View Bracket</a>
+            </li>
+            <li>
+                <a href="{% url 'admin:league_match_import' %}" class="addlink">Import Matches</a>
+            </li>
+            <li>
+                <a href="#" class="addlink" id="toggle-filters">Toggle Filters</a>
+            </li>
+        </ul>
+    </div>
+
+    <script>
+    (function(){
+        var btn = document.getElementById('toggle-filters');
+        if(!btn) return;
+        btn.addEventListener('click', function(e){
+            e.preventDefault();
+            var el = document.getElementById('changelist-filter');
+            if(!el) {
+                // fallback: try common class used by some django versions
+                el = document.querySelector('.module.filter-box');
+            }
+            if(!el) return;
+            if(el.style.display === 'none') {
+                el.style.display = '';
+            } else {
+                el.style.display = 'none';
+            }
+        });
+    })();
+    </script>
+{% endblock %}

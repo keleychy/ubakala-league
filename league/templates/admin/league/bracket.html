@@ -1,0 +1,43 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block content %}
+  <h1>{{ title }}</h1>
+  <p>Season: {{ season.name }}</p>
+  <div>
+      <style>
+        .round { border:1px solid #eee; padding:8px; margin-bottom:8px; }
+        .match { padding:4px; }
+        .toggle { cursor:pointer; color:blue; text-decoration:underline }
+        .btn { display:inline-block; margin-left:8px; padding:4px 8px; background:#007bff; color:white; border-radius:4px; text-decoration:none }
+      </style>
+      <script>
+        function toggleRound(id){
+          var el = document.getElementById(id);
+          if(!el) return;
+          el.style.display = el.style.display === 'none' ? 'block' : 'none';
+        }
+        function forceWinner(matchId, side){
+          if(!confirm('Force ' + side + ' as winner for match '+matchId+'?')) return;
+          window.location = './resolve/' + matchId + '/?force=' + side;
+        }
+      </script>
+      {% for matchday, matches in groups %}
+        <div class="round">
+          <h3 onclick="toggleRound('md{{ forloop.counter }}')" class="toggle">Matchday {{ matchday }} (click to toggle)</h3>
+          <div id="md{{ forloop.counter }}">
+            {% for m in matches %}
+              <div class="match">
+                <strong>{{ m.match_date }}</strong> — {{ m.home_team }} vs {{ m.away_team }}
+                {% if 'placeholder' in m.home_team.name|lower or 'placeholder' in m.away_team.name|lower %}
+                  <a class="btn" href="./resolve/{{ m.id }}/">Auto-resolve</a>
+                {% endif %}
+                <a class="btn" href="javascript:forceWinner({{ m.id }}, 'home')">Set Home Winner</a>
+                <a class="btn" href="javascript:forceWinner({{ m.id }}, 'away')">Set Away Winner</a>
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+      {% endfor %}
+  </div>
+{% endblock %}

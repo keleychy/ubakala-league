@@ -1,0 +1,30 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block content %}
+  <h1>{{ title }}</h1>
+  <form method="post" style="max-width:700px;">
+    {% csrf_token %}
+    <fieldset class="module aligned">
+      <div>
+        <label for="id_awarded_to">Awarded to:</label>
+        {{ form.awarded_to }}
+      </div>
+      <div>
+        <label for="id_reason">Reason (optional):</label>
+        {{ form.reason }}
+      </div>
+    </fieldset>
+
+    <h3>Selected matches</h3>
+    <ul>
+      {% for m in queryset %}
+        <li>{{ m.season }} — {{ m.home_team }} vs {{ m.away_team }} ({{ m.home_score }}-{{ m.away_score }})</li>
+        <input type="hidden" name="{{ action_checkbox_name }}" value="{{ m.pk }}" />
+      {% endfor %}
+    </ul>
+
+    <input type="submit" name="apply" value="Apply award to selected matches" class="default" />
+    <a href="../">Cancel</a>
+  </form>
+{% endblock %}
