@@ -33,3 +33,51 @@
   text-transform: uppercase;
   letter-spacing: 0.6px;
 }
+
+/* Compact bracket layout and animated connector */
+.compact-bracket {
+  display: flex;
+  gap: 16px;
+  align-items: stretch;
+  transition: justify-content 550ms ease, transform 550ms ease;
+}
+.compact-bracket.center {
+  justify-content: center;
+}
+.compact-left,
+.compact-right {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(8px, 2vw, 12px);
+  min-width: clamp(160px, 45vw, 240px);
+  flex: 1;
+}
+.connector-col {
+  width: clamp(20px, 4vw, 36px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+}
+.connector-line {
+  width: 2px;
+  background: linear-gradient(
+    180deg,
+    rgba(99, 102, 241, 0.25),
+    rgba(99, 102, 241, 0.06)
+  );
+  border-radius: 2px;
+  transform-origin: top;
+  transform: scaleY(0);
+  transition: transform 700ms cubic-bezier(0.2, 0.9, 0.2, 1);
+  height: 100%;
+}
+.connector-line.draw {
+  transform: scaleY(1);
+}
+
+/* small responsiveness: when centered make connector slightly larger */
+.compact-bracket.center .connector-col {
+  width: clamp(28px, 6vw, 48px);
+}

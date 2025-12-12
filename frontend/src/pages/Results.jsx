@@ -237,6 +237,10 @@ const Results = () => {
                   const third = filteredMatches.find(m => Number(m.matchday) === 28) || null;
                   const finalMatch = filteredMatches.find(m => Number(m.matchday) === 29) || null;
                   if (!sf1 && !sf2 && !finalMatch) return null;
+                  const sf1Played = sf1 && sf1.is_played;
+                  const sf2Played = sf2 && sf2.is_played;
+                  const finalPlayed = finalMatch && finalMatch.is_played;
+                  const animateConnector = finalPlayed || (sf1Played && sf2Played);
                   const compactBox = (title, match) => (
                     <div style={{ minWidth: 'clamp(180px, 40vw, 220px)', padding: 'clamp(8px, 2vw, 10px)', borderRadius: '8px', background: '#ffffff', boxShadow: '0 1px 6px rgba(2,6,23,0.04)', border: '1px solid #e6eefb' }}>
                       <div style={{ fontSize: 'clamp(11px, 2vw, 13px)', color: '#0f172a', fontWeight: 800, marginBottom: 6 }}>{title}</div>
@@ -253,16 +257,16 @@ const Results = () => {
                   );
 
                   return (
-                    <div style={{ display: 'flex', gap: '16px', alignItems: 'stretch', marginBottom: '18px', flexWrap: 'wrap' }}>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(8px, 2vw, 12px)', minWidth: 'clamp(160px, 45vw, 240px)', flex: 1 }}>
+                    <div className={"compact-bracket" + (animateConnector ? ' center' : '')} style={{ marginBottom: '18px', flexWrap: 'wrap' }}>
+                      <div className="compact-left">
                         {compactBox('Semifinal 1', sf1)}
                         {compactBox('Semifinal 2', sf2)}
                       </div>
-                      <div style={{ width: 'clamp(20px, 4vw, 36px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '200px' }}>
-                        {/* simple connector line */}
-                        <div style={{ width: 2, background: 'linear-gradient(180deg, rgba(99,102,241,0.25), rgba(99,102,241,0.06))', flex: 1, borderRadius: 2 }} />
+                      <div className="connector-col">
+                        {/* animated connector line */}
+                        <div className={"connector-line" + (animateConnector ? ' draw' : '')} />
                       </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(8px, 2vw, 12px)', minWidth: 'clamp(160px, 45vw, 240px)', alignItems: 'center', justifyContent: 'center', flex: 1 }}>
+                      <div className="compact-right">
                         {compactBox('Third Place', third)}
                         {compactBox('Final', finalMatch)}
                       </div>
