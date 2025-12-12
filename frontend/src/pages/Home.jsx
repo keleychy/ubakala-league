@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../api/api';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 export default function Home() {
   const [teams, setTeams] = useState([]);
   const [matches, setMatches] = useState([]);
+  const navigate = useNavigate();
 
   useEffect(() => {
     api.getTeams().then(setTeams).catch(console.error);
@@ -133,6 +134,7 @@ export default function Home() {
                     e.currentTarget.style.transform = 'translateY(0)';
                     e.currentTarget.style.boxShadow = '0 8px 24px rgba(0, 0, 0, 0.15)';
                   }}
+                  onClick={() => navigate(`/results?matchId=${match.id}`)}
                 >
                   <div style={{
                     fontSize: '12px',
