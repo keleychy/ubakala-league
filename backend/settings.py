@@ -99,6 +99,11 @@ TEMPLATES = [
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    # ADD YOUR FRONTEND URL HERE:
+    "https://ubakala-unity-cup-frontend.vercel.app",
+
+    # Optionally include your own production backend URL if you access it directly
+    "https://ubakalaunitycup.onrender.com",
 ]
 
 # Alternatively, enable all origins for local development
