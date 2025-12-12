@@ -34,12 +34,21 @@ DEBUG = True
 
 # settings.py
 
-# IMPORTANT: Replace 'your-backend-name.onrender.com' with the actual domain you copied.
+# ... (near the top, before any other host modification)
+# ----------------------------------------------------
+# 2. Re-initialize ALLOWED_HOSTS (if it was removed)
+ALLOWED_HOSTS = [] 
+# ----------------------------------------------------
+
+
+# ... (later in the file, where you added the Render logic)
+# ----------------------------------------------------
+# 3. Add the Render hostname to the list
 RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
 if RENDER_EXTERNAL_HOSTNAME:
     ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
 ALLOWED_HOSTS.append('127.0.0.1')
-
+# ----------------------------------------------------
 
 
 # Application definition
