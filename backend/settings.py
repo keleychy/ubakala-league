@@ -35,12 +35,10 @@ DEBUG = True
 # settings.py
 
 # IMPORTANT: Replace 'your-backend-name.onrender.com' with the actual domain you copied.
-ALLOWED_HOSTS = [
-    'localhost',          # For local testing
-    '127.0.0.1',          # For local testing
-    '.onrender.com',      # Allows ALL domains ending with .onrender.com (easy, less secure)
-    'https://ubakala-league.onrender.com' # Use your specific domain (better security)
-]
+RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
+if RENDER_EXTERNAL_HOSTNAME:
+    ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
+ALLOWED_HOSTS.append('127.0.0.1')
 
 
 
@@ -104,15 +102,15 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
+# RENDER/PRODUCTION SETTINGS
 if os.getenv('DATABASE_URL'):
     DATABASES = {
-    'default': dj_database_url.config(
-        default=os.environ.get('DATABASE_URL'), # Use the URL provided by Render
-        conn_max_age=600
-    )
-}
+        'default': dj_database_url.config(
+            conn_max_age=600 # We keep this for connection pooling
+        )
+    }
+# LOCAL/DEVELOPMENT SETTINGS
 else:
-    # Use SQLite for local development
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
