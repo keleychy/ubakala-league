@@ -20,7 +20,7 @@ const UploadTeams = () => {
     const formData = new FormData();
     formData.append('file', file);
     try {
-      const response = await axios.post('http://127.0.0.1:8000/api/import-excel/', formData, {
+      const response = await axios.post('https://ubakalaunitycup.onrender.com/api/import-excel/', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },

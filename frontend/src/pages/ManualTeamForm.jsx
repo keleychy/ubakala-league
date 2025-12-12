@@ -19,7 +19,7 @@ const ManualTeamForm = () => {
   // Load seasons when category changes
   useEffect(() => {
     if (category) {
-      axios.get(`http://127.0.0.1:8000/api/seasons/?category=${category}`)
+      axios.get(`https://ubakalaunitycup.onrender.com/api/seasons/?category=${category}`)
         .then(res => setSeasons(res.data))
         .catch(() => setSeasons([]));
     } else {
@@ -30,7 +30,7 @@ const ManualTeamForm = () => {
   // Load groups when season changes
   useEffect(() => {
     if (season) {
-      axios.get(`http://127.0.0.1:8000/api/groups/?season=${season}`)
+      axios.get(`https://ubakalaunitycup.onrender.com/api/groups/?season=${season}`)
         .then(res => setGroups(res.data))
         .catch(() => setGroups([]));
     } else {
@@ -43,7 +43,7 @@ const ManualTeamForm = () => {
     setError(null);
     setResult(null);
     try {
-      const response = await axios.post('http://127.0.0.1:8000/api/manual-team-group/', {
+      const response = await axios.post('https://ubakalaunitycup.onrender.com/api/manual-team-group/', {
         team_name: teamName,
         category,
         season_id: season,
