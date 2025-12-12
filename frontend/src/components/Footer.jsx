@@ -1,3 +1,5 @@
+import './Footer.css';
+
 const Footer = () => {
   const container = {
     maxWidth: 1200,
@@ -23,7 +25,7 @@ const Footer = () => {
   return (
     <footer style={{ background: 'linear-gradient(90deg, #1e3c72 0%, #2a5298 100%)', color: 'white', padding: '48px 0', marginTop: 60 }}>
       <div style={container}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 32, alignItems: 'start' }}>
+        <div className="ubakala-footer-grid">
           <div>
             <h4 style={sectionTitle}>About</h4>
             <p style={text}>
@@ -47,10 +49,10 @@ const Footer = () => {
           </div>
         </div>
 
-        <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', marginTop: 32, paddingTop: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap' }}>
+        <div className="ubakala-footer-bottom">
           <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13, margin: 0 }}>&copy; 2025 Ubakala Football League. All rights reserved.</p>
 
-          <div style={{ textAlign: 'right' }}>
+          <div className="ubakala-footer-right">
             <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13, margin: 0 }}>Website produced by <strong style={{ color: '#bfe3ff' }}>Novatech Consult</strong></p>
           </div>
         </div>
