@@ -13,37 +13,46 @@ import ManualTeamForm from './pages/ManualTeamForm';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import GroupManager from './pages/GroupManager';
+// 1. IMPORT THE ANALYTICS COMPONENT
+import { Analytics } from '@vercel/analytics/react';
+
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <div style={{
-        minHeight: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
-      }}>
-        <Header />
-        <main style={{
-          flex: 1,
-          padding: '0'
+    // 2. Wrap the entire return structure in a React Fragment (<>...</>)
+    <>
+      {/* 3. PLACE THE ANALYTICS COMPONENT HERE */}
+      <Analytics />
+
+      <BrowserRouter>
+        <div style={{
+          minHeight: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
         }}>
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/results" element={<Results />} />
-            <Route path="/bracket" element={<Bracket />} />
-            <Route path="/standings" element={<Standings />} />
-            <Route path="/news" element={<News />} />
-            <Route path="/history" element={<History />} />
-            <Route path="/admin" element={<AdminLogin />} />
-            <Route path="/admin-dashboard" element={<AdminDashboard />} />
-            <Route path="/upload-teams" element={<UploadTeams />} />
-            <Route path="/add-team-manual" element={<ManualTeamForm />} />
-            <Route path="/group-manager" element={<GroupManager />} />
-          </Routes>
-        </main>
-        <Footer />
-      </div>
-    </BrowserRouter>
+          <Header />
+          <main style={{
+            flex: 1,
+            padding: '0'
+          }}>
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/results" element={<Results />} />
+              <Route path="/bracket" element={<Bracket />} />
+              <Route path="/standings" element={<Standings />} />
+              <Route path="/news" element={<News />} />
+              <Route path="/history" element={<History />} />
+              <Route path="/admin" element={<AdminLogin />} />
+              <Route path="/admin-dashboard" element={<AdminDashboard />} />
+              <Route path="/upload-teams" element={<UploadTeams />} />
+              <Route path="/add-team-manual" element={<ManualTeamForm />} />
+              <Route path="/group-manager" element={<GroupManager />} />
+            </Routes>
+          </main>
+          <Footer />
+        </div>
+      </BrowserRouter>
+    </>
   );
 }
