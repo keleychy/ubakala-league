@@ -1,55 +1,58 @@
 const Footer = () => {
+  const container = {
+    maxWidth: 1200,
+    margin: '0 auto',
+    padding: '0 20px'
+  };
+
+  const sectionTitle = {
+    color: '#ffd966',
+    marginBottom: 10,
+    fontSize: 15,
+    fontWeight: 700,
+    letterSpacing: '0.3px'
+  };
+
+  const text = {
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 14,
+    lineHeight: 1.6,
+    margin: 0
+  };
+
   return (
-    <footer style={{
-      background: 'linear-gradient(90deg, #1e3c72 0%, #2a5298 100%)',
-      color: 'white',
-      padding: '40px 20px',
-      marginTop: '60px',
-      textAlign: 'center'
-    }}>
-      <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-          gap: '30px',
-          marginBottom: '30px',
-          textAlign: 'left'
-        }}>
+    <footer style={{ background: 'linear-gradient(90deg, #1e3c72 0%, #2a5298 100%)', color: 'white', padding: '48px 0', marginTop: 60 }}>
+      <div style={container}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 32, alignItems: 'start' }}>
           <div>
-            <h4 style={{ color: '#ffd700', marginBottom: '12px', fontSize: '16px', fontWeight: '700' }}>
-              ⚽ About
-            </h4>
-            <p style={{ color: 'rgba(255, 255, 255, 0.8)', fontSize: '13px', lineHeight: '1.6', margin: '0' }}>
-              Ubakala Football League unites communities through the beautiful game, fostering teamwork and excellence.
+            <h4 style={sectionTitle}>About</h4>
+            <p style={text}>
+              Ubakala Football League promotes grassroots football by organising competitive, fair and
+              community-focused competitions. We are committed to player development, sportsmanship and
+              transparent administration.
             </p>
           </div>
+
           <div>
-            <h4 style={{ color: '#ffd700', marginBottom: '12px', fontSize: '16px', fontWeight: '700' }}>
-              📞 Contact
-            </h4>
-            <p style={{ color: 'rgba(255, 255, 255, 0.8)', fontSize: '13px', margin: '0 0 4px 0' }}>
-              Email: info@ubakalafl.com
-            </p>
-            <p style={{ color: 'rgba(255, 255, 255, 0.8)', fontSize: '13px', margin: '0' }}>
-              Phone: +234 XXX XXX XXXX
-            </p>
+            <h4 style={sectionTitle}>Contact</h4>
+            <p style={text}>Email: <a href="mailto:info@ubakalafl.com" style={{ color: '#bfe3ff' }}>info@ubakalafl.com</a></p>
+            <p style={{ ...text, marginTop: 8 }}>Phone: <a href="tel:+2347085386110" style={{ color: '#bfe3ff' }}>+234 708 538 6110</a></p>
+            <p style={{ ...text, marginTop: 8 }}>Office: Ubakala, Nigeria</p>
           </div>
+
           <div>
-            <h4 style={{ color: '#ffd700', marginBottom: '12px', fontSize: '16px', fontWeight: '700' }}>
-              🌐 Follow Us
-            </h4>
-            <p style={{ color: 'rgba(255, 255, 255, 0.8)', fontSize: '13px', margin: '0' }}>
-              📘 Facebook | 🐦 Twitter | 📷 Instagram
-            </p>
+            <h4 style={sectionTitle}>Quick Links</h4>
+            <p style={text}><a href="/" style={{ color: '#bfe3ff' }}>Home</a> &nbsp; | &nbsp; <a href="/standings" style={{ color: '#bfe3ff' }}>Standings</a></p>
+            <p style={{ ...text, marginTop: 8 }}><a href="/results" style={{ color: '#bfe3ff' }}>Results</a> &nbsp; | &nbsp; <a href="/admin-login" style={{ color: '#bfe3ff' }}>Admin</a></p>
           </div>
         </div>
-        <div style={{
-          borderTop: '1px solid rgba(255, 255, 255, 0.2)',
-          paddingTop: '20px'
-        }}>
-          <p style={{ color: 'rgba(255, 255, 255, 0.7)', fontSize: '12px', margin: '0' }}>
-            &copy; 2025 Ubakala Football League. All rights reserved. | Privacy Policy | Terms of Service
-          </p>
+
+        <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', marginTop: 32, paddingTop: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap' }}>
+          <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13, margin: 0 }}>&copy; 2025 Ubakala Football League. All rights reserved.</p>
+
+          <div style={{ textAlign: 'right' }}>
+            <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13, margin: 0 }}>Website produced by <strong style={{ color: '#bfe3ff' }}>Novatech Consult</strong></p>
+          </div>
         </div>
       </div>
     </footer>
