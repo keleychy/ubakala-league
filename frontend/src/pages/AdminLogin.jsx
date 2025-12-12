@@ -198,25 +198,7 @@ export default function AdminLogin() {
           </button>
         </form>
 
-        <div style={{
-          marginTop: '24px',
-          padding: '16px',
-          background: '#f8f9ff',
-          borderRadius: '8px',
-          border: '1px solid #e0e7ff',
-          textAlign: 'center'
-        }}>
-          <p style={{
-            color: '#666',
-            fontSize: '12px',
-            margin: '0',
-            lineHeight: '1.5'
-          }}>
-            <strong>Demo Account:</strong><br />
-            Username: <code style={{ background: '#fff', padding: '2px 6px', borderRadius: '4px', color: '#667eea' }}>admin</code><br />
-            Password: <code style={{ background: '#fff', padding: '2px 6px', borderRadius: '4px', color: '#667eea' }}>admin123</code>
-          </p>
-        </div>
+        {/* Demo account info removed */}
       </div>
     </div>
   );
