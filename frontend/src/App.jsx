@@ -21,6 +21,7 @@ import { Analytics } from '@vercel/analytics/react';
 export default function App() {
   return (
     // 2. Wrap the entire return structure in a React Fragment (<>...</>)
+    // 2. Wrap the entire return structure in a React Fragment (<>...</>)
     <>
       {/* 3. PLACE THE ANALYTICS COMPONENT HERE */}
       <Analytics />
