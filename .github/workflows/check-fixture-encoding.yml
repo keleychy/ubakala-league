@@ -1,0 +1,35 @@
+name: Check fixture encoding
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  fixture-encoding:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: Ensure fixtures are UTF-8
+        run: |
+          if [ -f scripts/fix_initial_data_encoding.py ]; then
+            python scripts/fix_initial_data_encoding.py
+          else
+            echo "No encoding script found; skipping"
+          fi
+
+      - name: Detect changes
+        run: |
+          git status --porcelain
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "initial_data.json was rewritten to UTF-8. Please commit the change." >&2
+            git --no-pager diff --name-only --color
+            exit 1
+          fi

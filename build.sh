@@ -27,7 +27,8 @@ python manage.py migrate
 # Try to ensure any JSON fixtures are UTF-8 encoded before Django loads them.
 if [ -f "scripts/fix_initial_data_encoding.py" ]; then
 	echo "Fixing fixture encoding if necessary..."
-	python scripts/fix_initial_data_encoding.py || true
+	# Exit non-zero if encoding cannot be fixed; enforce UTF-8
+	python scripts/fix_initial_data_encoding.py
 fi
 
 # Prefer project `initial_data.json` if present, otherwise `local_data.json`.
