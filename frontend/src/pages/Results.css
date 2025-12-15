@@ -81,3 +81,51 @@
 .compact-bracket.center .connector-col {
   width: clamp(28px, 6vw, 48px);
 }
+
+/* Loading / updating animated dots */
+.loading {
+  text-align: center;
+  padding: 28px 12px;
+  color: #667eea;
+  font-size: 15px;
+  font-weight: 600;
+}
+.loading-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 8px;
+}
+.loading-dots span {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  background: #667eea;
+  border-radius: 50%;
+  opacity: 0.25;
+  transform: translateY(0);
+  animation: loading-dot 0.9s infinite ease-in-out;
+}
+.loading-dots span:nth-child(1) {
+  animation-delay: 0s;
+}
+.loading-dots span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+.loading-dots span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+@keyframes loading-dot {
+  0% {
+    opacity: 0.25;
+    transform: translateY(0);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-6px);
+  }
+  100% {
+    opacity: 0.25;
+    transform: translateY(0);
+  }
+}

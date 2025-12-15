@@ -100,15 +100,7 @@ const Standings = () => {
       </div>
 
       {loading && (
-        <div style={{
-          textAlign: 'center',
-          padding: '40px',
-          color: '#667eea',
-          fontSize: '16px',
-          fontWeight: '600'
-        }}>
-          ⏳ Loading standings...
-        </div>
+        <div className="loading">⏳ Loading standings<span className="loading-dots"><span></span><span></span><span></span></span></div>
       )}
       {error && (
         <div style={{
