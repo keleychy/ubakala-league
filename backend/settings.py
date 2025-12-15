@@ -120,7 +120,9 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 if os.getenv('DATABASE_URL'):
     DATABASES = {
         'default': dj_database_url.config(
-            conn_max_age=600 # We keep this for connection pooling
+            conn_max_age=600,
+            # CRITICAL FIX: Render requires SSL for external connections
+            ssl_require=True 
         )
     }
 # LOCAL/DEVELOPMENT SETTINGS
@@ -131,7 +133,6 @@ else:
             'NAME': BASE_DIR / 'db.sqlite3',
         }
     }
-
 
 
 # Password validation
