@@ -220,13 +220,9 @@ const Results = () => {
             const total = filteredMatches.length;
             return (
               <div>
-                {/* Legend explaining badges */}
-                <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap' }}>
-                  <div style={{ padding: 'clamp(4px, 1vw, 6px) clamp(8px, 2vw, 10px)', borderRadius: '999px', border: '1px solid rgba(15, 23, 42, 0.06)', background: 'rgba(248,250,252,0.6)', color: '#92400e', fontWeight: 600, fontSize: 'clamp(11px, 2vw, 13px)' }}>⏳ Pending</div>
-                  <div style={{ padding: 'clamp(4px, 1vw, 6px) clamp(8px, 2vw, 10px)', borderRadius: '999px', border: '1px solid rgba(2, 6, 23, 0.06)', background: 'rgba(236,253,245,0.6)', color: '#065f46', fontWeight: 600, fontSize: 'clamp(11px, 2vw, 13px)' }}>✓ Resolved</div>
-                  <div style={{ padding: 'clamp(4px, 1vw, 6px) clamp(8px, 2vw, 10px)', borderRadius: '999px', border: '1px solid rgba(2,6,23,0.04)', background: 'rgba(240,249,255,0.6)', color: '#075985', fontWeight: 600, fontSize: 'clamp(11px, 2vw, 13px)' }}>🏁 Played</div>
-                  <div style={{ padding: 'clamp(4px, 1vw, 6px) clamp(8px, 2vw, 10px)', borderRadius: '999px', border: '1px solid rgba(127,29,29,0.06)', background: 'rgba(255,241,242,0.6)', color: '#7f1d1d', fontWeight: 600, fontSize: 'clamp(11px, 2vw, 13px)' }}>⚠️ Voided</div>
-                  <div style={{ marginLeft: 'auto', padding: 'clamp(4px, 1vw, 6px) clamp(8px, 2vw, 10px)', borderRadius: '999px', border: '1px solid rgba(30,41,59,0.06)', background: 'rgba(238,242,255,0.6)', color: '#0f172a', fontWeight: 700, fontSize: 'clamp(11px, 2vw, 13px)' }}>📌 {total} match{total !== 1 ? 'es' : ''}</div>
+                {/* Compact header: show only total matches to declutter badges */}
+                <div style={{ display: 'flex', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap' }}>
+                  <div style={{ marginLeft: 'auto', padding: 'clamp(6px, 1vw, 8px) clamp(10px, 2vw, 12px)', borderRadius: '999px', border: '1px solid rgba(30,41,59,0.06)', background: 'rgba(238,242,255,0.6)', color: '#0f172a', fontWeight: 700, fontSize: 'clamp(11px, 2vw, 13px)' }}>📌 {total} match{total !== 1 ? 'es' : ''}</div>
                 </div>
 
                 {/* Compact bracket visual (Semifinals -> Final) */}
@@ -280,15 +276,10 @@ const Results = () => {
                       <h3 style={{ margin: '6px 0 12px', color: '#0f172a', fontSize: 'clamp(14px, 2.5vw, 16px)' }}>{stage}</h3>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                         {matches.map((match) => {
-                          const homeTeam = typeof match.home_team === 'object' ? match.home_team.name : match.home_team;
-                          const awayTeam = typeof match.away_team === 'object' ? match.away_team.name : match.away_team;
                           const homeScore = match.home_score !== null ? match.home_score : '-';
                           const awayScore = match.away_score !== null ? match.away_score : '-';
                           const isPlayed = match.is_played;
                           const isVoid = !!match.void;
-                          const homeIsPlaceholder = isPlaceholder(homeTeam);
-                          const awayIsPlaceholder = isPlaceholder(awayTeam);
-                          const pending = homeIsPlaceholder || awayIsPlaceholder;
 
                           return (
                             <div
@@ -312,14 +303,7 @@ const Results = () => {
                                     <span style={{ color: '#4c51bf', fontWeight: 700, fontSize: 'clamp(12px, 2.5vw, 15px)' }}>{renderTeam(match.away_team, match)}</span>
                                   </div>
                                   <div style={{ display: 'flex', gap: 'clamp(6px, 1vw, 8px)', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                                    {/* Pending vs Resolved badge */}
-                                    {pending ? (
-                                      <div style={{ background: 'linear-gradient(90deg,#fb923c,#f97316)', color: 'white', padding: 'clamp(4px, 1vw, 6px) clamp(8px, 1.5vw, 10px)', borderRadius: '8px', fontWeight: 700, fontSize: 'clamp(10px, 1.5vw, 12px)', whiteSpace: 'nowrap' }}>⏳ Pending</div>
-                                    ) : (
-                                      <div style={{ background: 'linear-gradient(90deg,#34d399,#10b981)', color: '#052e1f', padding: 'clamp(4px, 1vw, 6px) clamp(8px, 1.5vw, 10px)', borderRadius: '8px', fontWeight: 700, fontSize: 'clamp(10px, 1.5vw, 12px)', whiteSpace: 'nowrap' }}>✓ Resolved</div>
-                                    )}
-                                    {isVoid && <div style={{ background: '#fee2e2', color: '#991b1b', padding: 'clamp(4px, 1vw, 6px) clamp(8px, 1.5vw, 10px)', borderRadius: '8px', fontWeight: 700, fontSize: 'clamp(10px, 1.5vw, 12px)', whiteSpace: 'nowrap' }}>⚠️ Voided</div>}
-                                    {isPlayed && !isVoid && <div style={{ background: '#e6fffa', color: '#065f46', padding: 'clamp(4px, 1vw, 6px) clamp(8px, 1.5vw, 10px)', borderRadius: '8px', fontWeight: 700, fontSize: 'clamp(10px, 1.5vw, 12px)', whiteSpace: 'nowrap' }}>🏁 Played</div>}
+                                    {/* Status badges removed for a cleaner UI */}
                                   </div>
                                 </div>
 
