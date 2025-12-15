@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { api } from '../api/api';
 import { Link, useNavigate } from 'react-router-dom';
 import './Results.css';
@@ -13,6 +13,16 @@ export default function Home() {
   const [teamsLoadedOnce, setTeamsLoadedOnce] = useState(false);
   const [matchesLoadedOnce, setMatchesLoadedOnce] = useState(false);
   const navigate = useNavigate();
+  const prevMatchesRef = useRef({});
+  const [flashMap, setFlashMap] = useState({}); // { [matchId]: { home: bool, away: bool } }
+  const timeoutRef = useRef(null);
+  const FLASH_DURATION = 800;
+
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, []);
 
   // Fetch teams and matches periodically (every 5-10s with jitter)
   const fetchTeams = async () => {
@@ -43,18 +53,42 @@ export default function Home() {
         const matchDate = new Date(match.match_date);
         return matchDate >= today && matchDate < tomorrow;
       }).slice(0, 3);
+      const tomorrowMatches = (data || []).filter(match => {
+        const matchDate = new Date(match.match_date);
+        return matchDate >= tomorrow && matchDate < dayAfter;
+      }).slice(0, 3);
 
-      if (todayMatches.length > 0) {
-        setMatches(todayMatches);
-        setShowingTomorrow(false);
+      const displayMatches = todayMatches.length > 0 ? todayMatches : tomorrowMatches;
+      const showingTomorrowFlag = todayMatches.length === 0;
+
+      // detect score diffs for matches currently displayed
+      const prev = prevMatchesRef.current || {};
+      const diffs = {};
+      (displayMatches || []).forEach((m) => {
+        const old = prev[m.id];
+        if (!old) return;
+        const changed = {};
+        if (m.home_score !== old.home_score) changed.home = true;
+        if (m.away_score !== old.away_score) changed.away = true;
+        if (Object.keys(changed).length > 0) diffs[m.id] = changed;
+      });
+
+      if (Object.keys(diffs).length === 0) {
+        setMatches(displayMatches);
+        setShowingTomorrow(showingTomorrowFlag);
       } else {
-        const tomorrowMatches = (data || []).filter(match => {
-          const matchDate = new Date(match.match_date);
-          return matchDate >= tomorrow && matchDate < dayAfter;
-        }).slice(0, 3);
-        setMatches(tomorrowMatches);
-        setShowingTomorrow(true);
+        if (timeoutRef.current) clearTimeout(timeoutRef.current);
+        setFlashMap(diffs);
+        timeoutRef.current = setTimeout(() => {
+          setMatches(displayMatches);
+          setShowingTomorrow(showingTomorrowFlag);
+          setFlashMap({});
+          timeoutRef.current = null;
+        }, FLASH_DURATION);
       }
+
+      // update prevMatchesRef with full fetched data for future comparisons
+      prevMatchesRef.current = (data || []).reduce((acc, m) => { acc[m.id] = m; return acc; }, {});
     } catch (e) {
       console.error(e);
     } finally {
@@ -145,6 +179,12 @@ export default function Home() {
         }}>
           🎯 {showingTomorrow ? "Tomorrow's Matches" : "Today's Matches"}
         </h2>
+        {/* Inject flash CSS */}
+        <style>{`
+          .score-flash { animation: scoreFlash ${FLASH_DURATION}ms ease-in-out; }
+          @keyframes scoreFlash { 0% { background: #fff5b1; } 50% { background: #fff5b1; } 100% { background: transparent; } }
+        `}</style>
+
         {matchesLoading ? (
           <div className="loading">Loading matches <span className="loading-dots"><span></span><span></span><span></span></span></div>
         ) : matches.length > 0 ? (
@@ -219,7 +259,7 @@ export default function Home() {
                   }}>
                     <div style={{ fontSize: '16px', fontWeight: '500' }}>{homeTeam}</div>
                     <div style={{ fontSize: '32px', margin: '8px 0', color: '#ffd700', fontWeight: '800' }}>
-                      {homeScore} - {awayScore}
+                      <span className={flashMap[match.id]?.home ? 'score-flash' : ''}>{homeScore}</span> - <span className={flashMap[match.id]?.away ? 'score-flash' : ''}>{awayScore}</span>
                     </div>
                     <div style={{ fontSize: '16px', fontWeight: '500' }}>{awayTeam}</div>
                   </div>

@@ -9,6 +9,14 @@ const Results = () => {
   const [filteredMatches, setFilteredMatches] = useState([]);
   const [seasons, setSeasons] = useState([]);
   const [selectedSeason, setSelectedSeason] = useState(null);
+  const [flashMap, setFlashMap] = useState({});
+  const timeoutRef = useRef(null);
+  const FLASH_DURATION = 800;
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, []);
 
 
   useEffect(() => {
@@ -26,6 +34,16 @@ const Results = () => {
     try {
       const data = await api.getMatches();
       const prev = prevMatchesRef.current || {};
+      // detect score diffs
+      const scoreDiffs = {};
+      (data || []).forEach((m) => {
+        const old = prev[m.id];
+        if (!old) return;
+        const changed = {};
+        if (m.home_score !== old.home_score) changed.home = true;
+        if (m.away_score !== old.away_score) changed.away = true;
+        if (Object.keys(changed).length > 0) scoreDiffs[m.id] = changed;
+      });
       if (data && Array.isArray(data)) {
         data.forEach((m) => {
           try {
@@ -51,9 +69,21 @@ const Results = () => {
           }
         });
       }
-      setMatches(data || []);
-      setLoading(false);
-      prevMatchesRef.current = (data || []).reduce((acc, m) => { acc[m.id] = m; return acc; }, {});
+      if (Object.keys(scoreDiffs).length === 0) {
+        setMatches(data || []);
+        setLoading(false);
+        prevMatchesRef.current = (data || []).reduce((acc, m) => { acc[m.id] = m; return acc; }, {});
+      } else {
+        if (timeoutRef.current) clearTimeout(timeoutRef.current);
+        setFlashMap(scoreDiffs);
+        timeoutRef.current = setTimeout(() => {
+          setMatches(data || []);
+          setFlashMap({});
+          setLoading(false);
+          prevMatchesRef.current = (data || []).reduce((acc, m) => { acc[m.id] = m; return acc; }, {});
+          timeoutRef.current = null;
+        }, FLASH_DURATION);
+      }
     } catch (error) {
       console.error('Error fetching matches:', error);
       setMatches([]);
@@ -174,6 +204,10 @@ const Results = () => {
 
   return (
     <div style={{ padding: '40px 20px', maxWidth: '1000px', margin: '0 auto' }}>
+      <style>{`
+        .score-flash { animation: scoreFlash ${FLASH_DURATION}ms ease-in-out; }
+        @keyframes scoreFlash { 0% { background: #fff5b1; } 50% { background: #fff5b1; } 100% { background: transparent; } }
+      `}</style>
       <div style={{ padding: 'clamp(20px, 5vw, 40px) clamp(15px, 3vw, 20px)', maxWidth: '1000px', margin: '0 auto' }}>
         <h2 style={{ color: '#1e3c72', marginBottom: '30px' }}>📊 Live Scores & Results</h2>
 
@@ -243,8 +277,8 @@ const Results = () => {
                       <div style={{ fontSize: 'clamp(11px, 2vw, 13px)', color: '#0f172a', fontWeight: 800, marginBottom: 6 }}>{title}</div>
                       {match ? (
                         <div>
-                          <div style={{ fontWeight: 700, fontSize: 'clamp(12px, 2vw, 14px)' }}>{renderTeam(match.home_team, match)} <span style={{ color: '#2b6cb0', margin: '0 6px' }}>{match.home_score ?? '-'}</span></div>
-                          <div style={{ fontWeight: 700, marginTop: 6, fontSize: 'clamp(12px, 2vw, 14px)' }}>{renderTeam(match.away_team, match)} <span style={{ color: '#2b6cb0', margin: '0 6px' }}>{match.away_score ?? '-'}</span></div>
+                          <div style={{ fontWeight: 700, fontSize: 'clamp(12px, 2vw, 14px)' }}>{renderTeam(match.home_team, match)} <span className={flashMap[match.id]?.home ? 'score-flash' : ''} style={{ color: '#2b6cb0', margin: '0 6px' }}>{match.home_score ?? '-'}</span></div>
+                          <div style={{ fontWeight: 700, marginTop: 6, fontSize: 'clamp(12px, 2vw, 14px)' }}>{renderTeam(match.away_team, match)} <span className={flashMap[match.id]?.away ? 'score-flash' : ''} style={{ color: '#2b6cb0', margin: '0 6px' }}>{match.away_score ?? '-'}</span></div>
                           <div style={{ marginTop: 8, fontSize: 'clamp(10px, 1.5vw, 12px)', color: '#6b7280' }}>MD {match.matchday} • {formatDate(match.match_date)}</div>
                         </div>
                       ) : (
@@ -298,9 +332,9 @@ const Results = () => {
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', flexWrap: 'wrap' }}>
                                   <div style={{ fontWeight: 700, color: '#0f172a', flex: 1, minWidth: '200px' }}>
                                     <span style={{ color: '#4c51bf', fontWeight: 700, fontSize: 'clamp(12px, 2.5vw, 15px)' }}>{renderTeam(match.home_team, match)}</span>
-                                    <span style={{ margin: '0 clamp(6px, 2vw, 10px)', color: '#2b6cb0', fontSize: 'clamp(16px, 3vw, 18px)', fontWeight: 700 }}>{homeScore}</span>
+                                    <span className={flashMap[match.id]?.home ? 'score-flash' : ''} style={{ margin: '0 clamp(6px, 2vw, 10px)', color: '#2b6cb0', fontSize: 'clamp(16px, 3vw, 18px)', fontWeight: 700 }}>{homeScore}</span>
                                     <span style={{ color: '#374151' }}>-</span>
-                                    <span style={{ margin: '0 clamp(6px, 2vw, 10px)', color: '#2b6cb0', fontSize: 'clamp(16px, 3vw, 18px)', fontWeight: 700 }}>{awayScore}</span>
+                                    <span className={flashMap[match.id]?.away ? 'score-flash' : ''} style={{ margin: '0 clamp(6px, 2vw, 10px)', color: '#2b6cb0', fontSize: 'clamp(16px, 3vw, 18px)', fontWeight: 700 }}>{awayScore}</span>
                                     <span style={{ color: '#4c51bf', fontWeight: 700, fontSize: 'clamp(12px, 2.5vw, 15px)' }}>{renderTeam(match.away_team, match)}</span>
                                   </div>
                                   <div style={{ display: 'flex', gap: 'clamp(6px, 1vw, 8px)', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>

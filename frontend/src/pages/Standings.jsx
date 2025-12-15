@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { api } from '../api/api';
 import usePolling from '../utils/usePolling';
 
@@ -15,9 +15,12 @@ const Standings = () => {
   // `groups` state removed because we use `standings` structure directly
   const [selectedGroup, setSelectedGroup] = useState(null);
   const [standings, setStandings] = useState([]);
+  const [flashMap, setFlashMap] = useState({}); // { [team_id]: { goals_for: bool, goals_against: bool, points: bool } }
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [standingsLoadedOnce, setStandingsLoadedOnce] = useState(false);
+  const timeoutRef = useRef(null);
+  const FLASH_DURATION = 800; // ms
 
   useEffect(() => {
     setLoading(true);
@@ -43,7 +46,41 @@ const Standings = () => {
     setError(null);
     try {
       const data = await api.getGroupedStandings(selectedSeason);
-      setStandings(data || []);
+      // Compute diffs between current `standings` and incoming `data`.
+      const newData = data || [];
+      const diffs = {};
+
+      const oldTeamMap = {};
+      (standings || []).forEach((gblock) => {
+        (gblock.standings || []).forEach((r) => {
+          oldTeamMap[r.team_id] = r;
+        });
+      });
+
+      (newData || []).forEach((gblock) => {
+        (gblock.standings || []).forEach((r) => {
+          const old = oldTeamMap[r.team_id];
+          if (!old) return;
+          const changed = {};
+          if (r.goals_for !== old.goals_for) changed.goals_for = true;
+          if (r.goals_against !== old.goals_against) changed.goals_against = true;
+          if (r.points !== old.points) changed.points = true;
+          if (Object.keys(changed).length > 0) diffs[r.team_id] = changed;
+        });
+      });
+
+      if (Object.keys(diffs).length === 0) {
+        setStandings(newData);
+      } else {
+        // Show flash on changed cells for FLASH_DURATION, then apply new data
+        if (timeoutRef.current) clearTimeout(timeoutRef.current);
+        setFlashMap(diffs);
+        timeoutRef.current = setTimeout(() => {
+          setStandings(newData);
+          setFlashMap({});
+          timeoutRef.current = null;
+        }, FLASH_DURATION);
+      }
     } catch (err) {
       setError(err?.message || 'Failed to load grouped standings');
     } finally {
@@ -53,6 +90,12 @@ const Standings = () => {
   };
 
   usePolling(fetchGrouped, { minInterval: 5000, maxInterval: 10000, immediate: true });
+
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, []);
 
   return (
     <div style={{ padding: '40px 20px', maxWidth: '1200px', margin: '0 auto' }}>
@@ -118,6 +161,16 @@ const Standings = () => {
           ❌ {error}
         </div>
       )}
+
+      {/* Inject CSS for flash animation */}
+      <style>{`
+        .score-flash { animation: scoreFlash ${FLASH_DURATION}ms ease-in-out; }
+        @keyframes scoreFlash {
+          0% { background: #fff5b1; }
+          50% { background: #fff5b1; }
+          100% { background: transparent; }
+        }
+      `}</style>
 
       {!loading && standings && standings.length > 0 && (
         <div>
@@ -283,16 +336,25 @@ const Standings = () => {
                               <td style={{ textAlign: 'center', padding: 'clamp(6px, 1.5vw, 10px) clamp(2px, 0.5vw, 4px)', color: '#16a34a', fontWeight: '600' }}>{row.wins}</td>
                               <td style={{ textAlign: 'center', padding: 'clamp(6px, 1.5vw, 10px) clamp(2px, 0.5vw, 4px)', color: '#f59e0b', fontWeight: '600' }}>{row.draws}</td>
                               <td style={{ textAlign: 'center', padding: 'clamp(6px, 1.5vw, 10px) clamp(2px, 0.5vw, 4px)', color: '#dc2626', fontWeight: '600' }}>{row.losses}</td>
-                              <td style={{ textAlign: 'center', padding: 'clamp(6px, 1.5vw, 10px) clamp(2px, 0.5vw, 4px)', color: '#667eea', fontWeight: '600' }}>{row.goals_for}</td>
-                              <td style={{ textAlign: 'center', padding: 'clamp(6px, 1.5vw, 10px) clamp(2px, 0.5vw, 4px)', color: '#764ba2', fontWeight: '600' }}>{row.goals_against}</td>
+                              <td
+                                className={flashMap[row.team_id]?.goals_for ? 'score-flash' : ''}
+                                style={{ textAlign: 'center', padding: 'clamp(6px, 1.5vw, 10px) clamp(2px, 0.5vw, 4px)', color: '#667eea', fontWeight: '600' }}
+                              >{row.goals_for}</td>
+                              <td
+                                className={flashMap[row.team_id]?.goals_against ? 'score-flash' : ''}
+                                style={{ textAlign: 'center', padding: 'clamp(6px, 1.5vw, 10px) clamp(2px, 0.5vw, 4px)', color: '#764ba2', fontWeight: '600' }}
+                              >{row.goals_against}</td>
                               <td style={{ textAlign: 'center', padding: 'clamp(6px, 1.5vw, 10px) clamp(2px, 0.5vw, 4px)', color: '#666', fontWeight: '600' }}>{row.goal_diff}</td>
-                              <td style={{
-                                textAlign: 'center',
-                                padding: 'clamp(6px, 1.5vw, 10px) clamp(2px, 0.5vw, 4px)',
-                                fontWeight: '800',
-                                color: '#fcd34d',
-                                fontSize: 'clamp(12px, 1.8vw, 14px)'
-                              }}>
+                              <td
+                                className={flashMap[row.team_id]?.points ? 'score-flash' : ''}
+                                style={{
+                                  textAlign: 'center',
+                                  padding: 'clamp(6px, 1.5vw, 10px) clamp(2px, 0.5vw, 4px)',
+                                  fontWeight: '800',
+                                  color: '#fcd34d',
+                                  fontSize: 'clamp(12px, 1.8vw, 14px)'
+                                }}
+                              >
                                 {row.points}
                               </td>
                             </tr>

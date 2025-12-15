@@ -15,6 +15,10 @@ const isPlaceholder = (teamName) => {
 
 export default function Bracket() {
     const [matches, setMatches] = useState([]);
+    const [flashMap, setFlashMap] = useState({});
+    const prevMatchesRef = useRef({});
+    const timeoutRef = useRef(null);
+    const FLASH_DURATION = 800;
     const [seasons, setSeasons] = useState([]);
     const [selectedSeason, setSelectedSeason] = useState(null);
     const [seasonsLoading, setSeasonsLoading] = useState(true);
@@ -49,7 +53,31 @@ export default function Bracket() {
         if (!matchesLoadedOnce) setMatchesLoading(true);
         try {
             const m = await api.getMatches({ season: selectedSeason });
-            setMatches(m || []);
+            // detect diffs between prev and incoming matches for bracket display
+            const prev = prevMatchesRef.current || {};
+            const diffs = {};
+            (m || []).forEach((mm) => {
+                const old = prev[mm.id];
+                if (!old) return;
+                const changed = {};
+                if (mm.home_score !== old.home_score) changed.home = true;
+                if (mm.away_score !== old.away_score) changed.away = true;
+                if (Object.keys(changed).length > 0) diffs[mm.id] = changed;
+            });
+
+            if (Object.keys(diffs).length === 0) {
+                setMatches(m || []);
+            } else {
+                if (timeoutRef.current) clearTimeout(timeoutRef.current);
+                setFlashMap(diffs);
+                timeoutRef.current = setTimeout(() => {
+                    setMatches(m || []);
+                    setFlashMap({});
+                    timeoutRef.current = null;
+                }, FLASH_DURATION);
+            }
+
+            prevMatchesRef.current = (m || []).reduce((acc, mm) => { acc[mm.id] = mm; return acc; }, {});
         } catch (e) {
             console.error(e);
         } finally {
@@ -59,6 +87,12 @@ export default function Bracket() {
     };
 
     usePolling(fetchMatchesForSeason, { minInterval: 5000, maxInterval: 10000, immediate: true });
+
+    useEffect(() => {
+        return () => {
+            if (timeoutRef.current) clearTimeout(timeoutRef.current);
+        };
+    }, []);
 
     // Build connectors once matches are loaded and on resize
     useEffect(() => {
@@ -228,7 +262,7 @@ export default function Bracket() {
                         return (<span className="placeholder-pill">{descriptor} — {stageLabel ? `${stageLabel}${slot}` : 'Knockout'}</span>);
                     }
                     return name;
-                })()} <span className="score">{m.home_score ?? '-'}</span>
+                })()} <span className={`score ${flashMap[m.id]?.home ? 'score-flash' : ''}`}>{m.home_score ?? '-'}</span>
             </div>
             <div className="br-team br-away">
                 {(() => {
@@ -247,7 +281,7 @@ export default function Bracket() {
                         return (<span className="placeholder-pill">{descriptor} — {stageLabel ? `${stageLabel}${slot}` : 'Knockout'}</span>);
                     }
                     return name;
-                })()} <span className="score">{m.away_score ?? '-'}</span>
+                })()} <span className={`score ${flashMap[m.id]?.away ? 'score-flash' : ''}`}>{m.away_score ?? '-'}</span>
             </div>
         </div>
     );
@@ -259,6 +293,10 @@ export default function Bracket() {
 
     return (
         <div className="bracket-root" style={{ padding: 24 }}>
+            <style>{`
+                .score-flash { animation: scoreFlash 800ms ease-in-out; }
+                @keyframes scoreFlash { 0% { background: #fff5b1; } 50% { background: #fff5b1; } 100% { background: transparent; } }
+            `}</style>
             <div className="bracket-header">
                 <h2>🔗 Tournament Bracket</h2>
                 <div>
