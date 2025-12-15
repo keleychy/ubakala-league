@@ -5,6 +5,7 @@ import { Link, useNavigate } from 'react-router-dom';
 export default function Home() {
   const [teams, setTeams] = useState([]);
   const [matches, setMatches] = useState([]);
+  const [showingTomorrow, setShowingTomorrow] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -15,13 +16,27 @@ export default function Home() {
       today.setHours(0, 0, 0, 0);
       const tomorrow = new Date(today);
       tomorrow.setDate(tomorrow.getDate() + 1);
+      const dayAfter = new Date(tomorrow);
+      dayAfter.setDate(dayAfter.getDate() + 1);
 
       // Filter matches from today and get at most 3
       const todayMatches = (data || []).filter(match => {
         const matchDate = new Date(match.match_date);
         return matchDate >= today && matchDate < tomorrow;
       }).slice(0, 3);
-      setMatches(todayMatches);
+
+      if (todayMatches.length > 0) {
+        setMatches(todayMatches);
+        setShowingTomorrow(false);
+      } else {
+        // fallback: show next day's matches (tomorrow)
+        const tomorrowMatches = (data || []).filter(match => {
+          const matchDate = new Date(match.match_date);
+          return matchDate >= tomorrow && matchDate < dayAfter;
+        }).slice(0, 3);
+        setMatches(tomorrowMatches);
+        setShowingTomorrow(true);
+      }
     }).catch(console.error);
   }, []);
 
@@ -94,7 +109,7 @@ export default function Home() {
           color: '#1e3c72',
           fontSize: '32px'
         }}>
-          🎯 Today's Matches
+          🎯 {showingTomorrow ? "Tomorrow's Matches" : "Today's Matches"}
         </h2>
         {matches.length > 0 ? (
           <div style={{

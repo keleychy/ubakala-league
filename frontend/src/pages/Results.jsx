@@ -5,7 +5,6 @@ import './Results.css';
 const Results = () => {
   const [matches, setMatches] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [updating, setUpdating] = useState(false);
   const [filteredMatches, setFilteredMatches] = useState([]);
   const [seasons, setSeasons] = useState([]);
   const [selectedSeason, setSelectedSeason] = useState(null);
@@ -23,8 +22,7 @@ const Results = () => {
   useEffect(() => {
     const fetchScores = async () => {
       try {
-        // mark updating on subsequent polls, keep `loading` only for initial load
-        if (prevMatchesRef.current && Object.keys(prevMatchesRef.current).length > 0) setUpdating(true);
+        // keep `loading` only for initial load
         const data = await api.getMatches();
         // Compare with previous matches to detect pending->resolved transitions
         const prev = prevMatchesRef.current || {};
@@ -57,14 +55,12 @@ const Results = () => {
         }
         setMatches(data || []);
         setLoading(false);
-        setUpdating(false);
         // store for next comparison
         prevMatchesRef.current = (data || []).reduce((acc, m) => { acc[m.id] = m; return acc; }, {});
       } catch (error) {
         console.error('Error fetching matches:', error);
         setMatches([]);
         setLoading(false);
-        setUpdating(false);
       }
     };
 
@@ -222,7 +218,9 @@ const Results = () => {
         </div>
 
         {/* Matches list (grouped by stage) */}
-        {filteredMatches.length > 0 ? (
+        {loading ? (
+          <div className="loading">⏳ Loading matches<span className="loading-dots"><span></span><span></span><span></span></span></div>
+        ) : filteredMatches.length > 0 ? (
           (() => {
             const grouped = groupMatchesByStage(filteredMatches);
             const total = filteredMatches.length;
@@ -232,13 +230,6 @@ const Results = () => {
                 <div style={{ display: 'flex', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap' }}>
                   <div style={{ marginLeft: 'auto', padding: 'clamp(6px, 1vw, 8px) clamp(10px, 2vw, 12px)', borderRadius: '999px', border: '1px solid rgba(30,41,59,0.06)', background: 'rgba(238,242,255,0.6)', color: '#0f172a', fontWeight: 700, fontSize: 'clamp(11px, 2vw, 13px)' }}>📌 {total} match{total !== 1 ? 'es' : ''}</div>
                 </div>
-
-                {loading && (
-                  <div className="loading">⏳ Loading matches<span className="loading-dots"><span></span><span></span><span></span></span></div>
-                )}
-                {!loading && updating && (
-                  <div style={{ textAlign: 'center', color: '#667eea', marginBottom: 8, fontWeight: 600 }}>Updating<span className="loading-dots" style={{ marginLeft: 8 }}><span></span><span></span><span></span></span></div>
-                )}
 
                 {/* Compact bracket visual (Semifinals -> Final) */}
                 {(() => {
