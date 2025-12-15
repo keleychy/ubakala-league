@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { api } from '../api/api';
 import { Link, useNavigate } from 'react-router-dom';
 import './Results.css';
+import usePolling from '../utils/usePolling';
 
 export default function Home() {
   const [teams, setTeams] = useState([]);
@@ -9,14 +10,28 @@ export default function Home() {
   const [matchesLoading, setMatchesLoading] = useState(true);
   const [teamsLoading, setTeamsLoading] = useState(true);
   const [showingTomorrow, setShowingTomorrow] = useState(false);
+  const [teamsLoadedOnce, setTeamsLoadedOnce] = useState(false);
+  const [matchesLoadedOnce, setMatchesLoadedOnce] = useState(false);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    setTeamsLoading(true);
-    api.getTeams().then(setTeams).catch(console.error).finally(() => setTeamsLoading(false));
-    setMatchesLoading(true);
-    api.getMatches().then(data => {
-      // Get today's date at midnight
+  // Fetch teams and matches periodically (every 5-10s with jitter)
+  const fetchTeams = async () => {
+    if (!teamsLoadedOnce) setTeamsLoading(true);
+    try {
+      const t = await api.getTeams();
+      setTeams(t || []);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      if (!teamsLoadedOnce) setTeamsLoading(false);
+      setTeamsLoadedOnce(true);
+    }
+  };
+
+  const fetchMatches = async () => {
+    if (!matchesLoadedOnce) setMatchesLoading(true);
+    try {
+      const data = await api.getMatches();
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const tomorrow = new Date(today);
@@ -24,7 +39,6 @@ export default function Home() {
       const dayAfter = new Date(tomorrow);
       dayAfter.setDate(dayAfter.getDate() + 1);
 
-      // Filter matches from today and get at most 3
       const todayMatches = (data || []).filter(match => {
         const matchDate = new Date(match.match_date);
         return matchDate >= today && matchDate < tomorrow;
@@ -34,7 +48,6 @@ export default function Home() {
         setMatches(todayMatches);
         setShowingTomorrow(false);
       } else {
-        // fallback: show next day's matches (tomorrow)
         const tomorrowMatches = (data || []).filter(match => {
           const matchDate = new Date(match.match_date);
           return matchDate >= tomorrow && matchDate < dayAfter;
@@ -42,8 +55,16 @@ export default function Home() {
         setMatches(tomorrowMatches);
         setShowingTomorrow(true);
       }
-    }).catch(console.error).finally(() => setMatchesLoading(false));
-  }, []);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      if (!matchesLoadedOnce) setMatchesLoading(false);
+      setMatchesLoadedOnce(true);
+    }
+  };
+
+  usePolling(fetchTeams, { minInterval: 5000, maxInterval: 10000, immediate: true });
+  usePolling(fetchMatches, { minInterval: 5000, maxInterval: 10000, immediate: true });
 
   function getLocalMatchTime(dateStr) {
     // Try to parse as ISO, fallback to manual conversion

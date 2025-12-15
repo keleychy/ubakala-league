@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { api } from '../api/api';
 import './Bracket.css';
 import './Results.css';
+import usePolling from '../utils/usePolling';
 
 // Helper: group matches by matchday
 const getMatchesByDay = (matches, md) => matches.filter(m => Number(m.matchday) === md || Number(m.matchday) === Number(md));
@@ -19,24 +20,45 @@ export default function Bracket() {
     const [seasonsLoading, setSeasonsLoading] = useState(true);
     const [matchesLoading, setMatchesLoading] = useState(true);
     const [category, setCategory] = useState('senior_boys');
+    const [seasonsLoadedOnce, setSeasonsLoadedOnce] = useState(false);
+    const [matchesLoadedOnce, setMatchesLoadedOnce] = useState(false);
     const containerRef = useRef(null);
     const boxRefs = useRef({});
     const svgRef = useRef(null);
     const [connectors, setConnectors] = useState([]);
 
-    useEffect(() => {
-        setSeasonsLoading(true);
-        api.getSeasons(category)
-            .then((s) => { setSeasons(s); if (s && s.length) setSelectedSeason(s[0].id); else setSelectedSeason(null); })
-            .catch(console.error)
-            .finally(() => setSeasonsLoading(false));
-    }, [category]);
+    // Poll seasons (category may change) so dropdown stays current
+    const fetchSeasons = async () => {
+        if (!seasonsLoadedOnce) setSeasonsLoading(true);
+        try {
+            const s = await api.getSeasons(category);
+            setSeasons(s || []);
+            if (s && s.length) setSelectedSeason((prev) => prev || s[0].id);
+            else setSelectedSeason(null);
+        } catch (e) {
+            console.error(e);
+        } finally {
+            if (!seasonsLoadedOnce) setSeasonsLoading(false);
+            setSeasonsLoadedOnce(true);
+        }
+    };
+    usePolling(fetchSeasons, { minInterval: 7000, maxInterval: 12000, immediate: true });
 
-    useEffect(() => {
+    const fetchMatchesForSeason = async () => {
         if (!selectedSeason) return;
-        setMatchesLoading(true);
-        api.getMatches({ season: selectedSeason }).then((m) => setMatches(m || [])).catch(console.error).finally(() => setMatchesLoading(false));
-    }, [selectedSeason]);
+        if (!matchesLoadedOnce) setMatchesLoading(true);
+        try {
+            const m = await api.getMatches({ season: selectedSeason });
+            setMatches(m || []);
+        } catch (e) {
+            console.error(e);
+        } finally {
+            if (!matchesLoadedOnce) setMatchesLoading(false);
+            setMatchesLoadedOnce(true);
+        }
+    };
+
+    usePolling(fetchMatchesForSeason, { minInterval: 5000, maxInterval: 10000, immediate: true });
 
     // Build connectors once matches are loaded and on resize
     useEffect(() => {

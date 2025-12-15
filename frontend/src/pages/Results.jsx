@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { api } from '../api/api';
+import usePolling from '../utils/usePolling';
 import './Results.css';
 
 const Results = () => {
@@ -8,6 +9,7 @@ const Results = () => {
   const [filteredMatches, setFilteredMatches] = useState([]);
   const [seasons, setSeasons] = useState([]);
   const [selectedSeason, setSelectedSeason] = useState(null);
+
 
   useEffect(() => {
     // Fetch seasons
@@ -19,55 +21,48 @@ const Results = () => {
     }).catch(console.error);
   }, []);
 
-  useEffect(() => {
-    const fetchScores = async () => {
-      try {
-        // keep `loading` only for initial load
-        const data = await api.getMatches();
-        // Compare with previous matches to detect pending->resolved transitions
-        const prev = prevMatchesRef.current || {};
-        if (data && Array.isArray(data)) {
-          data.forEach((m) => {
-            try {
-              const prevMatch = prev[m.id];
-              const prevHome = prevMatch ? (typeof prevMatch.home_team === 'object' ? prevMatch.home_team.name : prevMatch.home_team) : null;
-              const prevAway = prevMatch ? (typeof prevMatch.away_team === 'object' ? prevMatch.away_team.name : prevMatch.away_team) : null;
-              const nowHome = typeof m.home_team === 'object' ? m.home_team.name : m.home_team;
-              const nowAway = typeof m.away_team === 'object' ? m.away_team.name : m.away_team;
-              const wasPending = /WINNER|LOSER/i.test(prevHome) || /WINNER|LOSER/i.test(prevAway);
-              const nowResolved = !(/WINNER|LOSER/i.test(nowHome) || /WINNER|LOSER/i.test(nowAway));
-              if (wasPending && nowResolved) {
-                // trigger highlight for this match id
-                setHighlighted((h) => ({ ...h, [m.id]: true }));
-                // clear highlight after a short duration
-                setTimeout(() => {
-                  setHighlighted((h) => {
-                    const next = { ...h };
-                    delete next[m.id];
-                    return next;
-                  });
-                }, 2500);
-              }
-            } catch (e) {
-              // ignore comparison errors for safety
+  // usePolling will call this repeatedly (with optional jitter)
+  const fetchScores = async () => {
+    try {
+      const data = await api.getMatches();
+      const prev = prevMatchesRef.current || {};
+      if (data && Array.isArray(data)) {
+        data.forEach((m) => {
+          try {
+            const prevMatch = prev[m.id];
+            const prevHome = prevMatch ? (typeof prevMatch.home_team === 'object' ? prevMatch.home_team.name : prevMatch.home_team) : null;
+            const prevAway = prevMatch ? (typeof prevMatch.away_team === 'object' ? prevMatch.away_team.name : prevMatch.away_team) : null;
+            const nowHome = typeof m.home_team === 'object' ? m.home_team.name : m.home_team;
+            const nowAway = typeof m.away_team === 'object' ? m.away_team.name : m.away_team;
+            const wasPending = /WINNER|LOSER/i.test(prevHome) || /WINNER|LOSER/i.test(prevAway);
+            const nowResolved = !(/WINNER|LOSER/i.test(nowHome) || /WINNER|LOSER/i.test(nowAway));
+            if (wasPending && nowResolved) {
+              setHighlighted((h) => ({ ...h, [m.id]: true }));
+              setTimeout(() => {
+                setHighlighted((h) => {
+                  const next = { ...h };
+                  delete next[m.id];
+                  return next;
+                });
+              }, 2500);
             }
-          });
-        }
-        setMatches(data || []);
-        setLoading(false);
-        // store for next comparison
-        prevMatchesRef.current = (data || []).reduce((acc, m) => { acc[m.id] = m; return acc; }, {});
-      } catch (error) {
-        console.error('Error fetching matches:', error);
-        setMatches([]);
-        setLoading(false);
+          } catch (e) {
+            // ignore comparison errors for safety
+          }
+        });
       }
-    };
+      setMatches(data || []);
+      setLoading(false);
+      prevMatchesRef.current = (data || []).reduce((acc, m) => { acc[m.id] = m; return acc; }, {});
+    } catch (error) {
+      console.error('Error fetching matches:', error);
+      setMatches([]);
+      setLoading(false);
+    }
+  };
 
-    fetchScores(); // initial fetch
-    const interval = setInterval(fetchScores, 3000); // fetch every 3 seconds for near-realtime
-    return () => clearInterval(interval); // cleanup on unmount
-  }, []);
+  // poll matches every 5-10s (randomized to avoid stampeding)
+  usePolling(fetchScores, { minInterval: 5000, maxInterval: 10000, immediate: true });
 
   // Filter matches by selected season
   useEffect(() => {

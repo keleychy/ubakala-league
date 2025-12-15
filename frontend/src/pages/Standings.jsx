@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../api/api';
+import usePolling from '../utils/usePolling';
 
 const CATEGORIES = [
   { value: 'senior_boys', label: 'Senior Boys' },
@@ -16,6 +17,7 @@ const Standings = () => {
   const [standings, setStandings] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [standingsLoadedOnce, setStandingsLoadedOnce] = useState(false);
 
   useEffect(() => {
     setLoading(true);
@@ -34,20 +36,23 @@ const Standings = () => {
       .finally(() => setLoading(false));
   }, [category]);
 
-  useEffect(() => {
+  // Poll grouped standings for the selected season every 5-10s
+  const fetchGrouped = async () => {
     if (!selectedSeason) return;
-    setLoading(true);
+    if (!standingsLoadedOnce) setLoading(true);
     setError(null);
-    // Use server-side grouped standings endpoint
-    api.getGroupedStandings(selectedSeason)
-      .then((data) => {
-        // data: [{group: {id,name}, standings: [...]}, ...]
-        // store per-group standings in the same structure
-        setStandings(data);
-      })
-      .catch((err) => setError(err.message || 'Failed to load grouped standings'))
-      .finally(() => setLoading(false));
-  }, [selectedSeason]);
+    try {
+      const data = await api.getGroupedStandings(selectedSeason);
+      setStandings(data || []);
+    } catch (err) {
+      setError(err?.message || 'Failed to load grouped standings');
+    } finally {
+      if (!standingsLoadedOnce) setLoading(false);
+      setStandingsLoadedOnce(true);
+    }
+  };
+
+  usePolling(fetchGrouped, { minInterval: 5000, maxInterval: 10000, immediate: true });
 
   return (
     <div style={{ padding: '40px 20px', maxWidth: '1200px', margin: '0 auto' }}>
