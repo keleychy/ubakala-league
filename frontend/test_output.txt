@@ -1,0 +1,83 @@
+﻿
+> frontend@0.1.0 test
+> react-scripts test
+
+node.exe : FAIL src/App.test.js
+At C:\Program Files\nodejs\npm.ps1:29 char:3
++   & $NODE_EXE $NPM_CLI_JS $args
++   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (FAIL src/App.test.js:String) [],  
+   RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  ΓùÅ Test suite failed to run
+
+    Jest encountered an unexpected token
+
+    Jest failed to parse a file. This happens e.g. when your code or its 
+dependencies use non-standard JavaScript syntax, or when Jest is not 
+configured to support such syntax.
+
+    Out of the box Jest supports Babel, which will be used to transform your 
+files into valid JS based on your Babel configuration.
+
+    By default "node_modules" folder is ignored by transformers.
+
+    Here's what you can do:
+     ΓÇó If you are trying to use ECMAScript Modules, see 
+https://jestjs.io/docs/ecmascript-modules for how to enable it.
+     ΓÇó If you are trying to use TypeScript, see 
+https://jestjs.io/docs/getting-started#using-typescript
+     ΓÇó To have some of your "node_modules" files transformed, you can 
+specify a custom "transformIgnorePatterns" in your config.
+     ΓÇó If you need a custom transformation specify a "transform" option in 
+your config.
+     ΓÇó If you simply want to mock your non-JS modules (e.g. binary assets) 
+you can stub them out with the "moduleNameMapper" config option.
+
+    You'll find more details and examples of these config options in the docs:
+    https://jestjs.io/docs/configuration
+    For information about custom transformations, see:
+    https://jestjs.io/docs/code-transformation
+
+    Details:
+
+    C:\Users\HP 
+PC\Desktop\ubakala_league\frontend\node_modules\axios\index.js:1
+    ({"Object.<anonymous>":function(module,exports,require,__dirname,__filename
+,jest){import axios from './lib/axios.js';
+                                                                               
+       ^^^^^^
+
+    SyntaxError: Cannot use import statement outside a module
+
+    [0m [90m 1 |[39m [36mimport[39m [33mReact[39m[33m,[39m { useState 
+} [36mfrom[39m [32m'react'[39m[33m;[39m
+    [31m[1m>[22m[39m[90m 2 |[39m [36mimport[39m axios [36mfrom[39m 
+[32m'axios'[39m[33m;[39m
+     [90m   |[39m [31m[1m^[22m[39m
+     [90m 3 |[39m
+     [90m 4 |[39m [36mconst[39m [33mUploadTeams[39m [33m=[39m () 
+[33m=>[39m {
+     [90m 5 |[39m   [36mconst[39m [file[33m,[39m setFile] [33m=[39m 
+useState([36mnull[39m)[33m;[39m[0m
+
+      at Runtime.createScriptFromCode 
+(node_modules/jest-runtime/build/index.js:1728:14)
+      at Object.<anonymous> (src/pages/UploadTeams.jsx:2:1)
+      at Object.<anonymous> (src/App.jsx:11:1)
+      at Object.<anonymous> (src/App.test.js:2:1)
+      at TestScheduler.scheduleTests 
+(node_modules/@jest/core/build/TestScheduler.js:333:13)
+      at runJest (node_modules/@jest/core/build/runJest.js:404:19)
+      at _run10000 (node_modules/@jest/core/build/cli/index.js:320:7)
+      at runCLI (node_modules/@jest/core/build/cli/index.js:173:3)
+
+Test Suites: 1 failed, 1 total
+Tests:       0 total
+Snapshots:   0 total
+Time:        9.666 s
+Ran all test suites.
+(node:15136) [DEP0040] DeprecationWarning: The `punycode` module is 
+deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)

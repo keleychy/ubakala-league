@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { api } from '../api/api';
 import './Bracket.css';
+import './Results.css';
 
 // Helper: group matches by matchday
 const getMatchesByDay = (matches, md) => matches.filter(m => Number(m.matchday) === md || Number(m.matchday) === Number(md));
@@ -15,6 +16,8 @@ export default function Bracket() {
     const [matches, setMatches] = useState([]);
     const [seasons, setSeasons] = useState([]);
     const [selectedSeason, setSelectedSeason] = useState(null);
+    const [seasonsLoading, setSeasonsLoading] = useState(true);
+    const [matchesLoading, setMatchesLoading] = useState(true);
     const [category, setCategory] = useState('senior_boys');
     const containerRef = useRef(null);
     const boxRefs = useRef({});
@@ -22,12 +25,17 @@ export default function Bracket() {
     const [connectors, setConnectors] = useState([]);
 
     useEffect(() => {
-        api.getSeasons(category).then((s) => { setSeasons(s); if (s && s.length) setSelectedSeason(s[0].id); else setSelectedSeason(null); }).catch(console.error);
+        setSeasonsLoading(true);
+        api.getSeasons(category)
+            .then((s) => { setSeasons(s); if (s && s.length) setSelectedSeason(s[0].id); else setSelectedSeason(null); })
+            .catch(console.error)
+            .finally(() => setSeasonsLoading(false));
     }, [category]);
 
     useEffect(() => {
         if (!selectedSeason) return;
-        api.getMatches({ season: selectedSeason }).then((m) => setMatches(m || [])).catch(console.error);
+        setMatchesLoading(true);
+        api.getMatches({ season: selectedSeason }).then((m) => setMatches(m || [])).catch(console.error).finally(() => setMatchesLoading(false));
     }, [selectedSeason]);
 
     // Build connectors once matches are loaded and on resize
@@ -240,38 +248,46 @@ export default function Bracket() {
                     </select>
 
                     <label style={{ fontWeight: 700, color: '#1e3c72', marginRight: 10 }}>Season:</label>
-                    <select value={selectedSeason || ''} onChange={(e) => setSelectedSeason(parseInt(e.target.value))} style={{ padding: '6px 10px', borderRadius: 8 }}>
-                        {seasons.map(s => (<option key={s.id} value={s.id}>{s.name}</option>))}
-                    </select>
+                    {seasonsLoading ? (
+                        <div style={{ display: 'inline-block' }} className="loading">Loading seasons <span className="loading-dots"><span></span><span></span><span></span></span></div>
+                    ) : (
+                        <select value={selectedSeason || ''} onChange={(e) => setSelectedSeason(parseInt(e.target.value))} style={{ padding: '6px 10px', borderRadius: 8 }}>
+                            {seasons.map(s => (<option key={s.id} value={s.id}>{s.name}</option>))}
+                        </select>
+                    )}
                 </div>
             </div>
 
-            <div className="bracket-canvas" ref={containerRef}>
-                <div className="col col-qf">
-                    <h4>Quarterfinals</h4>
-                    {qf.map(renderBox)}
+            {matchesLoading ? (
+                <div className="loading">Loading bracket <span className="loading-dots"><span></span><span></span><span></span></span></div>
+            ) : (
+                <div className="bracket-canvas" ref={containerRef}>
+                    <div className="col col-qf">
+                        <h4>Quarterfinals</h4>
+                        {qf.map(renderBox)}
+                    </div>
+
+                    <div className="col col-sf">
+                        <h4>Semifinals</h4>
+                        {sf.map(renderBox)}
+                        <h4 style={{ marginTop: 18 }}>Third Place</h4>
+                        {third.map(renderBox)}
+                    </div>
+
+                    <div className="col col-final">
+                        <h4>Final</h4>
+                        {fin.map(renderBox)}
+                    </div>
+
+                    <svg className="bracket-svg" ref={svgRef} xmlns="http://www.w3.org/2000/svg">
+                        {connectors.map(c => (
+                            <path key={c.id} id={c.id} d={c.d} className={`connector ${c.revealed ? 'revealed' : ''}`} stroke="#3b82f6" strokeWidth={3} fill="none" strokeLinecap="round" />
+                        ))}
+                    </svg>
                 </div>
+            )}
 
-                <div className="col col-sf">
-                    <h4>Semifinals</h4>
-                    {sf.map(renderBox)}
-                    <h4 style={{ marginTop: 18 }}>Third Place</h4>
-                    {third.map(renderBox)}
-                </div>
-
-                <div className="col col-final">
-                    <h4>Final</h4>
-                    {fin.map(renderBox)}
-                </div>
-
-                <svg className="bracket-svg" ref={svgRef} xmlns="http://www.w3.org/2000/svg">
-                    {connectors.map(c => (
-                        <path key={c.id} id={c.id} d={c.d} className={`connector ${c.revealed ? 'revealed' : ''}`} stroke="#3b82f6" strokeWidth={3} fill="none" strokeLinecap="round" />
-                    ))}
-                </svg>
-            </div>
-
-            <p style={{ marginTop: 12, color: '#21e90bff',  }}>Animated connectors draw in when a match result is decided.</p>
+            <p style={{ marginTop: 12, color: '#21e90bff', }}>Animated connectors draw in when a match result is decided.</p>
         </div>
     );
 }

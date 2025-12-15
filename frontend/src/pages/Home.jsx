@@ -1,15 +1,20 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../api/api';
 import { Link, useNavigate } from 'react-router-dom';
+import './Results.css';
 
 export default function Home() {
   const [teams, setTeams] = useState([]);
   const [matches, setMatches] = useState([]);
+  const [matchesLoading, setMatchesLoading] = useState(true);
+  const [teamsLoading, setTeamsLoading] = useState(true);
   const [showingTomorrow, setShowingTomorrow] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
-    api.getTeams().then(setTeams).catch(console.error);
+    setTeamsLoading(true);
+    api.getTeams().then(setTeams).catch(console.error).finally(() => setTeamsLoading(false));
+    setMatchesLoading(true);
     api.getMatches().then(data => {
       // Get today's date at midnight
       const today = new Date();
@@ -37,7 +42,7 @@ export default function Home() {
         setMatches(tomorrowMatches);
         setShowingTomorrow(true);
       }
-    }).catch(console.error);
+    }).catch(console.error).finally(() => setMatchesLoading(false));
   }, []);
 
   function getLocalMatchTime(dateStr) {
@@ -48,6 +53,14 @@ export default function Home() {
       d = new Date(dateStr.replace(' ', 'T') + '+01:00');
     }
     return isNaN(d) ? dateStr : d.toLocaleString();
+  }
+
+  function formatTeamName(name) {
+    if (!name) return '';
+    // Remove bracketed content like "[x]" or "(x)" and trim
+    // Match either [...] or (...) to avoid unnecessary escapes inside character classes
+    // eslint-disable-next-line no-useless-escape
+    return String(name).replace(/\s*(?:\[[^\]]*\]|\([^)]*\))\s*/g, '').trim();
   }
 
   return (
@@ -111,7 +124,9 @@ export default function Home() {
         }}>
           🎯 {showingTomorrow ? "Tomorrow's Matches" : "Today's Matches"}
         </h2>
-        {matches.length > 0 ? (
+        {matchesLoading ? (
+          <div className="loading">Loading matches <span className="loading-dots"><span></span><span></span><span></span></span></div>
+        ) : matches.length > 0 ? (
           <div style={{
             display: 'flex',
             flexDirection: 'row',
@@ -226,40 +241,44 @@ export default function Home() {
       {/* Teams Section */}
       <section style={{ marginTop: '40px' }}>
         <h3 style={{ color: '#1e3c72', fontSize: '24px', marginBottom: '20px' }}>🏟️ Participating Teams</h3>
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))',
-          gap: '16px'
-        }}>
-          {teams.map(t => (
-            <div
-              key={t.id}
-              style={{
-                border: '2px solid #667eea',
-                padding: '16px',
-                borderRadius: '10px',
-                textAlign: 'center',
-                background: '#f8f9ff',
-                fontWeight: '600',
-                color: '#1e3c72',
-                transition: 'all 0.3s ease',
-                cursor: 'pointer'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
-                e.currentTarget.style.color = 'white';
-                e.currentTarget.style.transform = 'translateY(-4px)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = '#f8f9ff';
-                e.currentTarget.style.color = '#1e3c72';
-                e.currentTarget.style.transform = 'translateY(0)';
-              }}
-            >
-              {t.name}
-            </div>
-          ))}
-        </div>
+        {teamsLoading ? (
+          <div className="loading">Loading teams <span className="loading-dots"><span></span><span></span><span></span></span></div>
+        ) : (
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))',
+            gap: '16px'
+          }}>
+            {teams.map(t => (
+              <div
+                key={t.id}
+                style={{
+                  border: '2px solid #667eea',
+                  padding: '16px',
+                  borderRadius: '10px',
+                  textAlign: 'center',
+                  background: '#f8f9ff',
+                  fontWeight: '600',
+                  color: '#1e3c72',
+                  transition: 'all 0.3s ease',
+                  cursor: 'pointer'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+                  e.currentTarget.style.color = 'white';
+                  e.currentTarget.style.transform = 'translateY(-4px)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = '#f8f9ff';
+                  e.currentTarget.style.color = '#1e3c72';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                }}
+              >
+                {formatTeamName(t.name)}
+              </div>
+            ))}
+          </div>
+        )}
       </section>
     </div >
   );
