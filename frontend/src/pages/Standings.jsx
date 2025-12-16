@@ -18,7 +18,9 @@ const Standings = () => {
   const [flashMap, setFlashMap] = useState({}); // { [team_id]: { goals_for: bool, goals_against: bool, points: bool } }
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [standingsLoadedOnce, setStandingsLoadedOnce] = useState(false);
+  // Track which seasons have been loaded at least once to avoid repeatedly
+  // showing the initial loading spinner when polling or switching seasons.
+  const standingsLoadedOnceRef = useRef({});
   const timeoutRef = useRef(null);
   const FLASH_DURATION = 800; // ms
   const lastSeasonRef = useRef(null);
@@ -47,7 +49,7 @@ const Standings = () => {
   // Poll grouped standings for the selected season every 5-10s
   const fetchGrouped = async () => {
     if (!selectedSeason) return;
-    if (!standingsLoadedOnce) setLoading(true);
+    if (!standingsLoadedOnceRef.current[selectedSeason]) setLoading(true);
     setError(null);
     try {
       // fetch grouped standings plus groups-with-teams and matches to ensure group-stage-only computation
@@ -190,9 +192,9 @@ const Standings = () => {
       setError(err?.message || 'Failed to load grouped standings');
     } finally {
       // Ensure loading is cleared after each fetch so the UI doesn't get stuck
-      // when switching categories (standingsLoadedOnce is global across categories).
+      // when switching categories.
       setLoading(false);
-      setStandingsLoadedOnce(true);
+      if (selectedSeason) standingsLoadedOnceRef.current[selectedSeason] = true;
     }
   };
 
