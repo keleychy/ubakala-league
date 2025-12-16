@@ -1,10 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import './Header.css';
+import { logout } from '../api/auth';
 
 export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
   const navigate = useNavigate();
+  const [username, setUsername] = useState(null);
+
+  useEffect(() => {
+    setUsername(localStorage.getItem('username'));
+    const onStorage = () => setUsername(localStorage.getItem('username'));
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, []);
 
   return (
     <header>
@@ -43,9 +52,18 @@ export default function Header() {
           <Link to="/history" className="nav-link">
             History
           </Link>
-          <Link to="/admin" className="admin-button">
-            Admin
-          </Link>
+          {username ? (
+            <>
+              <span style={{ marginRight: 8, color: '#e6eefc', fontWeight: 600 }}>{username}</span>
+              <button className="admin-button" onClick={() => { logout(); navigate('/admin'); }}>
+                Logout
+              </button>
+            </>
+          ) : (
+            <Link to="/admin" className="admin-button">
+              Admin
+            </Link>
+          )}
         </nav>
 
         {/* Hamburger Menu Button */}
@@ -76,9 +94,15 @@ export default function Header() {
           <Link to="/history" className="nav-link" onClick={() => setMenuOpen(false)}>
             History
           </Link>
-          <Link to="/admin" className="admin-button" onClick={() => setMenuOpen(false)}>
-            Admin
-          </Link>
+          {username ? (
+            <button className="admin-button" onClick={() => { setMenuOpen(false); logout(); navigate('/admin'); }}>
+              Logout
+            </button>
+          ) : (
+            <Link to="/admin" className="admin-button" onClick={() => setMenuOpen(false)}>
+              Admin
+            </Link>
+          )}
         </nav>
       </div>
     </header>

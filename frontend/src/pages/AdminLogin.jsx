@@ -30,8 +30,33 @@ export default function AdminLogin() {
       localStorage.setItem('access', data.access);
       localStorage.setItem('refresh', data.refresh);
       localStorage.setItem('username', username); // Store username for dashboard display
-      setIsLoading(false);
-      nav('/admin-dashboard');
+      // fetch /me to discover groups/role
+      try {
+        const meRes = await fetch('https://ubakalaunitycup.onrender.com/api/me/', {
+          headers: { 'Authorization': `Bearer ${data.access}` }
+        });
+        if (meRes.ok) {
+          const me = await meRes.json();
+          localStorage.setItem('groups', JSON.stringify(me.groups || []));
+          // Redirect based on role/groups
+          if (me.is_superuser) {
+            nav('/admin-dashboard');
+          } else if ((me.groups || []).includes('NewsUploader')) {
+            nav('/news-uploader');
+          } else if ((me.groups || []).includes('ResultsEditor')) {
+            nav('/results-editor');
+          } else {
+            nav('/');
+          }
+        } else {
+          // fallback to admin dashboard
+          nav('/admin-dashboard');
+        }
+      } catch (err) {
+        nav('/admin-dashboard');
+      } finally {
+        setIsLoading(false);
+      }
     } catch (err) {
       setError('Connection error. Please check your server connection.');
       setIsLoading(false);

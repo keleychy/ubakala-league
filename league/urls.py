@@ -8,6 +8,7 @@ from .views import (
     groups_with_teams,
     move_team,
     grouped_standings,
+    me,
     teams_for_season,
     group_team_modify,
 )
@@ -24,6 +25,7 @@ urlpatterns = [
     path('groups-with-teams/', groups_with_teams, name='groups-with-teams'),
     path('move-team/', move_team, name='move-team'),
     path('grouped-standings/', grouped_standings, name='grouped-standings'),
+    path('me/', me, name='me'),
     path('teams/', teams_for_season, name='teams-for-season'),
     path('group-team/', group_team_modify, name='group-team-modify'),
 ]

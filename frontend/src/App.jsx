@@ -8,6 +8,9 @@ import News from './pages/News';
 import History from './pages/History';
 import AdminLogin from './pages/AdminLogin';
 import AdminDashboard from './pages/AdminDashboard';
+import NewsUploader from './pages/NewsUploader';
+import ResultsEditor from './pages/ResultsEditor';
+import RequireAuth from './components/RequireAuth';
 import UploadTeams from './pages/UploadTeams';
 import ManualTeamForm from './pages/ManualTeamForm';
 import Header from './components/Header';
@@ -48,6 +51,8 @@ export default function App() {
                 <Route path="/history" element={<History />} />
                 <Route path="/admin" element={<AdminLogin />} />
                 <Route path="/admin-dashboard" element={<AdminDashboard />} />
+                <Route path="/news-uploader" element={<RequireAuth allowedGroups={["NewsUploader"]}><NewsUploader /></RequireAuth>} />
+                <Route path="/results-editor" element={<RequireAuth allowedGroups={["ResultsEditor"]}><ResultsEditor /></RequireAuth>} />
                 <Route path="/upload-teams" element={<UploadTeams />} />
                 <Route path="/add-team-manual" element={<ManualTeamForm />} />
                 <Route path="/group-manager" element={<GroupManager />} />

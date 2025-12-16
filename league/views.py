@@ -5,7 +5,9 @@ from django.views.decorators.csrf import csrf_exempt
 from django.shortcuts import get_object_or_404, render
 from .models import Team, Season, Match, News, Group, TeamGroup
 from .serializers import TeamSerializer, SeasonSerializer, MatchSerializer, MatchCreateSerializer, NewsSerializer
+from .permissions_groups import IsNewsUploaderOrReadOnly, IsResultsEditor
 from .utils import compute_standings
+from rest_framework.permissions import IsAuthenticated
 import difflib
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.views import APIView
@@ -200,15 +202,18 @@ class MatchViewSet(viewsets.ModelViewSet):
         return qs.order_by('matchday', 'match_date')
 
     # extra: endpoint to mark a match result
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=['post'], permission_classes=[IsResultsEditor])
     def set_result(self, request, pk=None):
         match = self.get_object()
         home_score = request.data.get('home_score')
         away_score = request.data.get('away_score')
         if home_score is None or away_score is None:
             return Response({'error': 'Provide home_score and away_score'}, status=400)
-        match.home_score = int(home_score)
-        match.away_score = int(away_score)
+        try:
+            match.home_score = int(home_score)
+            match.away_score = int(away_score)
+        except (TypeError, ValueError):
+            return Response({'error': 'Scores must be integers'}, status=400)
         match.is_played = True
         match.save()
         return Response(self.get_serializer(match).data)
@@ -216,6 +221,7 @@ class MatchViewSet(viewsets.ModelViewSet):
 class NewsViewSet(viewsets.ModelViewSet):
     queryset = News.objects.all().order_by('-published_at')
     serializer_class = NewsSerializer
+    permission_classes = [IsNewsUploaderOrReadOnly]
 
 
 # Create your views here.
@@ -262,6 +268,20 @@ def grouped_standings(request):
         result.append({'group': {'id': g.id, 'name': g.name}, 'standings': group_rows})
 
     return Response(result)
+
+
+@api_view(['GET'])
+def me(request):
+    """Return basic info about the authenticated user including groups."""
+    user = request.user
+    if not user or not user.is_authenticated:
+        return Response({'error': 'Authentication required'}, status=status.HTTP_401_UNAUTHORIZED)
+    groups = list(user.groups.values_list('name', flat=True))
+    return Response({
+        'username': user.username,
+        'is_superuser': user.is_superuser,
+        'groups': groups,
+    })
 
 
 @api_view(['POST'])
