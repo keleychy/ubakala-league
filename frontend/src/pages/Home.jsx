@@ -18,6 +18,54 @@ export default function Home() {
   const timeoutRef = useRef(null);
   const FLASH_DURATION = 800;
 
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  function formatCountdown(ms) {
+    if (ms <= 0) return '0:00';
+    const totalSeconds = Math.ceil(ms / 1000);
+    const m = Math.floor(totalSeconds / 60);
+    const s = totalSeconds % 60;
+    return `${m}:${String(s).padStart(2, '0')}`;
+  }
+
+  function getMatchLiveStatus(match) {
+    const kickoff = new Date(match.match_date);
+    if (isNaN(kickoff)) return { status: 'Unknown', label: 'Match time unknown' };
+    const elapsedMin = (now - kickoff.getTime()) / 60000; // minutes elapsed (may be fractional)
+
+    const FIRST_HALF = 45; // minutes
+    const HALF_BREAK = 15; // minutes
+    const SECOND_HALF_TOTAL = 45; // minutes
+    const TOTAL_WITH_BREAK = FIRST_HALF + HALF_BREAK + SECOND_HALF_TOTAL; // 105
+
+    if (elapsedMin < 0) {
+      // not started — do not show countdown before kickoff
+      return { status: 'not_started', label: 'Match not started' };
+    }
+
+    if (elapsedMin < FIRST_HALF) {
+      const minute = Math.min(FIRST_HALF, Math.floor(elapsedMin) + 1);
+      return { status: '1st_half', label: `Match ongoing • ${minute}' (1st half)` };
+    }
+
+    if (elapsedMin < FIRST_HALF + HALF_BREAK) {
+      const remainingMs = (FIRST_HALF + HALF_BREAK) * 60000 - (now - kickoff.getTime());
+      return { status: 'halftime', label: `Half time break • ${formatCountdown(remainingMs)} remaining` };
+    }
+
+    if (elapsedMin < TOTAL_WITH_BREAK) {
+      const secondElapsed = elapsedMin - HALF_BREAK; // minute count into match ignoring break
+      const minute = Math.min(90, Math.floor(secondElapsed) + 1);
+      return { status: '2nd_half', label: `Match ongoing • ${minute}' (2nd half)` };
+    }
+
+    return { status: 'ended', label: 'Match ended' };
+  }
+
   useEffect(() => {
     return () => {
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
@@ -262,6 +310,27 @@ export default function Home() {
                       <span className={flashMap[match.id]?.home ? 'score-flash' : ''}>{homeScore}</span> - <span className={flashMap[match.id]?.away ? 'score-flash' : ''}>{awayScore}</span>
                     </div>
                     <div style={{ fontSize: '16px', fontWeight: '500' }}>{awayTeam}</div>
+
+                    {/* Live status */}
+                    <div style={{ marginTop: 8 }}>
+                      {(() => {
+                        const stat = getMatchLiveStatus(match);
+                        const badgeStyle = {
+                          display: 'inline-block',
+                          padding: '6px 10px',
+                          borderRadius: '8px',
+                          background: stat.status === 'not_started' ? 'rgba(255,255,255,0.12)' : (stat.status === 'halftime' ? 'rgba(245,158,11,0.12)' : (stat.status === 'ended' ? 'rgba(156,163,175,0.12)' : 'rgba(34,197,94,0.12)')),
+                          color: 'white',
+                          fontWeight: 700,
+                          fontSize: '13px'
+                        };
+                        return (
+                          <div style={{ marginTop: 10 }}>
+                            <span style={badgeStyle}>{stat.label}</span>
+                          </div>
+                        );
+                      })()}
+                    </div>
                   </div>
                   <div style={{
                     fontSize: '12px',
