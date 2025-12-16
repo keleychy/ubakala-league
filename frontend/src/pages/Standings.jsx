@@ -189,7 +189,9 @@ const Standings = () => {
     } catch (err) {
       setError(err?.message || 'Failed to load grouped standings');
     } finally {
-      if (!standingsLoadedOnce) setLoading(false);
+      // Ensure loading is cleared after each fetch so the UI doesn't get stuck
+      // when switching categories (standingsLoadedOnce is global across categories).
+      setLoading(false);
       setStandingsLoadedOnce(true);
     }
   };
