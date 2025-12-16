@@ -22,6 +22,7 @@ const Standings = () => {
   // showing the initial loading spinner when polling or switching seasons.
   const standingsLoadedOnceRef = useRef({});
   const timeoutRef = useRef(null);
+  const appliedMatchIdsRef = useRef(new Set());
   const FLASH_DURATION = 800; // ms
   const lastSeasonRef = useRef(null);
 
@@ -151,6 +152,8 @@ const Standings = () => {
       if (lastSeasonRef.current !== selectedSeason) {
         setStandings(finalData);
         setFlashMap({});
+        // clear any optimistic-applied match ids when we replace standings
+        appliedMatchIdsRef.current = new Set();
         lastSeasonRef.current = selectedSeason;
       } else {
         const diffs = {};
@@ -176,6 +179,7 @@ const Standings = () => {
 
         if (Object.keys(diffs).length === 0) {
           setStandings(finalData);
+          appliedMatchIdsRef.current = new Set();
         } else {
           // Show flash on changed cells for FLASH_DURATION, then apply new data
           if (timeoutRef.current) clearTimeout(timeoutRef.current);
@@ -183,6 +187,7 @@ const Standings = () => {
           timeoutRef.current = setTimeout(() => {
             setStandings(finalData);
             setFlashMap({});
+            appliedMatchIdsRef.current = new Set();
             timeoutRef.current = null;
             lastSeasonRef.current = selectedSeason;
           }, FLASH_DURATION);
@@ -199,6 +204,72 @@ const Standings = () => {
   };
 
   usePolling(fetchGrouped, { minInterval: 5000, maxInterval: 10000, immediate: true });
+
+  // Listen for optimistic match updates from ResultsEditor and apply a local delta
+  useEffect(() => {
+    function onMatchUpdated(e) {
+      const updated = e?.detail;
+      if (!updated) return;
+      // only apply for the current season and for group-stage matches
+      const seasonId = updated?.season?.id ?? updated?.season;
+      const md = updated?.matchday ?? null;
+      if (!selectedSeason || Number(seasonId) !== Number(selectedSeason)) return;
+      if (md !== null && md >= 22) return; // skip knockout
+      if (appliedMatchIdsRef.current.has(updated.id)) return;
+
+      // apply optimistic delta to standings
+      const hid = updated?.home_team?.id ?? updated?.home_team;
+      const aid = updated?.away_team?.id ?? updated?.away_team;
+      if (!hid || !aid) return;
+
+      let changed = {};
+      const newStandings = (standings || []).map((gblock) => {
+        const newRows = (gblock.standings || []).map((r) => {
+          if (r.team_id !== hid && r.team_id !== aid) return { ...r };
+          // apply played & goals
+          const copy = { ...r };
+          copy.played = (copy.played || 0) + 1;
+          const homeScore = Number(updated.home_score ?? 0);
+          const awayScore = Number(updated.away_score ?? 0);
+          if (r.team_id === hid) {
+            copy.goals_for = (copy.goals_for || 0) + homeScore;
+            copy.goals_against = (copy.goals_against || 0) + awayScore;
+            if (homeScore > awayScore) { copy.wins = (copy.wins || 0) + 1; copy.points = (copy.points || 0) + 3; }
+            else if (homeScore < awayScore) { copy.losses = (copy.losses || 0) + 1; }
+            else { copy.draws = (copy.draws || 0) + 1; copy.points = (copy.points || 0) + 1; }
+          }
+          if (r.team_id === aid) {
+            copy.goals_for = (copy.goals_for || 0) + awayScore;
+            copy.goals_against = (copy.goals_against || 0) + homeScore;
+            if (awayScore > homeScore) { copy.wins = (copy.wins || 0) + 1; copy.points = (copy.points || 0) + 3; }
+            else if (awayScore < homeScore) { copy.losses = (copy.losses || 0) + 1; }
+            else { copy.draws = (copy.draws || 0) + 1; copy.points = (copy.points || 0) + 1; }
+          }
+          copy.goal_diff = (copy.goals_for || 0) - (copy.goals_against || 0);
+          changed[copy.team_id] = { goals_for: true, goals_against: true, points: true };
+          return copy;
+        });
+        // re-sort group
+        newRows.sort((a, b) => (b.points || 0) - (a.points || 0) || (b.goal_diff || 0) - (a.goal_diff || 0) || (b.goals_for || 0) - (a.goals_for || 0));
+        return { ...gblock, standings: newRows };
+      });
+
+      if (Object.keys(changed).length > 0) {
+        if (timeoutRef.current) clearTimeout(timeoutRef.current);
+        setFlashMap(changed);
+        setStandings(newStandings);
+        timeoutRef.current = setTimeout(() => {
+          setFlashMap({});
+          timeoutRef.current = null;
+        }, FLASH_DURATION);
+      }
+
+      appliedMatchIdsRef.current.add(updated.id);
+    }
+
+    window.addEventListener('match-updated', onMatchUpdated);
+    return () => window.removeEventListener('match-updated', onMatchUpdated);
+  }, [selectedSeason, standings]);
 
   useEffect(() => {
     return () => {

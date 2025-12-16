@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { api } from '../api/api';
 import './Bracket.css';
 import './Results.css';
@@ -32,7 +32,7 @@ export default function Bracket() {
     const [connectors, setConnectors] = useState([]);
 
     // Poll seasons (category may change) so dropdown stays current
-    const fetchSeasons = async () => {
+    const fetchSeasons = useCallback(async () => {
         if (!seasonsLoadedOnce) setSeasonsLoading(true);
         try {
             const s = await api.getSeasons(category);
@@ -45,10 +45,21 @@ export default function Bracket() {
             if (!seasonsLoadedOnce) setSeasonsLoading(false);
             setSeasonsLoadedOnce(true);
         }
-    };
+    }, [category, seasonsLoadedOnce]);
     usePolling(fetchSeasons, { minInterval: 7000, maxInterval: 12000, immediate: true });
 
-    const fetchMatchesForSeason = async () => {
+    // When category changes, immediately refresh seasons and clear matches state
+    useEffect(() => {
+        setSeasonsLoadedOnce(false);
+        setSeasons([]);
+        setSelectedSeason(null);
+        setMatches([]);
+        setMatchesLoadedOnce(false);
+        // immediate fetch
+        fetchSeasons();
+    }, [category, fetchSeasons]);
+
+    const fetchMatchesForSeason = useCallback(async () => {
         if (!selectedSeason) return;
         if (!matchesLoadedOnce) setMatchesLoading(true);
         try {
@@ -84,9 +95,18 @@ export default function Bracket() {
             if (!matchesLoadedOnce) setMatchesLoading(false);
             setMatchesLoadedOnce(true);
         }
-    };
+    }, [selectedSeason, matchesLoadedOnce]);
 
     usePolling(fetchMatchesForSeason, { minInterval: 5000, maxInterval: 10000, immediate: true });
+
+    // Fetch matches immediately when selectedSeason changes (so UI updates without waiting for next poll)
+    useEffect(() => {
+        if (!selectedSeason) return;
+        // reset match load flags so loading indicator shows on first load
+        setMatchesLoadedOnce(false);
+        setMatches([]);
+        fetchMatchesForSeason();
+    }, [selectedSeason, fetchMatchesForSeason]);
 
     useEffect(() => {
         return () => {
@@ -119,10 +139,30 @@ export default function Bracket() {
             };
 
             // Determine logical match groups
-            const qf = [...getMatchesByDay(matches, 22), ...getMatchesByDay(matches, 23), ...getMatchesByDay(matches, 24), ...getMatchesByDay(matches, 25)];
-            const sf = [...getMatchesByDay(matches, 26), ...getMatchesByDay(matches, 27)];
-            const third = [...getMatchesByDay(matches, 28)];
-            const fin = [...getMatchesByDay(matches, 29)];
+            let qf = [...getMatchesByDay(matches, 22), ...getMatchesByDay(matches, 23), ...getMatchesByDay(matches, 24), ...getMatchesByDay(matches, 25)];
+            let sf = [...getMatchesByDay(matches, 26), ...getMatchesByDay(matches, 27)];
+            let third = [...getMatchesByDay(matches, 28)];
+            let fin = [...getMatchesByDay(matches, 29)];
+
+            // Fallback: if the hardcoded matchday ranges didn't yield knockouts (different competitions may use other matchday numbers),
+            // derive rounds by unique matchday values present. This ensures Junior Boys brackets still populate.
+            const allMd = Array.from(new Set((matches || []).map(m => (m.matchday !== undefined && m.matchday !== null) ? Number(m.matchday) : null).filter(x => x !== null))).sort((a, b) => a - b);
+            if (fin.length === 0 && allMd.length > 0) {
+                // pick last day as final
+                const finalDay = allMd[allMd.length - 1];
+                fin = getMatchesByDay(matches, finalDay);
+                // previous one or two as semis
+                const semiDays = allMd.slice(Math.max(0, allMd.length - 3), allMd.length - 1);
+                sf = [].concat(...semiDays.map(d => getMatchesByDay(matches, d)));
+                // everything before that as quarters
+                const qDays = allMd.slice(0, Math.max(0, allMd.length - 3));
+                qf = [].concat(...qDays.map(d => getMatchesByDay(matches, d)));
+                // third place day if exact match present (second to last when more than 3 rounds)
+                if (allMd.length >= 3) {
+                    const thirdDay = allMd[allMd.length - 2];
+                    third = getMatchesByDay(matches, thirdDay).filter(m => m.match_stage && /third|3rd/i.test(String(m.match_stage)));
+                }
+            }
 
             const conns = [];
 
