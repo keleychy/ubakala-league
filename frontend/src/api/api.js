@@ -36,6 +36,11 @@ export const api = {
   getNews: () => fetchJSON('/news/'),
   getStandings: (seasonId) => fetchJSON(`/standings/${seasonId}/`),
   getGroupsWithTeams: (seasonId) => fetchJSON(`/groups-with-teams/?season=${seasonId}`),
-  getGroupedStandings: (seasonId) => fetchJSON(`/grouped-standings/?season=${seasonId}`),
+  // optionally pass a category string (girls|senior_boys|junior_boys)
+  getGroupedStandings: (seasonId, category) => {
+    const qSeason = `season=${encodeURIComponent(seasonId)}`;
+    const qCat = category ? `&category=${encodeURIComponent(category)}` : '';
+    return fetchJSON(`/grouped-standings/?${qSeason}${qCat}`);
+  },
 };
 

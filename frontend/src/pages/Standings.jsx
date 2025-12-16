@@ -21,15 +21,20 @@ const Standings = () => {
   const [standingsLoadedOnce, setStandingsLoadedOnce] = useState(false);
   const timeoutRef = useRef(null);
   const FLASH_DURATION = 800; // ms
+  const lastSeasonRef = useRef(null);
 
   useEffect(() => {
+    // switching category implies a different season context; reset refs and clear displayed standings
+    lastSeasonRef.current = null;
+    setStandings([]);
+    setSelectedGroup(null);
     setLoading(true);
     setError(null);
     api.getSeasons(category)
       .then((data) => {
         setSeasons(data);
         if (data && data.length > 0) {
-          setSelectedSeason(data[0].id);
+          setSelectedSeason(Number(data[0].id));
         } else {
           setSelectedSeason(null);
           setStandings([]);
@@ -45,41 +50,141 @@ const Standings = () => {
     if (!standingsLoadedOnce) setLoading(true);
     setError(null);
     try {
-      const data = await api.getGroupedStandings(selectedSeason);
+      // fetch grouped standings plus groups-with-teams and matches to ensure group-stage-only computation
+      const [data, groupsWithTeams, matches] = await Promise.all([
+        api.getGroupedStandings(selectedSeason, category),
+        api.getGroupsWithTeams(selectedSeason),
+        api.getMatches({ season: selectedSeason })
+      ]);
       // Compute diffs between current `standings` and incoming `data`.
       const newData = data || [];
-      const diffs = {};
 
-      const oldTeamMap = {};
-      (standings || []).forEach((gblock) => {
-        (gblock.standings || []).forEach((r) => {
-          oldTeamMap[r.team_id] = r;
+      // Recompute standings from group-stage matches only using groupsWithTeams and matches
+      const recomputed = (groupsWithTeams || []).map((g) => {
+        // Safely extract group id/name
+        const groupId = g?.group?.id ?? g?.group ?? g?.id ?? g?.group_id ?? null;
+        const groupName = g?.group?.name ?? g?.name ?? (typeof g?.group === 'string' ? g.group : null) ?? '';
+
+        // normalize teams array and extract ids/names robustly
+        const teamsArr = Array.isArray(g?.teams) ? g.teams : [];
+        const teamIds = teamsArr.map((t) => {
+          if (!t) return null;
+          if (typeof t === 'object') return t.id ?? t.team?.id ?? t.team_id ?? null;
+          return t;
+        }).filter(Boolean);
+
+        // initialize rows map by team id
+        const rows = {};
+        teamsArr.forEach((t) => {
+          let id = null;
+          let name = null;
+          if (!t) return;
+          if (typeof t === 'object') {
+            id = t.id ?? t.team?.id ?? t.team_id ?? null;
+            name = t.name ?? t.team?.name ?? (t.team_name ?? null) ?? (id ? String(id) : '');
+          } else {
+            id = t;
+            name = String(t);
+          }
+          if (!id) return;
+          rows[id] = {
+            team_id: id,
+            team_name: name,
+            played: 0,
+            wins: 0,
+            draws: 0,
+            losses: 0,
+            goals_for: 0,
+            goals_against: 0,
+            goal_diff: 0,
+            points: 0
+          };
         });
+
+        // count only group-stage matches (matchday < 22) where both teams in this group
+        (matches || []).forEach((m) => {
+          const md = m.matchday !== undefined && m.matchday !== null ? Number(m.matchday) : null;
+          if (md !== null && md >= 22) return; // skip knockout
+          const hid = typeof m.home_team === 'object' ? m.home_team.id ?? m.home_team.team?.id ?? null : m.home_team;
+          const aid = typeof m.away_team === 'object' ? m.away_team.id ?? m.away_team.team?.id ?? null : m.away_team;
+          if (!hid || !aid) return;
+          if (!teamIds.includes(hid) || !teamIds.includes(aid)) return;
+          // consider only played matches or with scores
+          const homeScore = m.home_score;
+          const awayScore = m.away_score;
+          if (homeScore === null || awayScore === null) return;
+
+          const homeRow = rows[hid];
+          const awayRow = rows[aid];
+          if (!homeRow || !awayRow) return;
+
+          homeRow.played += 1;
+          awayRow.played += 1;
+          homeRow.goals_for += Number(homeScore);
+          homeRow.goals_against += Number(awayScore);
+          awayRow.goals_for += Number(awayScore);
+          awayRow.goals_against += Number(homeScore);
+
+          if (homeScore > awayScore) {
+            homeRow.wins += 1; homeRow.points += 3; awayRow.losses += 1;
+          } else if (homeScore < awayScore) {
+            awayRow.wins += 1; awayRow.points += 3; homeRow.losses += 1;
+          } else {
+            homeRow.draws += 1; awayRow.draws += 1; homeRow.points += 1; awayRow.points += 1;
+          }
+        });
+
+        // finalize goal_diff and convert map to array
+        const standingsArr = Object.values(rows).map(r => ({ ...r, goal_diff: r.goals_for - r.goals_against }));
+        // sort by points desc, goal_diff desc, goals_for desc
+        standingsArr.sort((a, b) => b.points - a.points || b.goal_diff - a.goal_diff || b.goals_for - a.goals_for);
+
+        return { group: { id: groupId, name: groupName }, standings: standingsArr };
       });
 
-      (newData || []).forEach((gblock) => {
-        (gblock.standings || []).forEach((r) => {
-          const old = oldTeamMap[r.team_id];
-          if (!old) return;
-          const changed = {};
-          if (r.goals_for !== old.goals_for) changed.goals_for = true;
-          if (r.goals_against !== old.goals_against) changed.goals_against = true;
-          if (r.points !== old.points) changed.points = true;
-          if (Object.keys(changed).length > 0) diffs[r.team_id] = changed;
-        });
-      });
+      // If recomputed has groups then prefer it over data from API
+      const finalData = recomputed && recomputed.length ? recomputed : newData;
 
-      if (Object.keys(diffs).length === 0) {
-        setStandings(newData);
+      // If the selected season changed since the last applied standings, apply immediately
+      if (lastSeasonRef.current !== selectedSeason) {
+        setStandings(finalData);
+        setFlashMap({});
+        lastSeasonRef.current = selectedSeason;
       } else {
-        // Show flash on changed cells for FLASH_DURATION, then apply new data
-        if (timeoutRef.current) clearTimeout(timeoutRef.current);
-        setFlashMap(diffs);
-        timeoutRef.current = setTimeout(() => {
-          setStandings(newData);
-          setFlashMap({});
-          timeoutRef.current = null;
-        }, FLASH_DURATION);
+        const diffs = {};
+
+        const oldTeamMap = {};
+        (standings || []).forEach((gblock) => {
+          (gblock.standings || []).forEach((r) => {
+            oldTeamMap[r.team_id] = r;
+          });
+        });
+
+        (finalData || []).forEach((gblock) => {
+          (gblock.standings || []).forEach((r) => {
+            const old = oldTeamMap[r.team_id];
+            if (!old) return;
+            const changed = {};
+            if (r.goals_for !== old.goals_for) changed.goals_for = true;
+            if (r.goals_against !== old.goals_against) changed.goals_against = true;
+            if (r.points !== old.points) changed.points = true;
+            if (Object.keys(changed).length > 0) diffs[r.team_id] = changed;
+          });
+        });
+
+        if (Object.keys(diffs).length === 0) {
+          setStandings(finalData);
+        } else {
+          // Show flash on changed cells for FLASH_DURATION, then apply new data
+          if (timeoutRef.current) clearTimeout(timeoutRef.current);
+          setFlashMap(diffs);
+          timeoutRef.current = setTimeout(() => {
+            setStandings(finalData);
+            setFlashMap({});
+            timeoutRef.current = null;
+            lastSeasonRef.current = selectedSeason;
+          }, FLASH_DURATION);
+        }
       }
     } catch (err) {
       setError(err?.message || 'Failed to load grouped standings');
@@ -96,6 +201,20 @@ const Standings = () => {
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
   }, []);
+
+  // When the user changes the selected season, immediately clear the displayed standings
+  // and cancel any pending flash timeout so the old standings do not linger while loading.
+  useEffect(() => {
+    if (selectedSeason === null) return;
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+    lastSeasonRef.current = null;
+    setFlashMap({});
+    setStandings([]);
+    setLoading(true);
+  }, [selectedSeason]);
 
   return (
     <div style={{ padding: '40px 20px', maxWidth: '1200px', margin: '0 auto' }}>
@@ -131,7 +250,7 @@ const Standings = () => {
 
         <label style={{ fontWeight: '600', color: '#1e3c72', fontSize: 'clamp(13px, 2.5vw, 15px)', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
           Season:
-          <select value={selectedSeason || ''} onChange={(e) => setSelectedSeason(e.target.value)} style={{
+          <select value={selectedSeason || ''} onChange={(e) => setSelectedSeason(parseInt(e.target.value))} style={{
             marginLeft: '10px',
             padding: '10px 12px',
             border: '2px solid #667eea',
