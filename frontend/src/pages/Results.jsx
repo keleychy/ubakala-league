@@ -338,7 +338,34 @@ const Results = () => {
                                     <span style={{ color: '#4c51bf', fontWeight: 700, fontSize: 'clamp(12px, 2.5vw, 15px)' }}>{renderTeam(match.away_team, match)}</span>
                                   </div>
                                   <div style={{ display: 'flex', gap: 'clamp(6px, 1vw, 8px)', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                                    {/* Status badges removed for a cleaner UI */}
+                                    {match.awarded && (
+                                      (() => {
+                                        const reasonRaw = match.awarded_reason ? String(match.awarded_reason) : '';
+                                        const reason = reasonRaw ? `(${reasonRaw.charAt(0).toUpperCase() + reasonRaw.slice(1)})` : '';
+                                        const awardedToObj = match.awarded_to && typeof match.awarded_to === 'object' ? match.awarded_to : null;
+                                        return (
+                                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                                            <span style={{ padding: '6px 10px', borderRadius: 999, background: 'linear-gradient(90deg,#fff7ed,#fff1e6)', color: '#b45309', fontWeight: 800, fontSize: '12px', border: '1px solid rgba(234,88,12,0.12)', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                                              <span style={{ fontSize: 14 }}>🚨</span>
+                                              <span style={{ fontWeight: 800 }}>Awarded</span>
+                                            </span>
+                                            {/* Inline reason instead of hover */}
+                                            {reason && <span style={{ fontSize: '12px', color: '#92400e', fontWeight: 700 }}>{reason}</span>}
+                                            {/* Show awarded-to name only when available as an object with a name; do not show numeric IDs */}
+                                            {awardedToObj && awardedToObj.name && (
+                                              <span style={{ fontSize: '12px', color: '#0f172a', background: 'rgba(237,246,255,0.9)', padding: '4px 8px', borderRadius: 6, border: '1px solid rgba(2,6,23,0.04)', fontWeight: 600 }}>
+                                                to {awardedToObj.name}
+                                              </span>
+                                            )}
+                                          </span>
+                                        );
+                                      })()
+                                    )}
+                                    {match.awarded && (match.original_home_score !== null || match.original_away_score !== null) && (
+                                      <span style={{ fontSize: '12px', color: '#7c2d12', background: 'rgba(255,247,237,0.7)', padding: '4px 8px', borderRadius: 6, border: '1px solid rgba(249,115,22,0.08)', fontWeight: 600 }}>
+                                        Original: {match.original_home_score ?? '-'} - {match.original_away_score ?? '-'}
+                                      </span>
+                                    )}
                                   </div>
                                 </div>
 

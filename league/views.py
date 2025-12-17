@@ -12,6 +12,8 @@ import difflib
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.views import APIView
 import openpyxl
+import random
+from django.utils import timezone
 
 # List all teams for a given season
 @api_view(['GET'])
@@ -214,6 +216,29 @@ class MatchViewSet(viewsets.ModelViewSet):
             match.away_score = int(away_score)
         except (TypeError, ValueError):
             return Response({'error': 'Scores must be integers'}, status=400)
+        match.is_played = True
+        match.save()
+        return Response(self.get_serializer(match).data)
+
+    @action(detail=True, methods=['post'], permission_classes=[IsResultsEditor])
+    def mark_finished(self, request, pk=None):
+        """Mark a match as finished manually. Accepts optional `extra_time_minutes` (int).
+        If not provided, backend will pick a random 1-5 minutes. Records who marked it and timestamp.
+        """
+        match = self.get_object()
+        extra = request.data.get('extra_time_minutes')
+        try:
+            if extra is not None and extra != '':
+                extra_val = int(extra)
+            else:
+                extra_val = random.randint(1, 5)
+        except (TypeError, ValueError):
+            return Response({'error': 'extra_time_minutes must be an integer'}, status=400)
+
+        match.manual_finished_at = timezone.now()
+        match.extra_time_minutes = extra_val
+        user = request.user
+        match.manual_finished_by = user.username if (user and getattr(user, 'is_authenticated', False)) else ''
         match.is_played = True
         match.save()
         return Response(self.get_serializer(match).data)

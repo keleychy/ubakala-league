@@ -67,6 +67,32 @@ export default function ResultsEditor() {
         }
     }
 
+    async function markFinished(matchId, extra_time_minutes = null) {
+        setMessage(null);
+        try {
+            const payload = {};
+            if (extra_time_minutes !== null) payload.extra_time_minutes = extra_time_minutes;
+            const res = await fetchWithAuth(`https://ubakalaunitycup.onrender.com/api/matches/${matchId}/mark_finished/`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            if (!res.ok) {
+                const err = await res.text();
+                setMessage({ type: 'error', text: err || 'Failed to mark finished' });
+                return null;
+            }
+            const updated = await res.json();
+            setMessage({ type: 'success', text: 'Match marked finished' });
+            setMatches((prev) => prev.map((m) => (m.id === updated.id ? updated : m)));
+            try { window.dispatchEvent(new CustomEvent('match-updated', { detail: updated })); } catch (e) { }
+            return updated;
+        } catch (err) {
+            setMessage({ type: 'error', text: 'Network error' });
+            return null;
+        }
+    }
+
     return (
         <div style={{ padding: 20 }}>
             <h2 style={{ marginBottom: 12 }}>Results Editor</h2>
@@ -74,7 +100,7 @@ export default function ResultsEditor() {
             {loading ? <p>Loading matches...</p> : (
                 <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))' }}>
                     {matches.map(m => (
-                        <MatchRow key={m.id} match={m} onSetResult={setResult} />
+                        <MatchRow key={m.id} match={m} onSetResult={setResult} onMarkFinished={markFinished} />
                     ))}
                 </div>
             )}
@@ -82,13 +108,14 @@ export default function ResultsEditor() {
     );
 }
 
-function MatchRow({ match, onSetResult }) {
+function MatchRow({ match, onSetResult, onMarkFinished }) {
     const [home, setHome] = useState(match.home_score ?? '');
     const [away, setAway] = useState(match.away_score ?? '');
     const [penHome, setPenHome] = useState('');
     const [penAway, setPenAway] = useState('');
     const [saving, setSaving] = useState(false);
     const [localMsg, setLocalMsg] = useState(null);
+    const [finishing, setFinishing] = useState(false);
 
     const rawCategory = match?.season?.category || match.category || '';
     const category = formatCategory(rawCategory);
@@ -150,6 +177,23 @@ function MatchRow({ match, onSetResult }) {
         }
     }
 
+    async function markFinished() {
+        setFinishing(true);
+        setLocalMsg(null);
+        try {
+            if (typeof onMarkFinished !== 'function') {
+                setLocalMsg({ type: 'error', text: 'No handler to mark finished' });
+                return;
+            }
+            await onMarkFinished(match.id);
+            setLocalMsg({ type: 'success', text: 'Marked finished' });
+        } catch (err) {
+            setLocalMsg({ type: 'error', text: 'Failed to mark finished' });
+        } finally {
+            setFinishing(false);
+        }
+    }
+
     return (
         <div style={{ padding: 12, border: '1px solid #e5e7eb', borderRadius: 8, background: 'white', display: 'flex', flexDirection: 'column', gap: 10 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
@@ -179,8 +223,11 @@ function MatchRow({ match, onSetResult }) {
                     </div>
                 )}
 
-                <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+                <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center' }}>
                     <button disabled={saving} onClick={save} style={{ background: 'linear-gradient(90deg,#2563eb,#7c3aed)', color: 'white', border: 'none', padding: '8px 12px', borderRadius: 8, cursor: saving ? 'default' : 'pointer', fontWeight: 700 }}>{saving ? 'Saving...' : 'Save'}</button>
+                    <button disabled={finishing} onClick={markFinished} title="Mark this match as finished" style={{ background: '#0ea5a4', color: 'white', border: 'none', padding: '6px 10px', borderRadius: 6, cursor: finishing ? 'default' : 'pointer', fontWeight: 700, fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}>
+                        {finishing ? 'Processing...' : 'Mark Finished'}
+                    </button>
                 </div>
             </div>
 

@@ -33,6 +33,9 @@ export default function Home() {
   }
 
   function getMatchLiveStatus(match) {
+    // If backend has marked match as played (manually finished), treat as ended
+    if (match.is_played) return { status: 'ended', label: 'Match ended' };
+
     const kickoff = new Date(match.match_date);
     if (isNaN(kickoff)) return { status: 'Unknown', label: 'Match time unknown' };
     const elapsedMin = (now - kickoff.getTime()) / 60000; // minutes elapsed (may be fractional)
@@ -147,6 +150,20 @@ export default function Home() {
 
   usePolling(fetchTeams, { minInterval: 5000, maxInterval: 10000, immediate: true });
   usePolling(fetchMatches, { minInterval: 5000, maxInterval: 10000, immediate: true });
+
+  // Listen for match updates (e.g., when ResultsEditor marks a match finished)
+  useEffect(() => {
+    function onMatchUpdated(e) {
+      const updated = e && e.detail;
+      if (!updated || !updated.id) return;
+      // update prev cache so future diffs include this update
+      prevMatchesRef.current = Object.assign({}, prevMatchesRef.current || {}, { [updated.id]: updated });
+      // Update currently-displayed matches optimistically
+      setMatches((prev) => (prev || []).map(m => (m.id === updated.id ? updated : m)));
+    }
+    window.addEventListener('match-updated', onMatchUpdated);
+    return () => window.removeEventListener('match-updated', onMatchUpdated);
+  }, []);
 
   function getLocalMatchTime(dateStr) {
     // Try to parse as ISO, fallback to manual conversion

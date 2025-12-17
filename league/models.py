@@ -74,6 +74,10 @@ class Match(models.Model):
     awarded_by = models.CharField(max_length=100, blank=True, help_text="Admin username who applied the award.")
     # Explicit void flag for matches that are voided (teams did not participate, etc.)
     void = models.BooleanField(default=False, help_text="True if match was voided (e.g., both teams did not participate)")
+    # Manual finish metadata: set when an admin/user marks a match finished manually
+    manual_finished_at = models.DateTimeField(null=True, blank=True, help_text="Timestamp when match was manually marked finished")
+    extra_time_minutes = models.IntegerField(null=True, blank=True, help_text="Extra minutes applied when manually finished")
+    manual_finished_by = models.CharField(max_length=150, blank=True, help_text="User who manually marked finished")
 
     def __str__(self):
         return f"{self.home_team} vs {self.away_team} - {self.match_date.date()}"
@@ -84,16 +88,20 @@ class Match(models.Model):
         and the match datetime is in the past. If either score is cleared
         or the match datetime is in the future, `is_played` will be set to False.
         """
-        # Default to not played
-        self.is_played = False
-        if self.home_score is not None and self.away_score is not None:
-            try:
-                now = timezone.now()
-                if self.match_date is not None and self.match_date <= now:
-                    self.is_played = True
-            except Exception:
-                # If there's any issue comparing dates, do not mark as played
-                self.is_played = False
+        # If manually finished, preserve that as played regardless of scores
+        if self.manual_finished_at:
+            self.is_played = True
+        else:
+            # Default to not played
+            self.is_played = False
+            if self.home_score is not None and self.away_score is not None:
+                try:
+                    now = timezone.now()
+                    if self.match_date is not None and self.match_date <= now:
+                        self.is_played = True
+                except Exception:
+                    # If there's any issue comparing dates, do not mark as played
+                    self.is_played = False
         super().save(*args, **kwargs)
 
     def get_match_stage(self):
