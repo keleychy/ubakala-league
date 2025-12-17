@@ -153,4 +153,4 @@ class Command(BaseCommand):
             except Exception as e:
                 self.stderr.write(f"Failed to create fixture {code}: {e}")
 
-        self.stdout.write(self.style.SUCCESS(f"Finished. Created {len(created)} matches."))f
+        self.stdout.write(self.style.SUCCESS(f"Finished. Created {len(created)} matches."))
