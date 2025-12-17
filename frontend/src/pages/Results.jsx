@@ -207,6 +207,42 @@ const Results = () => {
       <style>{`
         .score-flash { animation: scoreFlash ${FLASH_DURATION}ms ease-in-out; }
         @keyframes scoreFlash { 0% { background: #fff5b1; } 50% { background: #fff5b1; } 100% { background: transparent; } }
+
+        /* LIVE badge styles */
+        .live-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          padding: 6px 10px;
+          border-radius: 999px;
+          background: linear-gradient(90deg,#ffecec,#fff1f2);
+          color: #bf1e2e;
+          font-weight: 800;
+          font-size: 12px;
+          border: 1px solid rgba(190,24,93,0.08);
+          animation: livePulse 1400ms ease-in-out infinite;
+        }
+
+        .live-dot {
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+          background: #ff3b30;
+          box-shadow: 0 0 8px rgba(255,59,48,0.85);
+          animation: liveDot 1400ms ease-in-out infinite;
+        }
+
+        @keyframes livePulse {
+          0% { transform: scale(1); }
+          50% { transform: scale(1.03); }
+          100% { transform: scale(1); }
+        }
+
+        @keyframes liveDot {
+          0% { box-shadow: 0 0 4px rgba(255,59,48,0.6); transform: scale(1); }
+          50% { box-shadow: 0 0 12px rgba(255,59,48,0.95); transform: scale(1.15); }
+          100% { box-shadow: 0 0 4px rgba(255,59,48,0.6); transform: scale(1); }
+        }
       `}</style>
       <div style={{ padding: 'clamp(20px, 5vw, 40px) clamp(15px, 3vw, 20px)', maxWidth: '1000px', margin: '0 auto' }}>
         <h2 style={{ color: '#1e3c72', marginBottom: '30px' }}>📊 Live Scores & Results</h2>
@@ -315,6 +351,13 @@ const Results = () => {
                           const awayScore = match.away_score !== null ? match.away_score : '-';
                           const isPlayed = match.is_played;
                           const isVoid = !!match.void;
+                          // determine live state: not marked played, not void/awarded, and either scores present or current time within a match window
+                          const now = new Date();
+                          const start = match.match_date ? new Date(match.match_date) : null;
+                          const end = start ? new Date(start) : null;
+                          if (end) end.setMinutes(end.getMinutes() + 150); // assume 2.5 hours max match window
+                          const hasScores = match.home_score !== null || match.away_score !== null;
+                          const isLive = !isPlayed && !isVoid && !match.awarded && (hasScores || (start && now >= start && now <= end));
 
                           return (
                             <div
@@ -360,6 +403,13 @@ const Results = () => {
                                           </span>
                                         );
                                       })()
+                                    )}
+                                    {/* Live / ongoing badge when match is in progress (disappears after end or when marked played) */}
+                                    {isLive && (
+                                      <span className="live-badge">
+                                        <span className="live-dot" />
+                                        <span style={{ fontWeight: 800 }}>LIVE</span>
+                                      </span>
                                     )}
                                     {match.awarded && (match.original_home_score !== null || match.original_away_score !== null) && (
                                       <span style={{ fontSize: '12px', color: '#7c2d12', background: 'rgba(255,247,237,0.7)', padding: '4px 8px', borderRadius: 6, border: '1px solid rgba(249,115,22,0.08)', fontWeight: 600 }}>
