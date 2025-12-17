@@ -4810,6 +4810,188 @@
   }
 },
 {
+  "model": "admin.logentry",
+  "pk": 371,
+  "fields": {
+    "action_time": "2025-12-17T14:00:57.170Z",
+    "user": 1,
+    "content_type": 7,
+    "object_id": "96",
+    "object_repr": "AVODIM vs AMUZU - 2025-12-16",
+    "action_flag": 2,
+    "change_message": "[{\"changed\": {\"fields\": [\"Home score\", \"Away score\", \"Is played\"]}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 372,
+  "fields": {
+    "action_time": "2025-12-17T15:30:46.750Z",
+    "user": 1,
+    "content_type": 7,
+    "object_id": "207",
+    "object_repr": "1ST A (placeholder) vs 2ND B (placeholder) - 2025-12-21",
+    "action_flag": 2,
+    "change_message": "[{\"changed\": {\"fields\": [\"Match date\", \"Venue\"]}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 373,
+  "fields": {
+    "action_time": "2025-12-17T15:32:05.008Z",
+    "user": 1,
+    "content_type": 7,
+    "object_id": "208",
+    "object_repr": "1ST C (placeholder) vs EZIAMA - 2025-12-22",
+    "action_flag": 2,
+    "change_message": "[{\"changed\": {\"fields\": [\"Match date\"]}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 374,
+  "fields": {
+    "action_time": "2025-12-17T15:32:28.135Z",
+    "user": 1,
+    "content_type": 7,
+    "object_id": "209",
+    "object_repr": "1ST B (placeholder) vs 2ND A (placeholder) - 2025-12-23",
+    "action_flag": 2,
+    "change_message": "[{\"changed\": {\"fields\": [\"Match date\", \"Venue\"]}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 375,
+  "fields": {
+    "action_time": "2025-12-17T15:32:51.895Z",
+    "user": 1,
+    "content_type": 7,
+    "object_id": "210",
+    "object_repr": "AMIBO vs 2ND C (placeholder) - 2025-12-24",
+    "action_flag": 2,
+    "change_message": "[{\"changed\": {\"fields\": [\"Match date\", \"Venue\"]}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 376,
+  "fields": {
+    "action_time": "2025-12-17T15:35:38.698Z",
+    "user": 1,
+    "content_type": 7,
+    "object_id": "211",
+    "object_repr": "WINNER 22 (placeholder) vs WINNER 23 (placeholder) - 2025-12-25",
+    "action_flag": 2,
+    "change_message": "[{\"changed\": {\"fields\": [\"Match date\", \"Venue\"]}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 377,
+  "fields": {
+    "action_time": "2025-12-17T15:35:56.421Z",
+    "user": 1,
+    "content_type": 7,
+    "object_id": "212",
+    "object_repr": "WINNER 24 (placeholder) vs WINNER 25 (placeholder) - 2025-12-27",
+    "action_flag": 2,
+    "change_message": "[{\"changed\": {\"fields\": [\"Match date\", \"Venue\"]}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 378,
+  "fields": {
+    "action_time": "2025-12-17T15:37:17.513Z",
+    "user": 1,
+    "content_type": 7,
+    "object_id": "208",
+    "object_repr": "1ST C (placeholder) vs EZIAMA - 2025-12-22",
+    "action_flag": 2,
+    "change_message": "[{\"changed\": {\"fields\": [\"Venue\"]}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 379,
+  "fields": {
+    "action_time": "2025-12-17T15:46:00.545Z",
+    "user": 1,
+    "content_type": 7,
+    "object_id": "102",
+    "object_repr": "UMUOSU vs LAGURU - 2025-12-02",
+    "action_flag": 2,
+    "change_message": "[{\"changed\": {\"fields\": [\"Matchday\"]}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 380,
+  "fields": {
+    "action_time": "2025-12-17T15:46:09.453Z",
+    "user": 1,
+    "content_type": 7,
+    "object_id": "112",
+    "object_repr": "NSUKWE vs UTURU - 2025-12-01",
+    "action_flag": 2,
+    "change_message": "[{\"changed\": {\"fields\": [\"Matchday\"]}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 381,
+  "fields": {
+    "action_time": "2025-12-17T15:47:07.118Z",
+    "user": 1,
+    "content_type": 7,
+    "object_id": "213",
+    "object_repr": "LOSER 26 (placeholder) vs LOSER 27 (placeholder) - 2025-12-31",
+    "action_flag": 2,
+    "change_message": "[{\"changed\": {\"fields\": [\"Match date\", \"Venue\"]}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 382,
+  "fields": {
+    "action_time": "2025-12-17T15:47:20.757Z",
+    "user": 1,
+    "content_type": 7,
+    "object_id": "214",
+    "object_repr": "WINNER 26 (placeholder) vs WINNER 27 (placeholder) - 2026-01-01",
+    "action_flag": 2,
+    "change_message": "[{\"changed\": {\"fields\": [\"Match date\", \"Venue\"]}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 383,
+  "fields": {
+    "action_time": "2025-12-17T15:50:20.868Z",
+    "user": 1,
+    "content_type": 7,
+    "object_id": "114",
+    "object_repr": "UMUOGO vs NSUKWE - 2025-12-17",
+    "action_flag": 2,
+    "change_message": "[{\"changed\": {\"fields\": [\"Home score\", \"Away score\"]}}]"
+  }
+},
+{
+  "model": "admin.logentry",
+  "pk": 384,
+  "fields": {
+    "action_time": "2025-12-17T15:50:27.750Z",
+    "user": 1,
+    "content_type": 7,
+    "object_id": "114",
+    "object_repr": "UMUOGO vs NSUKWE - 2025-12-17",
+    "action_flag": 2,
+    "change_message": "[]"
+  }
+},
+{
   "model": "auth.group",
   "pk": 2,
   "fields": {
@@ -5894,7 +6076,10 @@
     "original_away_score": null,
     "awarded_at": null,
     "awarded_by": "",
-    "void": false
+    "void": false,
+    "manual_finished_at": null,
+    "extra_time_minutes": null,
+    "manual_finished_by": ""
   }
 },
 {
@@ -5919,7 +6104,10 @@
     "original_away_score": null,
     "awarded_at": null,
     "awarded_by": "",
-    "void": false
+    "void": false,
+    "manual_finished_at": null,
+    "extra_time_minutes": null,
+    "manual_finished_by": ""
   }
 },
 {
@@ -5931,11 +6119,11 @@
     "away_team": 3,
     "match_date": "2025-12-16T16:00:00Z",
     "venue": "UBAKALA MAIN FIELD",
-    "home_score": null,
-    "away_score": null,
+    "home_score": 0,
+    "away_score": 2,
     "penalty_home": null,
     "penalty_away": null,
-    "is_played": false,
+    "is_played": true,
     "matchday": 16,
     "awarded": false,
     "awarded_reason": "",
@@ -5944,7 +6132,10 @@
     "original_away_score": null,
     "awarded_at": null,
     "awarded_by": "",
-    "void": false
+    "void": false,
+    "manual_finished_at": null,
+    "extra_time_minutes": null,
+    "manual_finished_by": ""
   }
 },
 {
@@ -5969,7 +6160,10 @@
     "original_away_score": null,
     "awarded_at": null,
     "awarded_by": "",
-    "void": false
+    "void": false,
+    "manual_finished_at": null,
+    "extra_time_minutes": null,
+    "manual_finished_by": ""
   }
 },
 {
@@ -5994,7 +6188,10 @@
     "original_away_score": null,
     "awarded_at": null,
     "awarded_by": "",
-    "void": false
+    "void": false,
+    "manual_finished_at": null,
+    "extra_time_minutes": null,
+    "manual_finished_by": ""
   }
 },
 {
@@ -6019,7 +6216,10 @@
     "original_away_score": null,
     "awarded_at": null,
     "awarded_by": "",
-    "void": false
+    "void": false,
+    "manual_finished_at": null,
+    "extra_time_minutes": null,
+    "manual_finished_by": ""
   }
 },
 {
@@ -6044,7 +6244,10 @@
     "original_away_score": null,
     "awarded_at": null,
     "awarded_by": "",
-    "void": false
+    "void": false,
+    "manual_finished_at": null,
+    "extra_time_minutes": null,
+    "manual_finished_by": ""
   }
 },
 {
@@ -6069,7 +6272,10 @@
     "original_away_score": null,
     "awarded_at": null,
     "awarded_by": "",
-    "void": false
+    "void": false,
+    "manual_finished_at": null,
+    "extra_time_minutes": null,
+    "manual_finished_by": ""
   }
 },
 {
@@ -6086,7 +6292,7 @@
     "penalty_home": null,
     "penalty_away": null,
     "is_played": true,
-    "matchday": null,
+    "matchday": 3,
     "awarded": false,
     "awarded_reason": "",
     "awarded_to": null,
@@ -6094,7 +6300,10 @@
     "original_away_score": null,
     "awarded_at": null,
     "awarded_by": "",
-    "void": false
+    "void": false,
+    "manual_finished_at": null,
+    "extra_time_minutes": null,
+    "manual_finished_by": ""
   }
 },
 {
@@ -6119,7 +6328,10 @@
     "original_away_score": null,
     "awarded_at": null,
     "awarded_by": "",
-    "void": false
+    "void": false,
+    "manual_finished_at": null,
+    "extra_time_minutes": null,
+    "manual_finished_by": ""
   }
 },
 {
@@ -6144,7 +6356,10 @@
     "original_away_score": null,
     "awarded_at": null,
     "awarded_by": "",
-    "void": false
+    "void": false,
+    "manual_finished_at": null,
+    "extra_time_minutes": null,
+    "manual_finished_by": ""
   }
 },
 {
@@ -6169,7 +6384,10 @@
     "original_away_score": 0,
     "awarded_at": "2025-12-10T15:21:01.243Z",
     "awarded_by": "KELEYCHY",
-    "void": false
+    "void": false,
+    "manual_finished_at": null,
+    "extra_time_minutes": null,
+    "manual_finished_by": ""
   }
 },
 {
@@ -6194,7 +6412,10 @@
     "original_away_score": null,
     "awarded_at": null,
     "awarded_by": "",
-    "void": false
+    "void": false,
+    "manual_finished_at": null,
+    "extra_time_minutes": null,
+    "manual_finished_by": ""
   }
 },
 {
@@ -6219,7 +6440,10 @@
     "original_away_score": null,
     "awarded_at": null,
     "awarded_by": "",
-    "void": false
+    "void": false,
+    "manual_finished_at": null,
+    "extra_time_minutes": null,
+    "manual_finished_by": ""
   }
 },
 {
@@ -6244,7 +6468,10 @@
     "original_away_score": null,
     "awarded_at": null,
     "awarded_by": "",
-    "void": false
+    "void": false,
+    "manual_finished_at": null,
+    "extra_time_minutes": null,
+    "manual_finished_by": ""
   }
 },
 {
@@ -6269,7 +6496,10 @@
     "original_away_score": null,
     "awarded_at": null,
     "awarded_by": "",
-    "void": false
+    "void": false,
+    "manual_finished_at": null,
+    "extra_time_minutes": null,
+    "manual_finished_by": ""
   }
 },
 {
@@ -6294,7 +6524,10 @@
     "original_away_score": null,
     "awarded_at": null,
     "awarded_by": "",
-    "void": false
+    "void": false,
+    "manual_finished_at": null,
+    "extra_time_minutes": null,
+    "manual_finished_by": ""
   }
 },
 {
@@ -6319,7 +6552,10 @@
     "original_away_score": null,
     "awarded_at": null,
     "awarded_by": "",
-    "void": false
+    "void": false,
+    "manual_finished_at": null,
+    "extra_time_minutes": null,
+    "manual_finished_by": ""
   }
 },
 {
@@ -6336,7 +6572,7 @@
     "penalty_home": null,
     "penalty_away": null,
     "is_played": true,
-    "matchday": null,
+    "matchday": 2,
     "awarded": false,
     "awarded_reason": "",
     "awarded_to": null,
@@ -6344,7 +6580,10 @@
     "original_away_score": null,
     "awarded_at": null,
     "awarded_by": "",
-    "void": false
+    "void": false,
+    "manual_finished_at": null,
+    "extra_time_minutes": null,
+    "manual_finished_by": ""
   }
 },
 {
@@ -6369,7 +6608,10 @@
     "original_away_score": null,
     "awarded_at": null,
     "awarded_by": "",
-    "void": false
+    "void": false,
+    "manual_finished_at": null,
+    "extra_time_minutes": null,
+    "manual_finished_by": ""
   }
 },
 {
@@ -6381,8 +6623,8 @@
     "away_team": 7,
     "match_date": "2025-12-17T16:00:00Z",
     "venue": "UBAKALA MAIN FIELD",
-    "home_score": null,
-    "away_score": null,
+    "home_score": 0,
+    "away_score": 1,
     "penalty_home": null,
     "penalty_away": null,
     "is_played": false,
@@ -6394,7 +6636,10 @@
     "original_away_score": null,
     "awarded_at": null,
     "awarded_by": "",
-    "void": false
+    "void": false,
+    "manual_finished_at": null,
+    "extra_time_minutes": null,
+    "manual_finished_by": ""
   }
 },
 {
@@ -6419,7 +6664,10 @@
     "original_away_score": 3,
     "awarded_at": "2025-12-09T18:31:16.625Z",
     "awarded_by": "KELEYCHY",
-    "void": false
+    "void": false,
+    "manual_finished_at": null,
+    "extra_time_minutes": null,
+    "manual_finished_by": ""
   }
 },
 {
@@ -6444,7 +6692,10 @@
     "original_away_score": null,
     "awarded_at": null,
     "awarded_by": "",
-    "void": false
+    "void": false,
+    "manual_finished_at": null,
+    "extra_time_minutes": null,
+    "manual_finished_by": ""
   }
 },
 {
@@ -6469,7 +6720,10 @@
     "original_away_score": null,
     "awarded_at": null,
     "awarded_by": "",
-    "void": false
+    "void": false,
+    "manual_finished_at": null,
+    "extra_time_minutes": null,
+    "manual_finished_by": ""
   }
 },
 {
@@ -6494,7 +6748,10 @@
     "original_away_score": null,
     "awarded_at": null,
     "awarded_by": "",
-    "void": false
+    "void": false,
+    "manual_finished_at": null,
+    "extra_time_minutes": null,
+    "manual_finished_by": ""
   }
 },
 {
@@ -6519,7 +6776,10 @@
     "original_away_score": null,
     "awarded_at": null,
     "awarded_by": "",
-    "void": false
+    "void": false,
+    "manual_finished_at": null,
+    "extra_time_minutes": null,
+    "manual_finished_by": ""
   }
 },
 {
@@ -6544,7 +6804,10 @@
     "original_away_score": null,
     "awarded_at": null,
     "awarded_by": "",
-    "void": false
+    "void": false,
+    "manual_finished_at": null,
+    "extra_time_minutes": null,
+    "manual_finished_by": ""
   }
 },
 {
@@ -6569,7 +6832,10 @@
     "original_away_score": null,
     "awarded_at": null,
     "awarded_by": "",
-    "void": false
+    "void": false,
+    "manual_finished_at": null,
+    "extra_time_minutes": null,
+    "manual_finished_by": ""
   }
 },
 {
@@ -6594,7 +6860,10 @@
     "original_away_score": null,
     "awarded_at": null,
     "awarded_by": "",
-    "void": false
+    "void": false,
+    "manual_finished_at": null,
+    "extra_time_minutes": null,
+    "manual_finished_by": ""
   }
 },
 {
@@ -6619,7 +6888,10 @@
     "original_away_score": null,
     "awarded_at": null,
     "awarded_by": "",
-    "void": false
+    "void": false,
+    "manual_finished_at": null,
+    "extra_time_minutes": null,
+    "manual_finished_by": ""
   }
 },
 {
@@ -6644,7 +6916,10 @@
     "original_away_score": null,
     "awarded_at": null,
     "awarded_by": "",
-    "void": false
+    "void": false,
+    "manual_finished_at": null,
+    "extra_time_minutes": null,
+    "manual_finished_by": ""
   }
 },
 {
@@ -6669,7 +6944,10 @@
     "original_away_score": null,
     "awarded_at": null,
     "awarded_by": "",
-    "void": false
+    "void": false,
+    "manual_finished_at": null,
+    "extra_time_minutes": null,
+    "manual_finished_by": ""
   }
 },
 {
@@ -6694,7 +6972,10 @@
     "original_away_score": null,
     "awarded_at": null,
     "awarded_by": "",
-    "void": false
+    "void": false,
+    "manual_finished_at": null,
+    "extra_time_minutes": null,
+    "manual_finished_by": ""
   }
 },
 {
@@ -6719,7 +7000,10 @@
     "original_away_score": null,
     "awarded_at": null,
     "awarded_by": "",
-    "void": false
+    "void": false,
+    "manual_finished_at": null,
+    "extra_time_minutes": null,
+    "manual_finished_by": ""
   }
 },
 {
@@ -6744,7 +7028,10 @@
     "original_away_score": null,
     "awarded_at": null,
     "awarded_by": "",
-    "void": false
+    "void": false,
+    "manual_finished_at": null,
+    "extra_time_minutes": null,
+    "manual_finished_by": ""
   }
 },
 {
@@ -6769,7 +7056,10 @@
     "original_away_score": null,
     "awarded_at": null,
     "awarded_by": "",
-    "void": false
+    "void": false,
+    "manual_finished_at": null,
+    "extra_time_minutes": null,
+    "manual_finished_by": ""
   }
 },
 {
@@ -6794,7 +7084,10 @@
     "original_away_score": null,
     "awarded_at": null,
     "awarded_by": "",
-    "void": false
+    "void": false,
+    "manual_finished_at": null,
+    "extra_time_minutes": null,
+    "manual_finished_by": ""
   }
 },
 {
@@ -6819,7 +7112,10 @@
     "original_away_score": null,
     "awarded_at": null,
     "awarded_by": "",
-    "void": false
+    "void": false,
+    "manual_finished_at": null,
+    "extra_time_minutes": null,
+    "manual_finished_by": ""
   }
 },
 {
@@ -6844,7 +7140,10 @@
     "original_away_score": null,
     "awarded_at": null,
     "awarded_by": "",
-    "void": false
+    "void": false,
+    "manual_finished_at": null,
+    "extra_time_minutes": null,
+    "manual_finished_by": ""
   }
 },
 {
@@ -6869,7 +7168,10 @@
     "original_away_score": null,
     "awarded_at": null,
     "awarded_by": "",
-    "void": false
+    "void": false,
+    "manual_finished_at": null,
+    "extra_time_minutes": null,
+    "manual_finished_by": ""
   }
 },
 {
@@ -6894,7 +7196,10 @@
     "original_away_score": null,
     "awarded_at": "2025-12-09T18:40:19Z",
     "awarded_by": "KELEYCHY",
-    "void": false
+    "void": false,
+    "manual_finished_at": null,
+    "extra_time_minutes": null,
+    "manual_finished_by": ""
   }
 },
 {
@@ -6919,7 +7224,10 @@
     "original_away_score": null,
     "awarded_at": null,
     "awarded_by": "",
-    "void": false
+    "void": false,
+    "manual_finished_at": null,
+    "extra_time_minutes": null,
+    "manual_finished_by": ""
   }
 },
 {
@@ -6944,7 +7252,10 @@
     "original_away_score": null,
     "awarded_at": null,
     "awarded_by": "",
-    "void": false
+    "void": false,
+    "manual_finished_at": null,
+    "extra_time_minutes": null,
+    "manual_finished_by": ""
   }
 },
 {
@@ -6969,7 +7280,10 @@
     "original_away_score": null,
     "awarded_at": null,
     "awarded_by": "",
-    "void": false
+    "void": false,
+    "manual_finished_at": null,
+    "extra_time_minutes": null,
+    "manual_finished_by": ""
   }
 },
 {
@@ -6994,7 +7308,10 @@
     "original_away_score": null,
     "awarded_at": null,
     "awarded_by": "",
-    "void": false
+    "void": false,
+    "manual_finished_at": null,
+    "extra_time_minutes": null,
+    "manual_finished_by": ""
   }
 },
 {
@@ -7019,7 +7336,10 @@
     "original_away_score": null,
     "awarded_at": null,
     "awarded_by": "",
-    "void": false
+    "void": false,
+    "manual_finished_at": null,
+    "extra_time_minutes": null,
+    "manual_finished_by": ""
   }
 },
 {
@@ -7044,7 +7364,10 @@
     "original_away_score": null,
     "awarded_at": null,
     "awarded_by": "",
-    "void": false
+    "void": false,
+    "manual_finished_at": null,
+    "extra_time_minutes": null,
+    "manual_finished_by": ""
   }
 },
 {
@@ -7069,7 +7392,10 @@
     "original_away_score": null,
     "awarded_at": "2025-12-10T12:57:26.473Z",
     "awarded_by": "",
-    "void": false
+    "void": false,
+    "manual_finished_at": null,
+    "extra_time_minutes": null,
+    "manual_finished_by": ""
   }
 },
 {
@@ -7094,7 +7420,10 @@
     "original_away_score": 1,
     "awarded_at": "2025-12-09T18:37:57.769Z",
     "awarded_by": "KELEYCHY",
-    "void": false
+    "void": false,
+    "manual_finished_at": null,
+    "extra_time_minutes": null,
+    "manual_finished_by": ""
   }
 },
 {
@@ -7119,7 +7448,10 @@
     "original_away_score": null,
     "awarded_at": null,
     "awarded_by": "",
-    "void": false
+    "void": false,
+    "manual_finished_at": null,
+    "extra_time_minutes": null,
+    "manual_finished_by": ""
   }
 },
 {
@@ -7144,7 +7476,10 @@
     "original_away_score": null,
     "awarded_at": null,
     "awarded_by": "",
-    "void": false
+    "void": false,
+    "manual_finished_at": null,
+    "extra_time_minutes": null,
+    "manual_finished_by": ""
   }
 },
 {
@@ -7169,7 +7504,10 @@
     "original_away_score": null,
     "awarded_at": null,
     "awarded_by": "",
-    "void": false
+    "void": false,
+    "manual_finished_at": null,
+    "extra_time_minutes": null,
+    "manual_finished_by": ""
   }
 },
 {
@@ -7194,7 +7532,10 @@
     "original_away_score": null,
     "awarded_at": null,
     "awarded_by": "",
-    "void": false
+    "void": false,
+    "manual_finished_at": null,
+    "extra_time_minutes": null,
+    "manual_finished_by": ""
   }
 },
 {
@@ -7219,7 +7560,10 @@
     "original_away_score": null,
     "awarded_at": null,
     "awarded_by": "",
-    "void": false
+    "void": false,
+    "manual_finished_at": null,
+    "extra_time_minutes": null,
+    "manual_finished_by": ""
   }
 },
 {
@@ -7244,7 +7588,10 @@
     "original_away_score": null,
     "awarded_at": null,
     "awarded_by": "",
-    "void": false
+    "void": false,
+    "manual_finished_at": null,
+    "extra_time_minutes": null,
+    "manual_finished_by": ""
   }
 },
 {
@@ -7269,7 +7616,10 @@
     "original_away_score": null,
     "awarded_at": null,
     "awarded_by": "",
-    "void": false
+    "void": false,
+    "manual_finished_at": null,
+    "extra_time_minutes": null,
+    "manual_finished_by": ""
   }
 },
 {
@@ -7294,7 +7644,10 @@
     "original_away_score": null,
     "awarded_at": null,
     "awarded_by": "",
-    "void": false
+    "void": false,
+    "manual_finished_at": null,
+    "extra_time_minutes": null,
+    "manual_finished_by": ""
   }
 },
 {
@@ -7319,7 +7672,10 @@
     "original_away_score": null,
     "awarded_at": null,
     "awarded_by": "",
-    "void": false
+    "void": false,
+    "manual_finished_at": null,
+    "extra_time_minutes": null,
+    "manual_finished_by": ""
   }
 },
 {
@@ -7344,7 +7700,10 @@
     "original_away_score": null,
     "awarded_at": null,
     "awarded_by": "",
-    "void": false
+    "void": false,
+    "manual_finished_at": null,
+    "extra_time_minutes": null,
+    "manual_finished_by": ""
   }
 },
 {
@@ -7369,7 +7728,10 @@
     "original_away_score": null,
     "awarded_at": null,
     "awarded_by": "",
-    "void": false
+    "void": false,
+    "manual_finished_at": null,
+    "extra_time_minutes": null,
+    "manual_finished_by": ""
   }
 },
 {
@@ -7394,7 +7756,10 @@
     "original_away_score": null,
     "awarded_at": null,
     "awarded_by": "",
-    "void": false
+    "void": false,
+    "manual_finished_at": null,
+    "extra_time_minutes": null,
+    "manual_finished_by": ""
   }
 },
 {
@@ -7419,7 +7784,10 @@
     "original_away_score": null,
     "awarded_at": null,
     "awarded_by": "",
-    "void": false
+    "void": false,
+    "manual_finished_at": null,
+    "extra_time_minutes": null,
+    "manual_finished_by": ""
   }
 },
 {
@@ -7444,7 +7812,10 @@
     "original_away_score": null,
     "awarded_at": null,
     "awarded_by": "",
-    "void": false
+    "void": false,
+    "manual_finished_at": null,
+    "extra_time_minutes": null,
+    "manual_finished_by": ""
   }
 },
 {
@@ -7469,7 +7840,10 @@
     "original_away_score": null,
     "awarded_at": null,
     "awarded_by": "",
-    "void": false
+    "void": false,
+    "manual_finished_at": null,
+    "extra_time_minutes": null,
+    "manual_finished_by": ""
   }
 },
 {
@@ -7494,7 +7868,10 @@
     "original_away_score": null,
     "awarded_at": null,
     "awarded_by": "",
-    "void": false
+    "void": false,
+    "manual_finished_at": null,
+    "extra_time_minutes": null,
+    "manual_finished_by": ""
   }
 },
 {
@@ -7519,107 +7896,10 @@
     "original_away_score": null,
     "awarded_at": null,
     "awarded_by": "",
-    "void": false
-  }
-},
-{
-  "model": "league.match",
-  "pk": 173,
-  "fields": {
-    "season": 1,
-    "home_team": 25,
-    "away_team": 26,
-    "match_date": "2025-12-21T16:00:00Z",
-    "venue": "UBAKALA MAIN FIELD",
-    "home_score": null,
-    "away_score": null,
-    "penalty_home": null,
-    "penalty_away": null,
-    "is_played": false,
-    "matchday": 22,
-    "awarded": false,
-    "awarded_reason": "",
-    "awarded_to": null,
-    "original_home_score": null,
-    "original_away_score": null,
-    "awarded_at": null,
-    "awarded_by": "",
-    "void": false
-  }
-},
-{
-  "model": "league.match",
-  "pk": 174,
-  "fields": {
-    "season": 1,
-    "home_team": 27,
-    "away_team": 28,
-    "match_date": "2025-12-22T16:00:00Z",
-    "venue": "UBAKALA MAIN FIELD",
-    "home_score": null,
-    "away_score": null,
-    "penalty_home": null,
-    "penalty_away": null,
-    "is_played": false,
-    "matchday": 23,
-    "awarded": false,
-    "awarded_reason": "",
-    "awarded_to": null,
-    "original_home_score": null,
-    "original_away_score": null,
-    "awarded_at": null,
-    "awarded_by": "",
-    "void": false
-  }
-},
-{
-  "model": "league.match",
-  "pk": 175,
-  "fields": {
-    "season": 1,
-    "home_team": 29,
-    "away_team": 30,
-    "match_date": "2025-12-23T16:00:00Z",
-    "venue": "UBAKALA MAIN FIELD",
-    "home_score": null,
-    "away_score": null,
-    "penalty_home": null,
-    "penalty_away": null,
-    "is_played": false,
-    "matchday": 24,
-    "awarded": false,
-    "awarded_reason": "",
-    "awarded_to": null,
-    "original_home_score": null,
-    "original_away_score": null,
-    "awarded_at": null,
-    "awarded_by": "",
-    "void": false
-  }
-},
-{
-  "model": "league.match",
-  "pk": 176,
-  "fields": {
-    "season": 1,
-    "home_team": 31,
-    "away_team": 32,
-    "match_date": "2025-12-24T16:00:00Z",
-    "venue": "UBAKALA MAIN FIELD",
-    "home_score": null,
-    "away_score": null,
-    "penalty_home": null,
-    "penalty_away": null,
-    "is_played": false,
-    "matchday": 25,
-    "awarded": false,
-    "awarded_reason": "",
-    "awarded_to": null,
-    "original_home_score": null,
-    "original_away_score": null,
-    "awarded_at": null,
-    "awarded_by": "",
-    "void": false
+    "void": false,
+    "manual_finished_at": null,
+    "extra_time_minutes": null,
+    "manual_finished_by": ""
   }
 },
 {
@@ -7644,7 +7924,10 @@
     "original_away_score": null,
     "awarded_at": null,
     "awarded_by": "",
-    "void": false
+    "void": false,
+    "manual_finished_at": null,
+    "extra_time_minutes": null,
+    "manual_finished_by": ""
   }
 },
 {
@@ -7669,7 +7952,10 @@
     "original_away_score": null,
     "awarded_at": null,
     "awarded_by": "",
-    "void": false
+    "void": false,
+    "manual_finished_at": null,
+    "extra_time_minutes": null,
+    "manual_finished_by": ""
   }
 },
 {
@@ -7694,7 +7980,10 @@
     "original_away_score": null,
     "awarded_at": null,
     "awarded_by": "",
-    "void": false
+    "void": false,
+    "manual_finished_at": null,
+    "extra_time_minutes": null,
+    "manual_finished_by": ""
   }
 },
 {
@@ -7719,7 +8008,10 @@
     "original_away_score": null,
     "awarded_at": null,
     "awarded_by": "",
-    "void": false
+    "void": false,
+    "manual_finished_at": null,
+    "extra_time_minutes": null,
+    "manual_finished_by": ""
   }
 },
 {
@@ -7744,7 +8036,10 @@
     "original_away_score": null,
     "awarded_at": null,
     "awarded_by": "",
-    "void": false
+    "void": false,
+    "manual_finished_at": null,
+    "extra_time_minutes": null,
+    "manual_finished_by": ""
   }
 },
 {
@@ -7769,7 +8064,10 @@
     "original_away_score": null,
     "awarded_at": null,
     "awarded_by": "",
-    "void": false
+    "void": false,
+    "manual_finished_at": null,
+    "extra_time_minutes": null,
+    "manual_finished_by": ""
   }
 },
 {
@@ -7794,7 +8092,10 @@
     "original_away_score": null,
     "awarded_at": null,
     "awarded_by": "",
-    "void": false
+    "void": false,
+    "manual_finished_at": null,
+    "extra_time_minutes": null,
+    "manual_finished_by": ""
   }
 },
 {
@@ -7819,7 +8120,10 @@
     "original_away_score": null,
     "awarded_at": null,
     "awarded_by": "",
-    "void": false
+    "void": false,
+    "manual_finished_at": null,
+    "extra_time_minutes": null,
+    "manual_finished_by": ""
   }
 },
 {
@@ -7844,7 +8148,10 @@
     "original_away_score": null,
     "awarded_at": null,
     "awarded_by": "",
-    "void": false
+    "void": false,
+    "manual_finished_at": null,
+    "extra_time_minutes": null,
+    "manual_finished_by": ""
   }
 },
 {
@@ -7869,7 +8176,10 @@
     "original_away_score": null,
     "awarded_at": null,
     "awarded_by": "",
-    "void": false
+    "void": false,
+    "manual_finished_at": null,
+    "extra_time_minutes": null,
+    "manual_finished_by": ""
   }
 },
 {
@@ -7894,7 +8204,10 @@
     "original_away_score": null,
     "awarded_at": null,
     "awarded_by": "",
-    "void": false
+    "void": false,
+    "manual_finished_at": null,
+    "extra_time_minutes": null,
+    "manual_finished_by": ""
   }
 },
 {
@@ -7919,12 +8232,127 @@
     "original_away_score": null,
     "awarded_at": null,
     "awarded_by": "",
-    "void": false
+    "void": false,
+    "manual_finished_at": null,
+    "extra_time_minutes": null,
+    "manual_finished_by": ""
   }
 },
 {
   "model": "league.match",
-  "pk": 203,
+  "pk": 207,
+  "fields": {
+    "season": 1,
+    "home_team": 25,
+    "away_team": 26,
+    "match_date": "2025-12-21T16:00:00Z",
+    "venue": "UBAKALA MAIN FIELD",
+    "home_score": null,
+    "away_score": null,
+    "penalty_home": null,
+    "penalty_away": null,
+    "is_played": false,
+    "matchday": 22,
+    "awarded": false,
+    "awarded_reason": "",
+    "awarded_to": null,
+    "original_home_score": null,
+    "original_away_score": null,
+    "awarded_at": null,
+    "awarded_by": "",
+    "void": false,
+    "manual_finished_at": null,
+    "extra_time_minutes": null,
+    "manual_finished_by": ""
+  }
+},
+{
+  "model": "league.match",
+  "pk": 208,
+  "fields": {
+    "season": 1,
+    "home_team": 27,
+    "away_team": 16,
+    "match_date": "2025-12-22T16:00:00Z",
+    "venue": "UBAKALA MAIN FIELD",
+    "home_score": null,
+    "away_score": null,
+    "penalty_home": null,
+    "penalty_away": null,
+    "is_played": false,
+    "matchday": 23,
+    "awarded": false,
+    "awarded_reason": "",
+    "awarded_to": null,
+    "original_home_score": null,
+    "original_away_score": null,
+    "awarded_at": null,
+    "awarded_by": "",
+    "void": false,
+    "manual_finished_at": null,
+    "extra_time_minutes": null,
+    "manual_finished_by": ""
+  }
+},
+{
+  "model": "league.match",
+  "pk": 209,
+  "fields": {
+    "season": 1,
+    "home_team": 29,
+    "away_team": 30,
+    "match_date": "2025-12-23T16:00:00Z",
+    "venue": "UBAKALA MAIN FIELD",
+    "home_score": null,
+    "away_score": null,
+    "penalty_home": null,
+    "penalty_away": null,
+    "is_played": false,
+    "matchday": 24,
+    "awarded": false,
+    "awarded_reason": "",
+    "awarded_to": null,
+    "original_home_score": null,
+    "original_away_score": null,
+    "awarded_at": null,
+    "awarded_by": "",
+    "void": false,
+    "manual_finished_at": null,
+    "extra_time_minutes": null,
+    "manual_finished_by": ""
+  }
+},
+{
+  "model": "league.match",
+  "pk": 210,
+  "fields": {
+    "season": 1,
+    "home_team": 2,
+    "away_team": 32,
+    "match_date": "2025-12-24T16:00:00Z",
+    "venue": "UBAKALA MAIN FIELD",
+    "home_score": null,
+    "away_score": null,
+    "penalty_home": null,
+    "penalty_away": null,
+    "is_played": false,
+    "matchday": 25,
+    "awarded": false,
+    "awarded_reason": "",
+    "awarded_to": null,
+    "original_home_score": null,
+    "original_away_score": null,
+    "awarded_at": null,
+    "awarded_by": "",
+    "void": false,
+    "manual_finished_at": null,
+    "extra_time_minutes": null,
+    "manual_finished_by": ""
+  }
+},
+{
+  "model": "league.match",
+  "pk": 211,
   "fields": {
     "season": 1,
     "home_team": 33,
@@ -7944,12 +8372,15 @@
     "original_away_score": null,
     "awarded_at": null,
     "awarded_by": "",
-    "void": false
+    "void": false,
+    "manual_finished_at": null,
+    "extra_time_minutes": null,
+    "manual_finished_by": ""
   }
 },
 {
   "model": "league.match",
-  "pk": 204,
+  "pk": 212,
   "fields": {
     "season": 1,
     "home_team": 35,
@@ -7969,12 +8400,15 @@
     "original_away_score": null,
     "awarded_at": null,
     "awarded_by": "",
-    "void": false
+    "void": false,
+    "manual_finished_at": null,
+    "extra_time_minutes": null,
+    "manual_finished_by": ""
   }
 },
 {
   "model": "league.match",
-  "pk": 205,
+  "pk": 213,
   "fields": {
     "season": 1,
     "home_team": 43,
@@ -7994,12 +8428,15 @@
     "original_away_score": null,
     "awarded_at": null,
     "awarded_by": "",
-    "void": false
+    "void": false,
+    "manual_finished_at": null,
+    "extra_time_minutes": null,
+    "manual_finished_by": ""
   }
 },
 {
   "model": "league.match",
-  "pk": 206,
+  "pk": 214,
   "fields": {
     "season": 1,
     "home_team": 45,
@@ -8019,7 +8456,10 @@
     "original_away_score": null,
     "awarded_at": null,
     "awarded_by": "",
-    "void": false
+    "void": false,
+    "manual_finished_at": null,
+    "extra_time_minutes": null,
+    "manual_finished_by": ""
   }
 }
 ]
