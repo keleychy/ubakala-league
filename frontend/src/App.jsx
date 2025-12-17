@@ -1,5 +1,5 @@
-import React from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import Home from './pages/Home';
 import Results from './pages/Results';
 import Bracket from './pages/Bracket';
@@ -17,19 +17,38 @@ import Header from './components/Header';
 import Footer from './components/Footer';
 import ErrorBoundary from './components/ErrorBoundary';
 import GroupManager from './pages/GroupManager';
-// 1. IMPORT THE ANALYTICS COMPONENT
-import { Analytics } from '@vercel/analytics/react';
 
+// 1. IMPORT ANALYTICS LIBRARIES
+import { Analytics } from '@vercel/analytics/react';
+import ReactGA from 'react-ga4';
+
+// 2. INITIALIZE GOOGLE ANALYTICS
+ReactGA.initialize("G-7BQMQZEQHM");
+
+// 3. HELPER COMPONENT TO TRACK PAGE VIEWS
+function AnalyticsTracker() {
+  const location = useLocation();
+
+  useEffect(() => {
+    ReactGA.send({
+      hitType: "pageview",
+      page: location.pathname + location.search
+    });
+  }, [location]);
+
+  return null; // This component doesn't render anything, it just "listens"
+}
 
 export default function App() {
   return (
-    // 2. Wrap the entire return structure in a React Fragment (<>...</>)
-    // 2. Wrap the entire return structure in a React Fragment (<>...</>)
     <>
-      {/* 3. PLACE THE ANALYTICS COMPONENT HERE */}
+      {/* Vercel Speed/Performance Analytics */}
       <Analytics />
 
       <BrowserRouter>
+        {/* THIS IS THE ENGINE THAT SENDS DATA TO GOOGLE */}
+        <AnalyticsTracker />
+
         <ErrorBoundary>
           <div style={{
             minHeight: '100vh',
