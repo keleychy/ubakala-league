@@ -1,6 +1,21 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../api/api';
 
+function formatDate(iso) {
+  try {
+    const d = new Date(iso);
+    return d.toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+  } catch (e) {
+    return iso;
+  }
+}
+
+function excerpt(text, length = 120) {
+  if (!text) return '';
+  const oneLine = text.split(/\r?\n/)[0];
+  return oneLine.length > length ? oneLine.slice(0, length).trim() + '…' : oneLine;
+}
+
 const News = () => {
   const [newsItems, setNewsItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -55,13 +70,11 @@ const News = () => {
             }}
           >
             <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
-              <div style={{
-                fontSize: '40px',
-                minWidth: '50px',
-                textAlign: 'center'
-              }}>
-                {item.icon}
-              </div>
+              {item.image_url ? (
+                <img src={item.image_url} alt={item.title} style={{ width: 120, height: 80, objectFit: 'cover', borderRadius: 8 }} />
+              ) : (
+                <div style={{ width: 120, height: 80, background: '#eef2ff', borderRadius: 8 }} />
+              )}
               <div style={{ flex: 1 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', gap: '16px' }}>
                   <div>
@@ -73,30 +86,9 @@ const News = () => {
                     }}>
                       {item.title}
                     </h3>
-                    <div style={{
-                      display: 'flex',
-                      gap: '12px',
-                      alignItems: 'center',
-                      marginBottom: '12px',
-                      flexWrap: 'wrap'
-                    }}>
-                      <span style={{
-                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                        color: 'white',
-                        padding: '4px 12px',
-                        borderRadius: '20px',
-                        fontSize: '12px',
-                        fontWeight: '600'
-                      }}>
-                        {item.category}
-                      </span>
-                      <span style={{
-                        color: '#999',
-                        fontSize: '13px',
-                        fontWeight: '500'
-                      }}>
-                        🕐 {item.date}
-                      </span>
+                    <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap' }}>
+                      <div style={{ color: '#666', fontSize: 14 }}>{excerpt(item.content, 140)}</div>
+                      <div style={{ color: '#999', fontSize: 13, marginLeft: 'auto' }}>🕐 {formatDate(item.published_at)}</div>
                     </div>
                   </div>
                 </div>
