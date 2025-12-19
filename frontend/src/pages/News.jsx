@@ -1,48 +1,39 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { api } from '../api/api';
 
 const News = () => {
-  // Sample news data
-  const newsItems = [
-    {
-      id: 1,
-      title: 'Finals Scheduled for January 2026',
-      date: 'December 10, 2025',
-      category: 'Announcement',
-      content: 'Mark your calendars! The championship finals for all three categories will take place in January 2026. More details coming soon.',
-      icon: '📅'
-    },
-    {
-      id: 2,
-      title: 'Girls Knockout Bracket Confirmed',
-      date: 'December 8, 2025',
-      category: 'Competition',
-      content: 'The girls knockout bracket has been finalized with all qualified teams confirmed. Quarter-finals begin December 1st.',
-      icon: '⚽'
-    },
-    {
-      id: 3,
-      title: 'Venue Updates Available',
-      date: 'December 5, 2025',
-      category: 'Venue',
-      content: 'All match venues have been confirmed and are now visible in the Results section. Please check your team\'s schedule.',
-      icon: '📍'
-    },
-    {
-      id: 4,
-      title: 'Registration Closed for Current Season',
-      date: 'November 30, 2025',
-      category: 'Registration',
-      content: 'Team registration for the current season has closed. We received registrations from 15 teams across all categories.',
-      icon: '✓'
-    },
-  ];
+  const [newsItems, setNewsItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    let mounted = true;
+    api.getNews().then((data) => {
+      if (!mounted) return;
+      // Expect data as array of news objects
+      setNewsItems(Array.isArray(data) ? data : []);
+      setLoading(false);
+    }).catch((err) => {
+      if (!mounted) return;
+      setError(err.message || 'Failed to load news');
+      setLoading(false);
+    });
+    return () => { mounted = false; };
+  }, []);
 
   return (
     <div style={{ padding: '40px 20px', maxWidth: '1000px', margin: '0 auto' }}>
       <h2 style={{ color: '#1e3c72', marginBottom: '30px' }}>📰 Latest News</h2>
 
+      {loading && (
+        <div style={{ marginBottom: '20px', color: '#555' }}>Loading news…</div>
+      )}
+      {error && (
+        <div style={{ marginBottom: '20px', color: '#b91c1c', fontWeight: 600 }}>Error: {error}</div>
+      )}
+
       <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-        {newsItems.map((item) => (
+        {newsItems.length > 0 && newsItems.map((item) => (
           <div
             key={item.id}
             style={{
@@ -124,18 +115,20 @@ const News = () => {
       </div>
 
       {/* Placeholder for empty state */}
-      <div style={{
-        marginTop: '40px',
-        padding: '40px',
-        background: '#f8f9ff',
-        borderRadius: '12px',
-        textAlign: 'center',
-        border: '2px dashed #667eea'
-      }}>
-        <p style={{ color: '#999', fontSize: '14px' }}>
-          More updates coming soon! Stay tuned for the latest news about Ubakala Football League.
-        </p>
-      </div>
+      {!loading && newsItems.length === 0 && (
+        <div style={{
+          marginTop: '40px',
+          padding: '40px',
+          background: '#f8f9ff',
+          borderRadius: '12px',
+          textAlign: 'center',
+          border: '2px dashed #667eea'
+        }}>
+          <p style={{ color: '#999', fontSize: '14px' }}>
+            More updates coming soon! Stay tuned for the latest news about Ubakala Football League.
+          </p>
+        </div>
+      )}
     </div>
   );
 };
