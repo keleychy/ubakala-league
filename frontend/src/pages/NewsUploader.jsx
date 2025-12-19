@@ -16,7 +16,7 @@ export default function NewsUploader() {
         e.preventDefault();
         setMessage(null);
         setIsLoading(true);
-            try {
+        try {
             const res = await fetchWithAuth(`${API_URL}/news/`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },

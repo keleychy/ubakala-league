@@ -448,7 +448,12 @@ class MatchAdmin(admin.ModelAdmin):
 		return TemplateResponse(request, 'admin/league/mark_awarded.html', context)
 
     # NOTE: server-side top-bar filtering removed; sidebar filters are used instead.
-admin.site.register(News)
+@admin.register(News)
+class NewsAdmin(admin.ModelAdmin):
+	list_display = ('title', 'subtitle', 'published_at')
+	search_fields = ('title', 'subtitle', 'content')
+	readonly_fields = ('published_at',)
+	ordering = ('-published_at',)
 
 
 # RBAC Admin Registration
