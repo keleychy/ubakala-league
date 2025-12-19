@@ -1,6 +1,8 @@
 // api.js
 
-export const API_URL = process.env.REACT_APP_API_URL || 'https://ubakalaunitycup.onrender.com/api';
+const defaultRemote = 'https://ubakalaunitycup.onrender.com/api';
+const API_URL = process.env.REACT_APP_API_URL || defaultRemote;
+export { API_URL };
 
 function buildUrl(path) {
   const base = API_URL.endsWith('/') ? API_URL.slice(0, -1) : API_URL;
