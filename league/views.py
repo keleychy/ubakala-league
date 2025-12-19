@@ -216,7 +216,13 @@ class MatchViewSet(viewsets.ModelViewSet):
             match.away_score = int(away_score)
         except (TypeError, ValueError):
             return Response({'error': 'Scores must be integers'}, status=400)
-        match.is_played = True
+        # If actual_start is not set, record it when results are first saved
+        if not match.actual_start:
+            try:
+                match.actual_start = timezone.now()
+            except Exception:
+                pass
+        # Let Match.save() compute is_played based on scores and actual_start/match_date
         match.save()
         return Response(self.get_serializer(match).data)
 

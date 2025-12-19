@@ -78,6 +78,10 @@ class Match(models.Model):
     manual_finished_at = models.DateTimeField(null=True, blank=True, help_text="Timestamp when match was manually marked finished")
     extra_time_minutes = models.IntegerField(null=True, blank=True, help_text="Extra minutes applied when manually finished")
     manual_finished_by = models.CharField(max_length=150, blank=True, help_text="User who manually marked finished")
+    # Actual start time for delayed/late-start matches (set when match truly begins)
+    actual_start = models.DateTimeField(null=True, blank=True, help_text="When the match actually started (can differ from scheduled match_date)")
+    # Per-match duration in minutes (default 150 = 2.5 hours window for live detection)
+    match_duration_minutes = models.IntegerField(default=150, help_text="Duration in minutes used to compute live window (default 150)")
 
     def __str__(self):
         return f"{self.home_team} vs {self.away_team} - {self.match_date.date()}"
@@ -92,12 +96,22 @@ class Match(models.Model):
         if self.manual_finished_at:
             self.is_played = True
         else:
+            # Auto-set actual_start if first time scores are provided and actual_start not set
+            try:
+                if (self.actual_start is None) and (self.home_score is not None or self.away_score is not None):
+                    # record the time when the first score appears as actual start
+                    self.actual_start = timezone.now()
+            except Exception:
+                pass
+
             # Default to not played
             self.is_played = False
             if self.home_score is not None and self.away_score is not None:
                 try:
                     now = timezone.now()
-                    if self.match_date is not None and self.match_date <= now:
+                    # prefer actual_start when present, otherwise scheduled match_date
+                    start = self.actual_start if self.actual_start is not None else self.match_date
+                    if start is not None and start <= now:
                         self.is_played = True
                 except Exception:
                     # If there's any issue comparing dates, do not mark as played

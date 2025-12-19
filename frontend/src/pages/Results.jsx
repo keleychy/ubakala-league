@@ -353,9 +353,11 @@ const Results = () => {
                           const isVoid = !!match.void;
                           // determine live state: not marked played, not void/awarded, and either scores present or current time within a match window
                           const now = new Date();
-                          const start = match.match_date ? new Date(match.match_date) : null;
+                          // prefer actual_start if set (for delayed starts); otherwise use scheduled match_date
+                          const start = match.actual_start ? new Date(match.actual_start) : (match.match_date ? new Date(match.match_date) : null);
+                          const duration = (match.match_duration_minutes != null) ? Number(match.match_duration_minutes) : 150;
                           const end = start ? new Date(start) : null;
-                          if (end) end.setMinutes(end.getMinutes() + 150); // assume 2.5 hours max match window
+                          if (end) end.setMinutes(end.getMinutes() + duration);
                           const hasScores = match.home_score !== null || match.away_score !== null;
                           const isLive = !isPlayed && !isVoid && !match.awarded && (hasScores || (start && now >= start && now <= end));
 
