@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { fetchWithAuth, logout } from '../api/auth';
+import { API_URL } from '../api/api';
 import { useNavigate } from 'react-router-dom';
 
 export default function NewsUploader() {
     const nav = useNavigate();
     const [title, setTitle] = useState('');
+    const [subtitle, setSubtitle] = useState('');
     const [content, setContent] = useState('');
     const [image, setImage] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -14,11 +16,11 @@ export default function NewsUploader() {
         e.preventDefault();
         setMessage(null);
         setIsLoading(true);
-        try {
-            const res = await fetchWithAuth('https://ubakalaunitycup.onrender.com/api/news/', {
+            try {
+            const res = await fetchWithAuth(`${API_URL}/news/`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ title, content, image_url: image })
+                body: JSON.stringify({ title, subtitle, content, image_url: image })
             });
             if (!res.ok) {
                 if (res.status === 403) {
@@ -51,6 +53,7 @@ export default function NewsUploader() {
             )}
             <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 12 }}>
                 <input placeholder="Title" value={title} onChange={e => setTitle(e.target.value)} disabled={isLoading} />
+                <input placeholder="Subtitle (optional)" value={subtitle} onChange={e => setSubtitle(e.target.value)} disabled={isLoading} />
                 <textarea placeholder="Content" rows={8} value={content} onChange={e => setContent(e.target.value)} disabled={isLoading} />
                 <input placeholder="Image URL (optional)" value={image} onChange={e => setImage(e.target.value)} disabled={isLoading} />
                 <button type="submit" disabled={isLoading}>{isLoading ? 'Posting...' : 'Post News'}</button>

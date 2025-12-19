@@ -87,7 +87,7 @@ const News = () => {
                       {item.title}
                     </h3>
                     <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap' }}>
-                      <div style={{ color: '#666', fontSize: 14 }}>{excerpt(item.content, 140)}</div>
+                      <div style={{ color: '#666', fontSize: 14 }}>{item.subtitle || excerpt(item.content, 140)}</div>
                       <div style={{ color: '#999', fontSize: 13, marginLeft: 'auto' }}>🕐 {formatDate(item.published_at)}</div>
                     </div>
                   </div>

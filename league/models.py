@@ -145,6 +145,7 @@ class Match(models.Model):
 
 class News(models.Model):
     title = models.CharField(max_length=200)
+    subtitle = models.CharField(max_length=250, blank=True)
     content = models.TextField()
     published_at = models.DateTimeField(auto_now_add=True)
     image_url = models.URLField(blank=True)
