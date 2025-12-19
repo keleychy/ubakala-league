@@ -36,6 +36,7 @@ export const api = {
     return fetchJSON(`/seasons/${q}`);
   },
   getNews: () => fetchJSON('/news/'),
+  getNewsById: (id) => fetchJSON(`/news/${id}/`),
   getStandings: (seasonId) => fetchJSON(`/standings/${seasonId}/`),
   getGroupsWithTeams: (seasonId) => fetchJSON(`/groups-with-teams/?season=${seasonId}`),
   // optionally pass a category string (girls|senior_boys|junior_boys)

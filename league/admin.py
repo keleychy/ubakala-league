@@ -450,8 +450,8 @@ class MatchAdmin(admin.ModelAdmin):
     # NOTE: server-side top-bar filtering removed; sidebar filters are used instead.
 @admin.register(News)
 class NewsAdmin(admin.ModelAdmin):
-	list_display = ('title', 'subtitle', 'published_at')
-	search_fields = ('title', 'subtitle', 'content')
+	list_display = ('title', 'subtitle', 'author', 'published_at')
+	search_fields = ('title', 'subtitle', 'content', 'author')
 	readonly_fields = ('published_at',)
 	ordering = ('-published_at',)
 
