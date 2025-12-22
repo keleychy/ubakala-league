@@ -81,7 +81,7 @@ class TeamAdmin(admin.ModelAdmin):
 admin.site.register(Season)
 @admin.register(Match)
 class MatchAdmin(admin.ModelAdmin):
-	list_display = ('season', 'home_team', 'away_team', 'match_date', 'venue', 'is_played', 'void')
+	list_display = ('season', 'home_team', 'away_team', 'match_date', 'venue', 'current_period', 'is_played', 'void')
 	ordering = ('match_date',)
 	# Restore sidebar filters (SeasonCategoryFilter + season)
 	list_filter = (SeasonCategoryFilter, 'season')

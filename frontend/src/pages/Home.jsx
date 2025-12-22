@@ -69,6 +69,14 @@ export default function Home() {
     return { status: 'ended', label: 'Match ended' };
   }
 
+  const PERIOD_LABELS = {
+    'not_started': 'Not started',
+    '1st_half': "1st Half",
+    'halftime': 'Half Time',
+    '2nd_half': '2nd Half',
+    'ended': 'Ended'
+  };
+
   useEffect(() => {
     return () => {
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
@@ -332,8 +340,8 @@ export default function Home() {
                     </div>
                     <div style={{ fontSize: '16px', fontWeight: '500' }}>{awayTeam}</div>
 
-                    {/* Live status */}
-                    <div style={{ marginTop: 8 }}>
+                    {/* Live status & Period */}
+                    <div style={{ marginTop: 8, display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'center' }}>
                       {(() => {
                         const stat = getMatchLiveStatus(match);
                         const badgeStyle = {
@@ -346,11 +354,16 @@ export default function Home() {
                           fontSize: '13px'
                         };
                         return (
-                          <div style={{ marginTop: 10 }}>
+                          <div>
                             <span style={badgeStyle}>{stat.label}</span>
                           </div>
                         );
                       })()}
+                      {match.current_period && (
+                        <div style={{ display: 'inline-block', padding: '6px 10px', borderRadius: 8, background: 'rgba(255,255,255,0.08)', color: 'white', fontWeight: 700, fontSize: 13 }}>
+                          {PERIOD_LABELS[match.current_period] || match.current_period}
+                        </div>
+                      )}
                     </div>
                   </div>
                   <div style={{

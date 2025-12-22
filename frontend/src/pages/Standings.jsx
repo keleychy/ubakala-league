@@ -25,6 +25,14 @@ const Standings = () => {
   const appliedMatchIdsRef = useRef(new Set());
   const FLASH_DURATION = 800; // ms
   const lastSeasonRef = useRef(null);
+  const [periodNotification, setPeriodNotification] = useState(null);
+  const PERIOD_LABELS = {
+    'not_started': 'Not started',
+    '1st_half': '1st Half',
+    'halftime': 'Half Time',
+    '2nd_half': '2nd Half',
+    'ended': 'Ended'
+  };
 
   useEffect(() => {
     // switching category implies a different season context; reset refs and clear displayed standings
@@ -265,6 +273,19 @@ const Standings = () => {
       }
 
       appliedMatchIdsRef.current.add(updated.id);
+      // If the update contained a period, show a short notification
+      try {
+        const per = updated?.current_period;
+        if (per) {
+          const home = updated?.home_team?.name || updated?.home_team || '';
+          const away = updated?.away_team?.name || updated?.away_team || '';
+          const label = PERIOD_LABELS[per] || per;
+          setPeriodNotification(`${home} vs ${away}: ${label}`);
+          setTimeout(() => setPeriodNotification(null), 4000);
+        }
+      } catch (err) {
+        // ignore
+      }
     }
 
     window.addEventListener('match-updated', onMatchUpdated);
@@ -347,6 +368,11 @@ const Standings = () => {
 
       {loading && (
         <div className="loading">⏳ Loading standings<span className="loading-dots"><span></span><span></span><span></span></span></div>
+      )}
+      {periodNotification && (
+        <div style={{ marginTop: 12, marginBottom: 12, padding: '10px 14px', background: '#eef2ff', border: '1px solid #c7d2fe', borderRadius: 8, color: '#1e3c72' }}>
+          🔔 {periodNotification}
+        </div>
       )}
       {error && (
         <div style={{

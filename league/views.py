@@ -238,6 +238,25 @@ class MatchViewSet(viewsets.ModelViewSet):
         return Response(self.get_serializer(match).data)
 
     @action(detail=True, methods=['post'], permission_classes=[IsResultsEditor])
+    def set_period(self, request, pk=None):
+        """Explicit endpoint to update the `current_period` for a match.
+
+        Accepts JSON: { "period": "1st_half" } or { "current_period": "halftime" }.
+        Validates against model choices and returns the updated match.
+        """
+        match = self.get_object()
+        period = request.data.get('period') or request.data.get('current_period')
+        if not period:
+            return Response({'error': 'Provide a period value'}, status=status.HTTP_400_BAD_REQUEST)
+        # validate against model choices
+        allowed = [k for k, _ in Match.CURRENT_PERIOD_CHOICES]
+        if period not in allowed:
+            return Response({'error': 'Invalid period value'}, status=status.HTTP_400_BAD_REQUEST)
+        match.current_period = period
+        match.save()
+        return Response(self.get_serializer(match).data)
+
+    @action(detail=True, methods=['post'], permission_classes=[IsResultsEditor])
     def mark_finished(self, request, pk=None):
         """Mark a match as finished manually. Accepts optional `extra_time_minutes` (int).
         If not provided, backend will pick a random 1-5 minutes. Records who marked it and timestamp.

@@ -44,6 +44,13 @@ class MatchCreateSerializer(serializers.ModelSerializer):
         model = Match
         fields = '__all__'
 
+    def validate_current_period(self, value):
+        """Ensure the provided current_period is one of the model choices."""
+        allowed = [k for k, _ in Match.CURRENT_PERIOD_CHOICES]
+        if value not in allowed:
+            raise serializers.ValidationError('Invalid period value')
+        return value
+
 class NewsSerializer(serializers.ModelSerializer):
     class Meta:
         model = News
