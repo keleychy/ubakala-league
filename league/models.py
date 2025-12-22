@@ -82,6 +82,15 @@ class Match(models.Model):
     actual_start = models.DateTimeField(null=True, blank=True, help_text="When the match actually started (can differ from scheduled match_date)")
     # Per-match duration in minutes (default 150 = 2.5 hours window for live detection)
     match_duration_minutes = models.IntegerField(default=150, help_text="Duration in minutes used to compute live window (default 150)")
+    # Current match period for live tracking (client-updated)
+    CURRENT_PERIOD_CHOICES = [
+        ('not_started', 'Not started'),
+        ('1st_half', '1st Half'),
+        ('halftime', 'Half Time'),
+        ('2nd_half', '2nd Half'),
+        ('ended', 'Ended'),
+    ]
+    current_period = models.CharField(max_length=20, choices=CURRENT_PERIOD_CHOICES, default='not_started', help_text='Current period/phase of the match')
 
     def __str__(self):
         return f"{self.home_team} vs {self.away_team} - {self.match_date.date()}"

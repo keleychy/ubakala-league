@@ -209,6 +209,8 @@ class MatchViewSet(viewsets.ModelViewSet):
         match = self.get_object()
         home_score = request.data.get('home_score')
         away_score = request.data.get('away_score')
+        # optional period param from frontend
+        period = request.data.get('period') or request.data.get('current_period')
         if home_score is None or away_score is None:
             return Response({'error': 'Provide home_score and away_score'}, status=400)
         try:
@@ -220,6 +222,12 @@ class MatchViewSet(viewsets.ModelViewSet):
         if not match.actual_start:
             try:
                 match.actual_start = timezone.now()
+            except Exception:
+                pass
+        # persist a provided period string (e.g. '1st_half', 'halftime', '2nd_half')
+        if period:
+            try:
+                match.current_period = period
             except Exception:
                 pass
         # When saving interim scores we do NOT want to auto-mark the match as

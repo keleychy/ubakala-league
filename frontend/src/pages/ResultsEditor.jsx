@@ -8,6 +8,14 @@ export default function ResultsEditor() {
 
     useEffect(() => {
         loadMatches();
+        // Listen for period changes from MatchRow and update local matches state
+        function onPeriodChanged(e) {
+            const d = e && e.detail;
+            if (!d || !d.id) return;
+            setMatches(prev => (prev || []).map(m => (m.id === d.id ? { ...m, display_period: d.period } : m)));
+        }
+        window.addEventListener('match-period-changed', onPeriodChanged);
+        return () => window.removeEventListener('match-period-changed', onPeriodChanged);
     }, []);
 
     async function loadMatches() {
@@ -124,6 +132,7 @@ function MatchRow({ match, onSetResult, onMarkFinished }) {
     const [away, setAway] = useState(match.away_score ?? '');
     const [penHome, setPenHome] = useState('');
     const [penAway, setPenAway] = useState('');
+    const [period, setPeriod] = useState(match.display_period || 'not_started');
     const [saving, setSaving] = useState(false);
     const [localMsg, setLocalMsg] = useState(null);
     const [finishing, setFinishing] = useState(false);
@@ -153,14 +162,8 @@ function MatchRow({ match, onSetResult, onMarkFinished }) {
             setLocalMsg({ type: 'error', text: 'Scores must be non-negative integers' });
             return false;
         }
-        if (showPen && h === a) {
-            const ph = penHome === '' ? null : parseInt(penHome, 10);
-            const pa = penAway === '' ? null : parseInt(penAway, 10);
-            if (ph === null || pa === null || Number.isNaN(ph) || Number.isNaN(pa) || ph < 0 || pa < 0) {
-                setLocalMsg({ type: 'error', text: 'For knockout draws please provide penalty scores' });
-                return false;
-            }
-        }
+        // Do not require penalty scores when saving interim/ongoing knockout matches.
+        // Penalties are only required when marking a knockout match finished.
         setLocalMsg(null);
         return true;
     }
@@ -196,6 +199,27 @@ function MatchRow({ match, onSetResult, onMarkFinished }) {
                 setLocalMsg({ type: 'error', text: 'No handler to mark finished' });
                 return;
             }
+            const h = parseInt(home === '' ? '0' : home, 10);
+            const a = parseInt(away === '' ? '0' : away, 10);
+            // If knockout and match is tied, require penalty scores before finishing
+            if (showPen && h === a) {
+                if (penHome === '' || penAway === '') {
+                    setLocalMsg({ type: 'error', text: 'Provide penalty scores before marking finished' });
+                    return;
+                }
+                const ph = parseInt(penHome, 10);
+                const pa = parseInt(penAway, 10);
+                if (Number.isNaN(ph) || Number.isNaN(pa) || ph < 0 || pa < 0) {
+                    setLocalMsg({ type: 'error', text: 'Penalty scores must be non-negative integers' });
+                    return;
+                }
+                // Save penalty scores first so backend records them, then mark finished
+                await onSetResult(match.id, h, a, ph, pa);
+            } else {
+                // Save the current scores (ensure latest) before finishing
+                await onSetResult(match.id, parseInt(home || '0', 10), parseInt(away || '0', 10));
+            }
+
             await onMarkFinished(match.id);
             setLocalMsg({ type: 'success', text: 'Marked finished' });
         } catch (err) {
@@ -215,6 +239,39 @@ function MatchRow({ match, onSetResult, onMarkFinished }) {
                             {category}
                         </div>
                     )}
+                    {/* Period selector */}
+                    <select value={period} onChange={async e => {
+                        const val = e.target.value;
+                        setPeriod(val);
+                        // optimistically notify parent UI
+                        try {
+                            window.dispatchEvent(new CustomEvent('match-period-changed', { detail: { id: match.id, period: val } }));
+                        } catch (err) { }
+                        // persist to backend via PATCH /api/matches/{id}/
+                        try {
+                            const res = await fetchWithAuth(`https://ubakalaunitycup.onrender.com/api/matches/${match.id}/`, {
+                                method: 'PATCH',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ current_period: val })
+                            });
+                            if (res.ok) {
+                                const updated = await res.json();
+                                try { window.dispatchEvent(new CustomEvent('match-updated', { detail: updated })); } catch (e) { }
+                            } else {
+                                // rollback on error by resetting local period to match value
+                                const text = await res.text();
+                                setLocalMsg({ type: 'error', text: text || 'Failed to save period' });
+                            }
+                        } catch (err) {
+                            setLocalMsg({ type: 'error', text: 'Network error saving period' });
+                        }
+                    }} style={{ marginLeft: 8, padding: '6px 8px', borderRadius: 6, border: '1px solid #d1d5db', fontSize: 12 }}>
+                        <option value="not_started">Not started</option>
+                        <option value="1st_half">1st Half</option>
+                        <option value="halftime">Half Time</option>
+                        <option value="2nd_half">2nd Half</option>
+                        <option value="ended">Ended</option>
+                    </select>
                 </div>
             </div>
 
