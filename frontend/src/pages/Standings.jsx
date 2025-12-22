@@ -268,7 +268,11 @@ const Standings = () => {
     }
 
     window.addEventListener('match-updated', onMatchUpdated);
-    return () => window.removeEventListener('match-updated', onMatchUpdated);
+    window.addEventListener('match-scores-saved', onMatchUpdated);
+    return () => {
+      window.removeEventListener('match-updated', onMatchUpdated);
+      window.removeEventListener('match-scores-saved', onMatchUpdated);
+    };
   }, [selectedSeason, standings]);
 
   useEffect(() => {

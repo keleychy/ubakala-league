@@ -105,8 +105,12 @@ class Match(models.Model):
                 pass
 
             # Default to not played
+            # Allow callers to temporarily suppress auto-marking a match as played
+            # (e.g. when saving interim scores). Set `match._suppress_auto_played = True`
+            # on the instance before calling save() to keep `is_played` False.
             self.is_played = False
-            if self.home_score is not None and self.away_score is not None:
+            suppress = getattr(self, '_suppress_auto_played', False)
+            if (not suppress) and self.home_score is not None and self.away_score is not None:
                 try:
                     now = timezone.now()
                     # prefer actual_start when present, otherwise scheduled match_date

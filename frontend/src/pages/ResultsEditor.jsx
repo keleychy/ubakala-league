@@ -53,11 +53,22 @@ export default function ResultsEditor() {
             } else {
                 const updated = await res.json();
                 setMessage({ type: 'success', text: 'Result updated' });
-                // Optimistically update the specific match in the UI
-                setMatches((prev) => prev.map((m) => (m.id === updated.id ? updated : m)));
-                // Notify other parts of the app (standings) to update optimistically
+                // Merge only score-related fields into the local match to avoid
+                // accepting any backend-driven `is_played` change from set_result.
+                setMatches((prev) => prev.map((m) => {
+                    if (!m || m.id !== updated.id) return m;
+                    return {
+                        ...m,
+                        home_score: updated.home_score,
+                        away_score: updated.away_score,
+                        penalty_home: updated.penalty_home,
+                        penalty_away: updated.penalty_away,
+                        actual_start: updated.actual_start,
+                    };
+                }));
+                // Notify other parts of the app about score changes only.
                 try {
-                    window.dispatchEvent(new CustomEvent('match-updated', { detail: updated }));
+                    window.dispatchEvent(new CustomEvent('match-scores-saved', { detail: updated }));
                 } catch (e) {
                     // ignore if running in non-browser test env
                 }

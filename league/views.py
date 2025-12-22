@@ -222,7 +222,10 @@ class MatchViewSet(viewsets.ModelViewSet):
                 match.actual_start = timezone.now()
             except Exception:
                 pass
-        # Let Match.save() compute is_played based on scores and actual_start/match_date
+        # When saving interim scores we do NOT want to auto-mark the match as
+        # completed. Use a temporary instance flag that Match.save() honors
+        # to suppress automatic is_played calculation.
+        match._suppress_auto_played = True
         match.save()
         return Response(self.get_serializer(match).data)
 

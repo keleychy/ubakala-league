@@ -162,7 +162,11 @@ export default function Home() {
       setMatches((prev) => (prev || []).map(m => (m.id === updated.id ? updated : m)));
     }
     window.addEventListener('match-updated', onMatchUpdated);
-    return () => window.removeEventListener('match-updated', onMatchUpdated);
+    window.addEventListener('match-scores-saved', onMatchUpdated);
+    return () => {
+      window.removeEventListener('match-updated', onMatchUpdated);
+      window.removeEventListener('match-scores-saved', onMatchUpdated);
+    };
   }, []);
 
   function getLocalMatchTime(dateStr) {
