@@ -358,7 +358,9 @@ export default function Bracket() {
                 </div>
             </div>
 
-            {matchesLoading ? (
+            {(!seasons || seasons.length === 0) ? (
+                <div style={{ padding: 24, color: '#666' }}>No seasons found for the selected category. Please select a different category or add a season in admin.</div>
+            ) : (matchesLoading ? (
                 <div className="loading">Loading bracket <span className="loading-dots"><span></span><span></span><span></span></span></div>
             ) : (
                 <div className="bracket-canvas" ref={containerRef}>
@@ -385,7 +387,7 @@ export default function Bracket() {
                         ))}
                     </svg>
                 </div>
-            )}
+            ))}
 
             <p style={{ marginTop: 12, color: '#21e90bff', }}>Animated connectors draw in when a match result is decided.</p>
         </div>

@@ -315,6 +315,11 @@ const Results = () => {
                         <div>
                           <div style={{ fontWeight: 700, fontSize: 'clamp(12px, 2vw, 14px)' }}>{renderTeam(match.home_team, match)} <span className={flashMap[match.id]?.home ? 'score-flash' : ''} style={{ color: '#2b6cb0', margin: '0 6px' }}>{match.home_score ?? '-'}</span></div>
                           <div style={{ fontWeight: 700, marginTop: 6, fontSize: 'clamp(12px, 2vw, 14px)' }}>{renderTeam(match.away_team, match)} <span className={flashMap[match.id]?.away ? 'score-flash' : ''} style={{ color: '#2b6cb0', margin: '0 6px' }}>{match.away_score ?? '-'}</span></div>
+                          {(match.penalty_home !== null || match.penalty_away !== null) && (
+                            <div style={{ marginTop: 6, fontSize: '12px', color: '#92400e', fontWeight: 700 }}>
+                              Penalties: {match.penalty_home !== null ? match.penalty_home : '-'} - {match.penalty_away !== null ? match.penalty_away : '-'}
+                            </div>
+                          )}
                           <div style={{ marginTop: 8, fontSize: 'clamp(10px, 1.5vw, 12px)', color: '#6b7280' }}>MD {match.matchday} • {formatDate(match.match_date)}</div>
                         </div>
                       ) : (
@@ -381,6 +386,11 @@ const Results = () => {
                                     <span style={{ color: '#374151' }}>-</span>
                                     <span className={flashMap[match.id]?.away ? 'score-flash' : ''} style={{ margin: '0 clamp(6px, 2vw, 10px)', color: '#2b6cb0', fontSize: 'clamp(16px, 3vw, 18px)', fontWeight: 700 }}>{awayScore}</span>
                                     <span style={{ color: '#4c51bf', fontWeight: 700, fontSize: 'clamp(12px, 2.5vw, 15px)' }}>{renderTeam(match.away_team, match)}</span>
+                                    {(match.penalty_home !== null || match.penalty_away !== null) && (
+                                      <div style={{ marginTop: 6, fontSize: '13px', color: '#92400e', fontWeight: 700 }}>
+                                        Penalties: {match.penalty_home !== null ? match.penalty_home : '-'} - {match.penalty_away !== null ? match.penalty_away : '-'}
+                                      </div>
+                                    )}
                                   </div>
                                   <div style={{ display: 'flex', gap: 'clamp(6px, 1vw, 8px)', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                                     {match.awarded && (

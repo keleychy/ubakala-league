@@ -340,6 +340,13 @@ export default function Home() {
                     </div>
                     <div style={{ fontSize: '16px', fontWeight: '500' }}>{awayTeam}</div>
 
+                    {/* Penalty display if present */}
+                    {(match.penalty_home !== null || match.penalty_away !== null) && (
+                      <div style={{ marginTop: 8, fontSize: '13px', color: '#fde68a', fontWeight: 700 }}>
+                        Pen: {match.penalty_home !== null ? match.penalty_home : '-'} - {match.penalty_away !== null ? match.penalty_away : '-'}
+                      </div>
+                    )}
+
                     {/* Live status & Period */}
                     <div style={{ marginTop: 8, display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'center' }}>
                       {(() => {
