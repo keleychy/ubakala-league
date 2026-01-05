@@ -12,6 +12,8 @@ export default function Home() {
   const [showingTomorrow, setShowingTomorrow] = useState(false);
   const [teamsLoadedOnce, setTeamsLoadedOnce] = useState(false);
   const [matchesLoadedOnce, setMatchesLoadedOnce] = useState(false);
+  const [championIds, setChampionIds] = useState([]); // array of team ids that are champions in any category
+  const [championMap, setChampionMap] = useState({}); // map teamId(string) -> [category labels]
   const navigate = useNavigate();
   const prevMatchesRef = useRef({});
   const [flashMap, setFlashMap] = useState({}); // { [matchId]: { home: bool, away: bool } }
@@ -30,6 +32,20 @@ export default function Home() {
     const m = Math.floor(totalSeconds / 60);
     const s = totalSeconds % 60;
     return `${m}:${String(s).padStart(2, '0')}`;
+  }
+
+  function getLocalMatchTime(dateStr) {
+    if (!dateStr) return '';
+    let d = new Date(dateStr);
+    if (isNaN(d)) {
+      // Try converting 'YYYY-MM-DD HH:mm:ss' to ISO
+      try {
+        d = new Date(dateStr.replace(' ', 'T') + '+01:00');
+      } catch (e) {
+        return dateStr;
+      }
+    }
+    return isNaN(d) ? dateStr : d.toLocaleString();
   }
 
   function getMatchLiveStatus(match) {
@@ -83,6 +99,58 @@ export default function Home() {
     };
   }, []);
 
+  // Fetch latest champions for the three categories by finding the winner of the final match
+  useEffect(() => {
+    let mounted = true;
+    async function loadChampions() {
+      try {
+        const categories = ['senior_boys', 'girls', 'junior_boys'];
+        const ids = new Set();
+        await Promise.all(categories.map(async (cat) => {
+          try {
+            const seasons = await api.getSeasons(cat);
+            if (!seasons || seasons.length === 0) return;
+            const seasonId = seasons[0].id;
+            // fetch matches for this season
+            const matches = await api.getMatches({ season: seasonId });
+            if (!matches || matches.length === 0) return;
+
+            // Prefer explicit finals (matchday 29) else use the match(es) on the latest matchday
+            let finalCandidates = matches.filter(m => Number(m.matchday) === 29);
+            if (finalCandidates.length === 0) {
+              const allMd = Array.from(new Set(matches.map(m => (m.matchday !== undefined && m.matchday !== null) ? Number(m.matchday) : null).filter(x => x !== null))).sort((a, b) => a - b);
+              if (allMd.length === 0) return;
+              const finalDay = allMd[allMd.length - 1];
+              finalCandidates = matches.filter(m => Number(m.matchday) === finalDay);
+            }
+
+            // If multiple finals (unlikely), pick one that has decisive result
+            let finalMatch = finalCandidates.find(m => m.home_score !== null && m.away_score !== null && m.home_score !== m.away_score)
+              || finalCandidates.find(m => (m.penalty_home !== null || m.penalty_away !== null))
+              || finalCandidates[0];
+            if (!finalMatch) return;
+
+            // Determine winner id: prefer regular score, then penalties
+            let winnerId = null;
+            if (finalMatch.home_score !== null && finalMatch.away_score !== null && finalMatch.home_score !== finalMatch.away_score) {
+              winnerId = finalMatch.home_score > finalMatch.away_score ? (finalMatch.home_team?.id || finalMatch.home_team) : (finalMatch.away_team?.id || finalMatch.away_team);
+            } else if (finalMatch.penalty_home !== null && finalMatch.penalty_away !== null && finalMatch.penalty_home !== finalMatch.penalty_away) {
+              winnerId = finalMatch.penalty_home > finalMatch.penalty_away ? (finalMatch.home_team?.id || finalMatch.home_team) : (finalMatch.away_team?.id || finalMatch.away_team);
+            }
+            if (winnerId) ids.add(Number(winnerId));
+          } catch (err) {
+            // ignore individual category failures
+          }
+        }));
+        if (mounted) setChampionIds(Array.from(ids));
+      } catch (err) {
+        // ignore
+      }
+    }
+    loadChampions();
+    return () => { mounted = false; };
+  }, []);
+
   // Fetch teams and matches periodically (every 5-10s with jitter)
   const fetchTeams = async () => {
     if (!teamsLoadedOnce) setTeamsLoading(true);
@@ -101,53 +169,7 @@ export default function Home() {
     if (!matchesLoadedOnce) setMatchesLoading(true);
     try {
       const data = await api.getMatches();
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const tomorrow = new Date(today);
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      const dayAfter = new Date(tomorrow);
-      dayAfter.setDate(dayAfter.getDate() + 1);
-
-      const todayMatches = (data || []).filter(match => {
-        const matchDate = new Date(match.match_date);
-        return matchDate >= today && matchDate < tomorrow;
-      }).slice(0, 3);
-      const tomorrowMatches = (data || []).filter(match => {
-        const matchDate = new Date(match.match_date);
-        return matchDate >= tomorrow && matchDate < dayAfter;
-      }).slice(0, 3);
-
-      const displayMatches = todayMatches.length > 0 ? todayMatches : tomorrowMatches;
-      const showingTomorrowFlag = todayMatches.length === 0;
-
-      // detect score diffs for matches currently displayed
-      const prev = prevMatchesRef.current || {};
-      const diffs = {};
-      (displayMatches || []).forEach((m) => {
-        const old = prev[m.id];
-        if (!old) return;
-        const changed = {};
-        if (m.home_score !== old.home_score) changed.home = true;
-        if (m.away_score !== old.away_score) changed.away = true;
-        if (Object.keys(changed).length > 0) diffs[m.id] = changed;
-      });
-
-      if (Object.keys(diffs).length === 0) {
-        setMatches(displayMatches);
-        setShowingTomorrow(showingTomorrowFlag);
-      } else {
-        if (timeoutRef.current) clearTimeout(timeoutRef.current);
-        setFlashMap(diffs);
-        timeoutRef.current = setTimeout(() => {
-          setMatches(displayMatches);
-          setShowingTomorrow(showingTomorrowFlag);
-          setFlashMap({});
-          timeoutRef.current = null;
-        }, FLASH_DURATION);
-      }
-
-      // update prevMatchesRef with full fetched data for future comparisons
-      prevMatchesRef.current = (data || []).reduce((acc, m) => { acc[m.id] = m; return acc; }, {});
+      setMatches(data || []);
     } catch (e) {
       console.error(e);
     } finally {
@@ -155,37 +177,6 @@ export default function Home() {
       setMatchesLoadedOnce(true);
     }
   };
-
-  usePolling(fetchTeams, { minInterval: 5000, maxInterval: 10000, immediate: true });
-  usePolling(fetchMatches, { minInterval: 5000, maxInterval: 10000, immediate: true });
-
-  // Listen for match updates (e.g., when ResultsEditor marks a match finished)
-  useEffect(() => {
-    function onMatchUpdated(e) {
-      const updated = e && e.detail;
-      if (!updated || !updated.id) return;
-      // update prev cache so future diffs include this update
-      prevMatchesRef.current = Object.assign({}, prevMatchesRef.current || {}, { [updated.id]: updated });
-      // Update currently-displayed matches optimistically
-      setMatches((prev) => (prev || []).map(m => (m.id === updated.id ? updated : m)));
-    }
-    window.addEventListener('match-updated', onMatchUpdated);
-    window.addEventListener('match-scores-saved', onMatchUpdated);
-    return () => {
-      window.removeEventListener('match-updated', onMatchUpdated);
-      window.removeEventListener('match-scores-saved', onMatchUpdated);
-    };
-  }, []);
-
-  function getLocalMatchTime(dateStr) {
-    // Try to parse as ISO, fallback to manual conversion
-    let d = new Date(dateStr);
-    if (isNaN(d)) {
-      // If backend sends 'YYYY-MM-DD HH:mm:ss', convert to ISO
-      d = new Date(dateStr.replace(' ', 'T') + '+01:00');
-    }
-    return isNaN(d) ? dateStr : d.toLocaleString();
-  }
 
   function formatTeamName(name) {
     if (!name) return '';
@@ -445,7 +436,19 @@ export default function Home() {
                   e.currentTarget.style.transform = 'translateY(0)';
                 }}
               >
-                {formatTeamName(t.name)}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                  {formatTeamName(t.name)}
+                  {(championMap && championMap[String(Number(t.id))]) && (
+                    <span title={(championMap[String(Number(t.id))] || []).join(', ')} style={{ display: 'inline-flex', alignItems: 'center' }}>
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <path d="M2 7l5 4 4-6 4 6 5-4v11H2V7z" fill="#FFD166" stroke="#D4A017" strokeWidth="0.5" />
+                        <circle cx="7" cy="9" r="1.2" fill="#F4A261" />
+                        <circle cx="12" cy="6" r="1.2" fill="#F4A261" />
+                        <circle cx="17" cy="9" r="1.2" fill="#F4A261" />
+                      </svg>
+                    </span>
+                  )}
+                </div>
               </div>
             ))}
           </div>
