@@ -85,7 +85,7 @@ class MatchAdmin(admin.ModelAdmin):
 	ordering = ('match_date',)
 	# Restore sidebar filters (SeasonCategoryFilter + season)
 	list_filter = (SeasonCategoryFilter, 'season')
-	actions = ['mark_awarded_action']
+	actions = ['mark_awarded_action', 'export_matches_action']
 
 	# (no custom change_list_template)
 
@@ -446,6 +446,30 @@ class MatchAdmin(admin.ModelAdmin):
 			'action_checkbox_name': admin.ACTION_CHECKBOX_NAME,
 		}
 		return TemplateResponse(request, 'admin/league/mark_awarded.html', context)
+
+	def export_matches_action(self, request, queryset):
+		"""Admin action: export selected matches to CSV (downloads as attachment)."""
+		# Only staff can perform admin actions; still, check for safety
+		user = request.user
+		if not (user and getattr(user, 'is_authenticated', False) and user.is_staff):
+			self.message_user(request, 'Export requires staff privileges', level=messages.ERROR)
+			return None
+		# Return a Django fixture JSON that can be imported with `manage.py loaddata`.
+		from django.core import serializers
+		from django.http import HttpResponse
+
+		filename = 'matches_export.json'
+		response = HttpResponse(content_type='application/json')
+		response['Content-Disposition'] = f'attachment; filename="{filename}"'
+
+		# Use Django serializer to produce a list of objects with model, pk, and fields.
+		# Note: we serialize the exact queryset to preserve PKs and relation fields.
+		qs = queryset.select_related('home_team', 'away_team', 'season', 'awarded_to').order_by('matchday', 'match_date')
+		json_data = serializers.serialize('json', qs)
+		response.write(json_data)
+		return response
+
+	export_matches_action.short_description = 'Export selected matches as Django fixture (JSON)'
 
     # NOTE: server-side top-bar filtering removed; sidebar filters are used instead.
 @admin.register(News)

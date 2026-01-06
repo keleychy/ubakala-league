@@ -358,3 +358,79 @@ def move_team(request):
     TeamGroup.objects.filter(team=team, season_id=season_id).delete()
     tg = TeamGroup.objects.create(team=team, group=to_group, season_id=season_id)
     return Response({'success': True, 'team': team.name, 'group': to_group.name})
+
+
+@api_view(['GET'])
+def export_played_matches(request):
+    """Export played matches for a season as CSV attachment.
+
+    Query params:
+      - season: numeric season id (preferred)
+      - season_name: season name fallback
+
+    Only staff users may download exports.
+    """
+    user = request.user
+    if not (user and getattr(user, 'is_authenticated', False) and getattr(user, 'is_staff', False)):
+        return Response({'error': 'staff access required'}, status=403)
+
+    season_param = request.query_params.get('season')
+    season_name = request.query_params.get('season_name')
+    season_obj = None
+    if season_param:
+        try:
+            season_id = int(season_param)
+            from .models import Season
+            season_obj = Season.objects.filter(id=season_id).first()
+        except Exception:
+            season_obj = None
+    elif season_name:
+        from .models import Season
+        season_obj = Season.objects.filter(name__iexact=season_name).first()
+
+    if not season_obj:
+        return Response({'error': 'season not found; provide season or season_name'}, status=400)
+
+    from django.http import HttpResponse
+    import csv
+
+    matches = Match.objects.filter(season=season_obj, is_played=True).select_related('home_team', 'away_team', 'season', 'awarded_to').order_by('matchday', 'match_date')
+
+    # prepare CSV
+    filename = f"matches_played_season_{season_obj.id}.csv"
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+
+    writer = csv.writer(response)
+    header = ['id', 'season_id', 'season_name', 'matchday', 'match_date', 'venue', 'home_team_id', 'home_team_name', 'away_team_id', 'away_team_name', 'home_score', 'away_score', 'penalty_home', 'penalty_away', 'is_played', 'awarded', 'awarded_reason', 'awarded_to_id', 'awarded_to_name', 'manual_finished_at', 'actual_start', 'current_period', 'match_duration_minutes']
+    writer.writerow(header)
+
+    for m in matches:
+        row = [
+            m.id,
+            m.season_id,
+            getattr(m.season, 'name', ''),
+            m.matchday,
+            (m.match_date.isoformat() if m.match_date else ''),
+            m.venue,
+            m.home_team_id,
+            (m.home_team.name if hasattr(m.home_team, 'name') else m.home_team),
+            m.away_team_id,
+            (m.away_team.name if hasattr(m.away_team, 'name') else m.away_team),
+            m.home_score,
+            m.away_score,
+            m.penalty_home,
+            m.penalty_away,
+            m.is_played,
+            getattr(m, 'awarded', False),
+            getattr(m, 'awarded_reason', ''),
+            (m.awarded_to_id if hasattr(m, 'awarded_to_id') else (m.awarded_to.id if m.awarded_to else None)),
+            (m.awarded_to.name if getattr(m, 'awarded_to', None) and getattr(m.awarded_to, 'name', None) else ''),
+            (m.manual_finished_at.isoformat() if m.manual_finished_at else ''),
+            (m.actual_start.isoformat() if m.actual_start else ''),
+            getattr(m, 'current_period', ''),
+            getattr(m, 'match_duration_minutes', ''),
+        ]
+        writer.writerow(row)
+
+    return response
