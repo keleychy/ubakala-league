@@ -706,10 +706,10 @@ const getAwardedName = (match) => {
   }
 
   if (String(awardedTo) === String(match?.home_team_id ?? match?.home_team?.id)) {
-    return getTeamName(match.home_team);
+    return getTeamName(match.home_team_name ?? match.home_team);
   }
   if (String(awardedTo) === String(match?.away_team_id ?? match?.away_team?.id)) {
-    return getTeamName(match.away_team);
+    return getTeamName(match.away_team_name ?? match.away_team);
   }
 
   return String(awardedTo);

@@ -335,10 +335,19 @@ export default function Home() {
                     : match.away_team;
 
                 const homeScore =
-                  match.home_score !== null ? match.home_score : '-';
+                  match.home_score !== null && match.home_score !== undefined
+                    ? match.home_score
+                    : '-';
 
                 const awayScore =
-                  match.away_score !== null ? match.away_score : '-';
+                  match.away_score !== null && match.away_score !== undefined
+                    ? match.away_score
+                    : '-';
+                const homePenalty = match.home_penalties ?? match.penalty_home;
+                const awayPenalty = match.away_penalties ?? match.penalty_away;
+                const hasPenaltyScores =
+                  (homePenalty !== null && homePenalty !== undefined) ||
+                  (awayPenalty !== null && awayPenalty !== undefined);
 
                 const statusCode = getMatchStatusCode(match);
                 const statusLabel = getMatchStatusLabel(match);
@@ -370,7 +379,7 @@ export default function Home() {
                       </span>
                     </div>
 
-                    {match.void && (
+                    {statusCode === 'VOID' && (
                       <div className="home-match-void">Voided match</div>
                     )}
 
@@ -401,16 +410,15 @@ export default function Home() {
                           </span>
                         </div>
 
-                        {(match.penalty_home !== null ||
-                          match.penalty_away !== null) && (
+                        {hasPenaltyScores && (
                             <div className="home-penalty-score">
                               Penalties{' '}
-                              {match.penalty_home !== null
-                                ? match.penalty_home
+                              {homePenalty !== null && homePenalty !== undefined
+                                ? homePenalty
                                 : '-'}{' '}
                               -{' '}
-                              {match.penalty_away !== null
-                                ? match.penalty_away
+                              {awayPenalty !== null && awayPenalty !== undefined
+                                ? awayPenalty
                                 : '-'}
                             </div>
                           )}
