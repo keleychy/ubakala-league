@@ -142,6 +142,128 @@ function getSheetRecords(sheetName) {
 }
 
 /**
+ * Marks eligible scheduled matches as live once their kickoff time has arrived.
+ * Intended to run from an authorized time-driven trigger.
+ */
+function updateScheduledMatchStatuses() {
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(10000)) {
+    console.warn('Match status update skipped because another execution holds the lock');
+    return;
+  }
+
+  try {
+    const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const sheet = spreadsheet.getSheetByName('Matches');
+    if (!sheet) {
+      throw new Error('Matches sheet not found');
+    }
+
+    const lastRow = sheet.getLastRow();
+    const lastColumn = sheet.getLastColumn();
+    if (lastRow < 2 || lastColumn < 1) {
+      return;
+    }
+
+    const rows = sheet.getRange(1, 1, lastRow, lastColumn).getDisplayValues();
+    const headers = rows[0].map(header => header.trim());
+    const requiredHeaders = ['match_date', 'kickoff_time', 'status'];
+    const columnIndexes = {};
+
+    requiredHeaders.forEach(header => {
+      const index = headers.indexOf(header);
+      if (index < 0 || headers.lastIndexOf(header) !== index) {
+        throw new Error('Matches sheet must have one ' + header + ' column');
+      }
+      columnIndexes[header] = index;
+    });
+
+    const now = new Date();
+    const rowsToStart = [];
+
+    rows.slice(1).forEach((row, index) => {
+      const status = String(row[columnIndexes.status] || '').trim().toUpperCase();
+      if (status !== 'PENDING' && status !== 'SCHEDULED') {
+        return;
+      }
+
+      const kickoff = parseMatchKickoff_(row[columnIndexes.match_date], row[columnIndexes.kickoff_time]);
+      if (kickoff && kickoff.getTime() <= now.getTime()) {
+        rowsToStart.push(index + 2);
+      }
+    });
+
+    rowsToStart.forEach(rowNumber => {
+      sheet.getRange(rowNumber, columnIndexes.status + 1).setValue('LIVE');
+    });
+
+    Logger.log('Marked ' + rowsToStart.length + ' scheduled match(es) as LIVE');
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/**
+ * Creates a one-minute trigger without duplicating an existing updater trigger.
+ */
+function installMatchStatusTrigger() {
+  const existingTriggers = ScriptApp.getProjectTriggers().filter(
+    trigger => trigger.getHandlerFunction() === 'updateScheduledMatchStatuses'
+  );
+
+  if (existingTriggers.length > 0) {
+    Logger.log('Match status updater trigger already exists');
+    return;
+  }
+
+  ScriptApp.newTrigger('updateScheduledMatchStatuses')
+    .timeBased()
+    .everyMinutes(1)
+    .create();
+}
+
+function parseMatchKickoff_(dateValue, timeValue) {
+  const date = String(dateValue || '').trim();
+  const time = String(timeValue || '').trim();
+  const dateMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
+  const timeMatch = /^(\d{1,2}):(\d{2})(?::(\d{2}))?$/.exec(time);
+
+  if (!dateMatch || !timeMatch) {
+    return null;
+  }
+
+  const hours = Number(timeMatch[1]);
+  const minutes = Number(timeMatch[2]);
+  const seconds = Number(timeMatch[3] || 0);
+  if (hours > 23 || minutes > 59 || seconds > 59) {
+    return null;
+  }
+
+  const timezone = 'Africa/Lagos';
+  const datePattern = 'yyyy-MM-dd';
+  const dateValueParsed = Utilities.parseDate(date, timezone, datePattern);
+  if (Utilities.formatDate(dateValueParsed, timezone, datePattern) !== date) {
+    return null;
+  }
+
+  const normalizedTime =
+    String(hours).padStart(2, '0') + ':' +
+    String(minutes).padStart(2, '0') + ':' +
+    String(seconds).padStart(2, '0');
+  const kickoffPattern = 'yyyy-MM-dd HH:mm:ss';
+  const kickoff = Utilities.parseDate(
+    date + ' ' + normalizedTime,
+    timezone,
+    kickoffPattern
+  );
+
+  return Utilities.formatDate(kickoff, timezone, kickoffPattern) ===
+    date + ' ' + normalizedTime
+    ? kickoff
+    : null;
+}
+
+/**
  * Read-only API router.
  */
 function handleApiGet(parameters) {
