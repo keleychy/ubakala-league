@@ -5,6 +5,18 @@ import { Link, useNavigate } from 'react-router-dom';
 import './Results.css';
 import './Home.css';
 import usePolling from '../utils/usePolling';
+import {
+  formatMatchSchedule,
+  getMatchPeriodLabel,
+  getLagosDateKey,
+  getMatchDateKey,
+  getMatchStageLabel,
+  getMatchStatusCode,
+  getMatchStatusLabel,
+  isFinalMatch,
+  PUBLIC_CATEGORIES,
+  shiftDateKey
+} from '../utils/competition';
 
 export default function Home() {
   const [teams, setTeams] = useState([]);
@@ -21,98 +33,21 @@ export default function Home() {
   const timeoutRef = useRef(null);
   const FLASH_DURATION = 800;
 
-  const [now, setNow] = useState(Date.now());
-
-  useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(t);
-  }, []);
-
-  function formatCountdown(ms) {
-    if (ms <= 0) return '0:00';
-    const totalSeconds = Math.ceil(ms / 1000);
-    const m = Math.floor(totalSeconds / 60);
-    const s = totalSeconds % 60;
-    return `${m}:${String(s).padStart(2, '0')}`;
-  }
-
-  function getMatchLiveStatus(match) {
-    if (match.is_played) {
-      return { status: 'ended', label: 'Match ended' };
-    }
-
-    const kickoff = new Date(match.match_date);
-    if (isNaN(kickoff)) {
-      return { status: 'Unknown', label: 'Match time unknown' };
-    }
-
-    const elapsedMin = (now - kickoff.getTime()) / 60000;
-    const FIRST_HALF = 45;
-    const HALF_BREAK = 15;
-    const SECOND_HALF_TOTAL = 45;
-    const TOTAL_WITH_BREAK = FIRST_HALF + HALF_BREAK + SECOND_HALF_TOTAL;
-
-    if (elapsedMin < 0) {
-      return { status: 'not_started', label: 'Match not started' };
-    }
-
-    if (elapsedMin < FIRST_HALF) {
-      const minute = Math.min(FIRST_HALF, Math.floor(elapsedMin) + 1);
-      return {
-        status: '1st_half',
-        label: `Match ongoing • ${minute}' (1st half)`
-      };
-    }
-
-    if (elapsedMin < FIRST_HALF + HALF_BREAK) {
-      const remainingMs =
-        (FIRST_HALF + HALF_BREAK) * 60000 -
-        (now - kickoff.getTime());
-
-      return {
-        status: 'halftime',
-        label: `Half time break • ${formatCountdown(remainingMs)} remaining`
-      };
-    }
-
-    if (elapsedMin < TOTAL_WITH_BREAK) {
-      const secondElapsed = elapsedMin - HALF_BREAK;
-      const minute = Math.min(90, Math.floor(secondElapsed) + 1);
-
-      return {
-        status: '2nd_half',
-        label: `Match ongoing • ${minute}' (2nd half)`
-      };
-    }
-
-    return { status: 'ended', label: 'Match ended' };
-  }
-
-  const PERIOD_LABELS = {
-    not_started: 'Not started',
-    '1st_half': '1st Half',
-    halftime: 'Half Time',
-    '2nd_half': '2nd Half',
-    ended: 'Ended'
-  };
-
   useEffect(() => {
     return () => {
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
   }, []);
 
-  // Retain existing champion detection for the three supported categories.
   useEffect(() => {
     let mounted = true;
 
     async function loadChampions() {
       try {
-        const categories = ['senior_boys', 'girls', 'junior_boys'];
         const map = {};
 
         await Promise.all(
-          categories.map(async (cat) => {
+          PUBLIC_CATEGORIES.map(async ({ value: cat, label }) => {
             try {
               const seasons = await api.getSeasons(cat);
               if (!seasons || seasons.length === 0) return;
@@ -124,31 +59,7 @@ export default function Home() {
 
               if (!seasonMatches || seasonMatches.length === 0) return;
 
-              let finalCandidates = seasonMatches.filter(
-                (m) => Number(m.matchday) === 29
-              );
-
-              if (finalCandidates.length === 0) {
-                const allMd = Array.from(
-                  new Set(
-                    seasonMatches
-                      .map((m) =>
-                        m.matchday !== undefined && m.matchday !== null
-                          ? Number(m.matchday)
-                          : null
-                      )
-                      .filter((x) => x !== null)
-                  )
-                ).sort((a, b) => a - b);
-
-                if (allMd.length === 0) return;
-
-                const finalDay = allMd[allMd.length - 1];
-
-                finalCandidates = seasonMatches.filter(
-                  (m) => Number(m.matchday) === finalDay
-                );
-              }
+              const finalCandidates = seasonMatches.filter(isFinalMatch);
 
               const finalMatch =
                 finalCandidates.find(
@@ -189,14 +100,7 @@ export default function Home() {
               }
 
               if (winnerId) {
-                const id = Number(winnerId);
-                const labelMap = {
-                  senior_boys: 'Senior Boys',
-                  girls: 'Girls',
-                  junior_boys: 'Junior Boys'
-                };
-                const label = labelMap[cat] || cat;
-
+                const id = String(winnerId);
                 map[id] = map[id] || [];
 
                 if (!map[id].includes(label)) {
@@ -242,26 +146,18 @@ export default function Home() {
     try {
       const data = await api.getMatches();
 
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-
-      const tomorrow = new Date(today);
-      tomorrow.setDate(tomorrow.getDate() + 1);
-
-      const dayAfter = new Date(tomorrow);
-      dayAfter.setDate(dayAfter.getDate() + 1);
+      const today = getLagosDateKey();
+      const tomorrow = shiftDateKey(today, 1);
+      const dayAfter = shiftDateKey(today, 2);
 
       const todayMatches = (data || [])
-        .filter((match) => {
-          const matchDate = new Date(match.match_date);
-          return matchDate >= today && matchDate < tomorrow;
-        })
+        .filter(match => getMatchDateKey(match) === today)
         .slice(0, 3);
 
       const tomorrowMatches = (data || [])
-        .filter((match) => {
-          const matchDate = new Date(match.match_date);
-          return matchDate >= tomorrow && matchDate < dayAfter;
+        .filter(match => {
+          const dateKey = getMatchDateKey(match);
+          return dateKey && dateKey >= tomorrow && dateKey < dayAfter;
         })
         .slice(0, 3);
 
@@ -351,16 +247,6 @@ export default function Home() {
     };
   }, []);
 
-  function getLocalMatchTime(dateStr) {
-    let d = new Date(dateStr);
-
-    if (isNaN(d)) {
-      d = new Date(dateStr.replace(' ', 'T') + '+01:00');
-    }
-
-    return isNaN(d) ? dateStr : d.toLocaleString();
-  }
-
   function formatTeamName(name) {
     if (!name) return '';
 
@@ -372,7 +258,8 @@ export default function Home() {
   const championColors = {
     'Senior Boys': '#bd913b',
     Girls: '#b44c79',
-    'Junior Boys': '#287d91'
+    'Junior Boys': '#287d91',
+    Intermediate: '#5166b3'
   };
 
   return (
@@ -453,7 +340,11 @@ export default function Home() {
                 const awayScore =
                   match.away_score !== null ? match.away_score : '-';
 
-                const stat = getMatchLiveStatus(match);
+                const statusCode = getMatchStatusCode(match);
+                const statusLabel = getMatchStatusLabel(match);
+                const periodLabel = statusCode === 'LIVE'
+                  ? getMatchPeriodLabel(match)
+                  : null;
 
                 return (
                   <article
@@ -475,7 +366,7 @@ export default function Home() {
                         {match.season?.name || 'League Match'}
                       </span>
                       <span className="home-match-stage">
-                        {match.match_stage || 'Match'}
+                        {getMatchStageLabel(match)}
                       </span>
                     </div>
 
@@ -536,16 +427,15 @@ export default function Home() {
                     <div className="home-match-status-row">
                       <span
                         className={`home-status-badge home-status-${String(
-                          stat.status
+                          statusCode || 'unknown'
                         ).replace(/[^a-zA-Z0-9_-]/g, '')}`}
                       >
-                        {stat.label}
+                        {statusLabel}
                       </span>
 
-                      {match.current_period && (
+                      {periodLabel && (
                         <span className="home-period-badge">
-                          {PERIOD_LABELS[match.current_period] ||
-                            match.current_period}
+                          {periodLabel}
                         </span>
                       )}
                     </div>
@@ -553,7 +443,7 @@ export default function Home() {
                     <div className="home-match-details">
                       <div className="home-match-detail">
                         <span className="home-detail-label">DATE &amp; TIME</span>
-                        <span>{getLocalMatchTime(match.match_date)}</span>
+                        <span>{formatMatchSchedule(match)}</span>
                       </div>
 
                       {match.venue && (
@@ -564,9 +454,9 @@ export default function Home() {
                       )}
                     </div>
 
-                    {match.is_played && (
+                    {statusCode === 'FINISHED' && (
                       <div className="home-completed-label">
-                        <span aria-hidden="true">✓</span> Match completed
+                        <span aria-hidden="true">✓</span> Full Time
                       </div>
                     )}
 
@@ -634,9 +524,9 @@ export default function Home() {
                     {formatTeamName(t.name)}
                   </div>
 
-                  {championMap[Number(t.id)]?.length > 0 && (
+                  {championMap[String(t.id)]?.length > 0 && (
                     <div className="home-team-champions">
-                      {championMap[Number(t.id)].map((label, i) => (
+                      {championMap[String(t.id)].map((label, i) => (
                         <span
                           key={i}
                           className="home-champion-badge"

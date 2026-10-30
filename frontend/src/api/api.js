@@ -1,8 +1,23 @@
 // api.js
 
+import { createAppsScriptApi } from './appsScriptApi';
+
 const defaultRemote = 'https://ubakalaunitycup.onrender.com/api';
 const API_URL = process.env.REACT_APP_API_URL || defaultRemote;
 export { API_URL };
+
+export const isAppsScriptReadApiEnabled = () =>
+  process.env.REACT_APP_API_PROVIDER === 'apps-script';
+
+let appsScriptApiInstance;
+
+function getAppsScriptApi() {
+  if (!isAppsScriptReadApiEnabled()) return null;
+  if (!appsScriptApiInstance) {
+    appsScriptApiInstance = createAppsScriptApi(process.env.REACT_APP_APPS_SCRIPT_API_URL);
+  }
+  return appsScriptApiInstance;
+}
 
 function buildUrl(path) {
   const base = API_URL.endsWith('/') ? API_URL.slice(0, -1) : API_URL;
@@ -20,9 +35,14 @@ export async function fetchJSON(path) {
 }
 
 export const api = {
-  getTeams: () => fetchJSON('/teams/'),
-  // getMatches accepts an optional params object, e.g. { season: 1 } or { season_name: '2025 JUNIOR BOYS CUP' }
+  getTeams: () => {
+    const appsScriptApi = getAppsScriptApi();
+    return appsScriptApi ? appsScriptApi.getTeams() : fetchJSON('/teams/');
+  },
   getMatches: (params) => {
+    const appsScriptApi = getAppsScriptApi();
+    if (appsScriptApi) return appsScriptApi.getMatches(params);
+
     let q = '';
     if (params && typeof params === 'object') {
       const parts = Object.entries(params).map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`);
@@ -30,20 +50,41 @@ export const api = {
     }
     return fetchJSON(`/matches/${q}`);
   },
-  // optionally pass a category string: 'girls' | 'senior_boys' | 'junior_boys'
   getSeasons: (category) => {
+    const appsScriptApi = getAppsScriptApi();
+    if (appsScriptApi) return appsScriptApi.getSeasons(category);
+
     const q = category ? `?category=${encodeURIComponent(category)}` : '';
     return fetchJSON(`/seasons/${q}`);
   },
-  getNews: () => fetchJSON('/news/'),
-  getNewsById: (id) => fetchJSON(`/news/${id}/`),
-  getStandings: (seasonId) => fetchJSON(`/standings/${seasonId}/`),
-  getGroupsWithTeams: (seasonId) => fetchJSON(`/groups-with-teams/?season=${seasonId}`),
-  // optionally pass a category string (girls|senior_boys|junior_boys)
+  getNews: () => {
+    const appsScriptApi = getAppsScriptApi();
+    return appsScriptApi ? appsScriptApi.getNews() : fetchJSON('/news/');
+  },
+  getNewsById: (id) => {
+    const appsScriptApi = getAppsScriptApi();
+    return appsScriptApi
+      ? appsScriptApi.getNewsById(id)
+      : fetchJSON(`/news/${id}/`);
+  },
+  getStandings: (seasonId) => {
+    if (isAppsScriptReadApiEnabled()) {
+      throw new Error('Standings are not available from the Apps Script read API');
+    }
+    return fetchJSON(`/standings/${seasonId}/`);
+  },
+  getGroupsWithTeams: (seasonId) => {
+    const appsScriptApi = getAppsScriptApi();
+    return appsScriptApi
+      ? appsScriptApi.getGroupsWithTeams(seasonId)
+      : fetchJSON(`/groups-with-teams/?season=${seasonId}`);
+  },
   getGroupedStandings: (seasonId, category) => {
+    if (isAppsScriptReadApiEnabled()) {
+      throw new Error('Server-calculated standings are not available from the Apps Script read API');
+    }
     const qSeason = `season=${encodeURIComponent(seasonId)}`;
     const qCat = category ? `&category=${encodeURIComponent(category)}` : '';
     return fetchJSON(`/grouped-standings/?${qSeason}${qCat}`);
   },
 };
-

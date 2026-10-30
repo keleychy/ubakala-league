@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import './LeaguePolish.css';
 
 function getAuthHeaders() {
   const token = localStorage.getItem('access');
@@ -119,71 +120,62 @@ export default function AdminDashboard() {
   };
 
   return (
-    <div style={{ position: 'relative', minHeight: '60vh', padding: '28px', background: '#f7f9ff' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 18 }}>
-        <div>
-          <h1 style={{ margin: 0, fontSize: 28, color: '#0f172a' }}>Admin Dashboard</h1>
-          <p style={{ margin: '6px 0 0 0', color: '#475569' }}>Manage site content, results and uploads</p>
-        </div>
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-          <div style={{ textAlign: 'right', color: '#374151', fontSize: 14 }}>
-            <div style={{ fontWeight: 700 }}>{username}</div>
-            <div style={{ color: '#6b7280', fontSize: 12 }}>{userRole || 'user'}</div>
+    <div className="league-polish-page">
+      <div className="league-polish-content">
+        <header className="league-page-header league-dashboard-header">
+          <div className="league-page-header__copy">
+            <div className="league-page-eyebrow">Administration</div>
+            <h1 className="league-page-title">Admin Dashboard</h1>
+            <p className="league-page-subtitle">Manage site content, results and uploads</p>
           </div>
-          <button onClick={handleLogout} style={{
-            background: 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)',
-            color: 'white',
-            border: 'none',
-            padding: '10px 16px',
-            borderRadius: '8px',
-            fontWeight: '600',
-            fontSize: '14px',
-            cursor: 'pointer',
-            transition: 'all 0.3s ease'
-          }}>🚪 Logout</button>
-        </div>
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16, marginBottom: 20 }}>
-        <Link to="/results-editor" style={{ textDecoration: 'none' }}>
-          <div style={{ background: 'white', padding: 18, borderRadius: 12, border: '1px solid rgba(99,102,241,0.08)', boxShadow: '0 6px 18px rgba(99,102,241,0.06)', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+          <div className="league-dashboard-user">
             <div>
-              <div style={{ fontSize: 20, fontWeight: 800, color: '#0f172a' }}>Results Editor</div>
-              <div style={{ marginTop: 8, color: '#6b7280' }}>Quickly update match scores and publish results.</div>
+              <div style={{ fontWeight: 700 }}>{username}</div>
+              <div style={{ color: 'rgba(235, 242, 251, .75)', fontSize: 12 }}>{userRole || 'user'}</div>
             </div>
-            <div style={{ marginTop: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ fontSize: 12, color: '#94a3b8' }}>Access: ResultsEditor</div>
-              <button style={{ background: 'linear-gradient(90deg,#2563eb,#7c3aed)', color: 'white', border: 'none', padding: '8px 12px', borderRadius: 8, fontWeight: 700 }}>Open</button>
-            </div>
+            <button onClick={handleLogout} className="league-button-danger">Logout</button>
           </div>
-        </Link>
+        </header>
 
-        <Link to="/news-uploader" style={{ textDecoration: 'none' }}>
-          <div style={{ background: 'white', padding: 18, borderRadius: 12, border: '1px solid rgba(16,185,129,0.06)', boxShadow: '0 6px 18px rgba(16,185,129,0.04)', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-            <div>
-              <div style={{ fontSize: 20, fontWeight: 800, color: '#0f172a' }}>News Uploader</div>
-              <div style={{ marginTop: 8, color: '#6b7280' }}>Publish announcements and match reports.</div>
+        <div className="league-dashboard-grid">
+          <Link to="/results-editor" className="league-dashboard-link">
+            <div className="league-dashboard-card">
+              <div>
+                <div className="league-dashboard-card__title">Results Editor</div>
+                <div className="league-dashboard-card__description">Quickly update match scores and publish results.</div>
+              </div>
+              <div style={{ marginTop: 16, color: 'var(--league-blue)', fontSize: 12, fontWeight: 700 }}>
+                Open results editor <span aria-hidden="true">→</span>
+              </div>
             </div>
-            <div style={{ marginTop: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ fontSize: 12, color: '#94a3b8' }}>Access: NewsUploader</div>
-              <button style={{ background: 'linear-gradient(90deg,#10b981,#06b6d4)', color: 'white', border: 'none', padding: '8px 12px', borderRadius: 8, fontWeight: 700 }}>Open</button>
+          </Link>
+
+          <Link to="/news-uploader" className="league-dashboard-link">
+            <div className="league-dashboard-card">
+              <div>
+                <div className="league-dashboard-card__title">News Uploader</div>
+                <div className="league-dashboard-card__description">Publish announcements and match reports.</div>
+              </div>
+              <div style={{ marginTop: 16, color: 'var(--league-blue)', fontSize: 12, fontWeight: 700 }}>
+                Open news manager <span aria-hidden="true">→</span>
+              </div>
             </div>
-          </div>
-        </Link>
+          </Link>
 
-        <Link to="/upload-teams" style={{ textDecoration: 'none' }}>
-          <div style={{ background: 'white', padding: 18, borderRadius: 12, border: '1px solid rgba(99,102,241,0.04)', boxShadow: '0 4px 12px rgba(2,6,23,0.04)', height: '100%' }}>
-            <div style={{ fontSize: 18, fontWeight: 700, color: '#0f172a' }}>Upload Teams</div>
-            <div style={{ marginTop: 8, color: '#6b7280' }}>CSV import and bulk team management.</div>
-          </div>
-        </Link>
+          <Link to="/upload-teams" className="league-dashboard-link">
+            <div className="league-dashboard-card">
+              <div className="league-dashboard-card__title">Upload Teams</div>
+              <div className="league-dashboard-card__description">CSV import and bulk team management.</div>
+            </div>
+          </Link>
 
-        <Link to="/add-team-manual" style={{ textDecoration: 'none' }}>
-          <div style={{ background: 'white', padding: 18, borderRadius: 12, border: '1px solid rgba(99,102,241,0.04)', boxShadow: '0 4px 12px rgba(2,6,23,0.04)', height: '100%' }}>
-            <div style={{ fontSize: 18, fontWeight: 700, color: '#0f172a' }}>Add Team</div>
-            <div style={{ marginTop: 8, color: '#6b7280' }}>Create a single team manually.</div>
-          </div>
-        </Link>
+          <Link to="/add-team-manual" className="league-dashboard-link">
+            <div className="league-dashboard-card">
+              <div className="league-dashboard-card__title">Add Team</div>
+              <div className="league-dashboard-card__description">Create a single team manually.</div>
+            </div>
+          </Link>
+        </div>
       </div>
       {/* Session Warning Modal */}
       {sessionWarning && (
@@ -280,4 +272,3 @@ export default function AdminDashboard() {
     </div>
   );
 }
-

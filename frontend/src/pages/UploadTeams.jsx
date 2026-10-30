@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
+import './LeaguePolish.css';
 
 const UploadTeams = () => {
   const [file, setFile] = useState(null);
@@ -34,19 +35,30 @@ const UploadTeams = () => {
   };
 
   return (
-    <div style={{ maxWidth: 500, margin: '2rem auto', padding: '2rem', border: '1px solid #ccc', borderRadius: 8 }}>
-      <h2>Upload Teams Excel</h2>
-      <form onSubmit={handleSubmit}>
-        <input type="file" accept=".xlsx,.xls" onChange={handleFileChange} />
-        <button type="submit" disabled={loading || !file} style={{ marginLeft: 10 }}>
+    <div className="league-polish-page">
+      <main className="league-polish-content">
+        <header className="league-page-header">
+          <div className="league-page-header__copy">
+            <div className="league-page-eyebrow">Team administration</div>
+            <h1 className="league-page-title">Upload Teams</h1>
+            <p className="league-page-subtitle">Import team records using the competition spreadsheet format.</p>
+          </div>
+        </header>
+      <section className="league-page-panel">
+      <form onSubmit={handleSubmit} className="league-page-form">
+        <label className="league-page-field">
+          Excel file
+          <input className="league-upload-file" type="file" accept=".xlsx,.xls" onChange={handleFileChange} />
+        </label>
+        <button type="submit" disabled={loading || !file}>
           {loading ? 'Uploading...' : 'Upload'}
         </button>
       </form>
-      {error && <div style={{ color: 'red', marginTop: 10 }}>{error}</div>}
+      {error && <div className="league-page-status league-page-status--error">{error}</div>}
       {results && (
-        <div style={{ marginTop: 20 }}>
-          <h4>Import Results:</h4>
-          <ul>
+        <div style={{ marginTop: 22 }}>
+          <h2 style={{ margin: '0 0 12px', color: 'var(--league-navy)', fontSize: 17 }}>Import results</h2>
+          <ul style={{ display: 'grid', gap: 8, paddingLeft: 20 }}>
             {results.map((r, i) => (
               <li key={i}>
                 {r.team}: {r.status} {r.reason ? `(${r.reason})` : ''}
@@ -55,9 +67,11 @@ const UploadTeams = () => {
           </ul>
         </div>
       )}
-      <div style={{ marginTop: 20, fontSize: 14, color: '#555' }}>
+      <div style={{ marginTop: 22, padding: 14, borderRadius: 9, background: '#f5f8fc', color: 'var(--league-muted)', fontSize: 13, lineHeight: 1.6 }}>
         <strong>Excel columns required:</strong> Team Name, Category, Season, Group
       </div>
+      </section>
+      </main>
     </div>
   );
 };

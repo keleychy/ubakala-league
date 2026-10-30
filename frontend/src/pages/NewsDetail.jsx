@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import ShareBar from '../components/ShareBar';
 import { api } from '../api/api';
+import './LeaguePolish.css';
 
 function formatDate(iso) {
     try {
@@ -34,46 +35,50 @@ export default function NewsDetail() {
         return () => { mounted = false; };
     }, [id]);
 
-    if (loading) return <div style={{ padding: 40 }}>Loading…</div>;
-    if (error) return <div style={{ padding: 40, color: '#b91c1c' }}>Error: {error}</div>;
-    if (!item) return <div style={{ padding: 40 }}>Not found</div>;
+    if (loading) return <div className="league-polish-page"><main className="league-polish-content"><div className="league-page-empty">Loading news…</div></main></div>;
+    if (error) return <div className="league-polish-page"><main className="league-polish-content"><div className="league-page-status league-page-status--error">Error: {error}</div></main></div>;
+    if (!item) return <div className="league-polish-page"><main className="league-polish-content"><div className="league-page-empty">News article not found.</div></main></div>;
 
     const imgSrc = item.image_url && item.image_url.length ? item.image_url : '/favicon.ico';
 
     return (
-        <div style={{ padding: '40px 20px', maxWidth: 1100, margin: '0 auto' }}>
-            <button onClick={() => nav(-1)} style={{ marginBottom: 16, background: 'transparent', border: 'none', color: '#1e3c72', cursor: 'pointer' }}>← Back</button>
+        <div className="league-polish-page">
+          <main className="league-polish-content">
+            <button onClick={() => nav(-1)} className="league-button-secondary" style={{ marginBottom: 16 }}>← Back to news</button>
 
-            <article style={{ background: '#fbfdff', padding: 28, borderRadius: 20, border: '1px solid rgba(15,23,42,0.04)', boxShadow: '0 8px 30px rgba(2,6,23,0.04)' }}>
+            <article className="league-page-panel" style={{ padding: 0, overflow: 'hidden' }}>
                 <header>
                     <style>{`
-                        .news-header { display: flex; flex-direction: column; gap: 10px; margin-bottom: 18px; }
-                        @media(min-width: 720px) { .news-header { flex-direction: row; justify-content: space-between; align-items: flex-start; } }
-                        .news-meta { color: #516272; font-size: 14px; }
-                        .news-subtitle { color: #667085; font-size: 15px; margin-bottom: 0; }
-                        .news-title { color: #0b1220; margin: 0 0 6px; font-size: 28px; line-height: 1.12; font-weight: 700; }
+                        .news-header { display: flex; flex-direction: column; gap: 16px; }
+                        @media(min-width: 720px) { .news-header { flex-direction: row; justify-content: space-between; align-items: center; } }
+                        .news-meta { color: rgba(235, 242, 251, .78); font-size: 13px; margin-top: 12px; }
+                        .news-subtitle { color: rgba(235, 242, 251, .86); font-size: 15px; margin-top: 8px; }
+                        .news-title { color: #fff; margin: 0; font-size: clamp(25px, 3.2vw, 35px); line-height: 1.18; font-weight: 800; letter-spacing: -.5px; }
                     `}</style>
 
-                    <div style={{ borderRadius: 18, padding: 16, background: '#ffffff', border: '1px solid rgba(15,23,42,0.03)', boxShadow: '0 6px 22px rgba(2,6,23,0.04)' }}>
+                    <div className="league-page-header" style={{ margin: 0, border: 0, borderRadius: 0 }}>
                         <div className="news-header" style={{ alignItems: 'center' }}>
                             <div style={{ flex: 1, minWidth: 0 }}>
+                                <div className="league-page-eyebrow">From the league</div>
                                 <h1 className="news-title">{item.title}</h1>
                                 {item.subtitle && <div className="news-subtitle">{item.subtitle}</div>}
-                                <div className="news-meta">{item.author || 'Unknown'} • {formatDate(item.published_at)}</div>
+                                <div className="news-meta">
+                                    {item.author || 'Unknown'}
+                                    {item.created_at ? ` • Posted ${formatDate(item.created_at)}` : ''}
+                                </div>
                             </div>
 
-                            <div style={{ marginLeft: 16, display: 'flex', alignItems: 'center' }}>
-                                <div style={{ background: '#f1f5f9', padding: '6px 8px', borderRadius: 12, border: '1px solid rgba(2,6,23,0.04)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center' }}>
+                                <div style={{ background: 'rgba(255,255,255,.1)', padding: '6px 8px', borderRadius: 10, border: '1px solid rgba(255,255,255,.18)' }}>
                                     <ShareBar url={window.location.href} title={item.title} />
                                 </div>
                             </div>
                         </div>
-                        <div style={{ height: 1, background: 'rgba(15,23,42,0.04)', marginTop: 16, borderRadius: 1 }} />
                     </div>
                 </header>
 
                 {/* Responsive layout: image above content on small screens, side-by-side on wide screens */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 20 }} className="news-grid">
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 20, padding: '24px clamp(18px, 4vw, 36px) 32px' }} className="news-grid">
                     <div style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
                         <img
                             src={imgSrc}
@@ -101,6 +106,7 @@ export default function NewsDetail() {
                     </div>
                 </div>
             </article>
+          </main>
         </div>
     );
 }

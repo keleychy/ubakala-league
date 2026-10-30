@@ -1,16 +1,39 @@
+
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { api } from '../api/api';
 import './Bracket.css';
 import './Results.css';
 import usePolling from '../utils/usePolling';
+import {
+    getMatchStageLabel,
+    getMatchesForStage,
+    PUBLIC_CATEGORIES
+} from '../utils/competition';
 
-// Helper: group matches by matchday
-const getMatchesByDay = (matches, md) => matches.filter(m => Number(m.matchday) === md || Number(m.matchday) === Number(md));
-
-// Helper: detect placeholder team tokens like WINNER MD22, LOSER etc.
+// Detect placeholder team tokens like WINNER MD22, LOSER, etc.
 const isPlaceholder = (teamName) => {
     if (!teamName) return false;
     return /WINNER|LOSER/i.test(teamName);
+};
+
+const renderBracketTeam = (teamValue, match) => {
+    const name = typeof teamValue === 'object' ? teamValue?.name : teamValue;
+
+    if (!name) {
+        return <span className="br-tbd">— TBD —</span>;
+    }
+
+    if (!isPlaceholder(name)) return name;
+
+    const descriptor = /WINNER/i.test(name)
+        ? 'Winner'
+        : (/LOSER/i.test(name) ? 'Loser' : 'TBD');
+
+    return (
+        <span className="placeholder-pill">
+            {descriptor} — {getMatchStageLabel(match)}
+        </span>
+    );
 };
 
 export default function Bracket() {
@@ -19,6 +42,7 @@ export default function Bracket() {
     const prevMatchesRef = useRef({});
     const timeoutRef = useRef(null);
     const FLASH_DURATION = 800;
+
     const [seasons, setSeasons] = useState([]);
     const [selectedSeason, setSelectedSeason] = useState(null);
     const [seasonsLoading, setSeasonsLoading] = useState(true);
@@ -26,19 +50,26 @@ export default function Bracket() {
     const [category, setCategory] = useState('senior_boys');
     const [seasonsLoadedOnce, setSeasonsLoadedOnce] = useState(false);
     const [matchesLoadedOnce, setMatchesLoadedOnce] = useState(false);
+
     const containerRef = useRef(null);
     const boxRefs = useRef({});
     const svgRef = useRef(null);
     const [connectors, setConnectors] = useState([]);
 
-    // Poll seasons (category may change) so dropdown stays current
+    // Poll seasons so the dropdown stays current.
     const fetchSeasons = useCallback(async () => {
         if (!seasonsLoadedOnce) setSeasonsLoading(true);
+
         try {
             const s = await api.getSeasons(category);
+
             setSeasons(s || []);
-            if (s && s.length) setSelectedSeason((prev) => prev || s[0].id);
-            else setSelectedSeason(null);
+
+            if (s && s.length) {
+                setSelectedSeason(prev => prev || String(s[0].id));
+            } else {
+                setSelectedSeason(null);
+            }
         } catch (e) {
             console.error(e);
         } finally {
@@ -46,41 +77,59 @@ export default function Bracket() {
             setSeasonsLoadedOnce(true);
         }
     }, [category, seasonsLoadedOnce]);
-    usePolling(fetchSeasons, { minInterval: 7000, maxInterval: 12000, immediate: true });
 
-    // When category changes, immediately refresh seasons and clear matches state
+    usePolling(fetchSeasons, {
+        minInterval: 7000,
+        maxInterval: 12000,
+        immediate: true
+    });
+
+    // Refresh seasons and clear matches when category changes.
     useEffect(() => {
         setSeasonsLoadedOnce(false);
         setSeasons([]);
         setSelectedSeason(null);
         setMatches([]);
         setMatchesLoadedOnce(false);
-        // immediate fetch
+
         fetchSeasons();
     }, [category, fetchSeasons]);
 
     const fetchMatchesForSeason = useCallback(async () => {
         if (!selectedSeason) return;
+
         if (!matchesLoadedOnce) setMatchesLoading(true);
+
         try {
             const m = await api.getMatches({ season: selectedSeason });
-            // detect diffs between prev and incoming matches for bracket display
+
+            // Detect score changes for the score flash animation.
             const prev = prevMatchesRef.current || {};
             const diffs = {};
+
             (m || []).forEach((mm) => {
                 const old = prev[mm.id];
                 if (!old) return;
+
                 const changed = {};
+
                 if (mm.home_score !== old.home_score) changed.home = true;
                 if (mm.away_score !== old.away_score) changed.away = true;
-                if (Object.keys(changed).length > 0) diffs[mm.id] = changed;
+
+                if (Object.keys(changed).length > 0) {
+                    diffs[mm.id] = changed;
+                }
             });
 
             if (Object.keys(diffs).length === 0) {
                 setMatches(m || []);
             } else {
-                if (timeoutRef.current) clearTimeout(timeoutRef.current);
+                if (timeoutRef.current) {
+                    clearTimeout(timeoutRef.current);
+                }
+
                 setFlashMap(diffs);
+
                 timeoutRef.current = setTimeout(() => {
                     setMatches(m || []);
                     setFlashMap({});
@@ -88,7 +137,10 @@ export default function Bracket() {
                 }, FLASH_DURATION);
             }
 
-            prevMatchesRef.current = (m || []).reduce((acc, mm) => { acc[mm.id] = mm; return acc; }, {});
+            prevMatchesRef.current = (m || []).reduce((acc, mm) => {
+                acc[mm.id] = mm;
+                return acc;
+            }, {});
         } catch (e) {
             console.error(e);
         } finally {
@@ -97,12 +149,16 @@ export default function Bracket() {
         }
     }, [selectedSeason, matchesLoadedOnce]);
 
-    usePolling(fetchMatchesForSeason, { minInterval: 5000, maxInterval: 10000, immediate: true });
+    usePolling(fetchMatchesForSeason, {
+        minInterval: 5000,
+        maxInterval: 10000,
+        immediate: true
+    });
 
-    // Fetch matches immediately when selectedSeason changes (so UI updates without waiting for next poll)
+    // Fetch matches immediately when the selected season changes.
     useEffect(() => {
         if (!selectedSeason) return;
-        // reset match load flags so loading indicator shows on first load
+
         setMatchesLoadedOnce(false);
         setMatches([]);
         fetchMatchesForSeason();
@@ -114,152 +170,163 @@ export default function Bracket() {
         };
     }, []);
 
-    // Build connectors once matches are loaded and on resize
+    // Build bracket connectors after rendering and on resize.
     useEffect(() => {
         const build = () => {
             const container = containerRef.current;
             if (!container) return;
-            const rect = container.getBoundingClientRect();
 
-            // collect boxes positions
+            const rect = container.getBoundingClientRect();
             const pos = {};
+
             Object.entries(boxRefs.current).forEach(([id, el]) => {
                 if (!el) return;
+
                 const r = el.getBoundingClientRect();
+
                 pos[id] = {
                     x: r.left - rect.left + r.width / 2,
                     y: r.top - rect.top + r.height / 2,
                 };
             });
 
-            // helper to create path between centers (bezier)
             const createPath = (from, to) => {
                 const dx = Math.max(40, (to.x - from.x) / 2);
+
                 return `M ${from.x} ${from.y} C ${from.x + dx} ${from.y} ${to.x - dx} ${to.y} ${to.x} ${to.y}`;
             };
 
-            // Determine logical match groups
-            let qf = [...getMatchesByDay(matches, 22), ...getMatchesByDay(matches, 23), ...getMatchesByDay(matches, 24), ...getMatchesByDay(matches, 25)];
-            let sf = [...getMatchesByDay(matches, 26), ...getMatchesByDay(matches, 27)];
-            let third = [...getMatchesByDay(matches, 28)];
-            let fin = [...getMatchesByDay(matches, 29)];
-
-            // Fallback: if the hardcoded matchday ranges didn't yield knockouts (different competitions may use other matchday numbers),
-            // derive rounds by unique matchday values present. This ensures Junior Boys brackets still populate.
-            const allMd = Array.from(new Set((matches || []).map(m => (m.matchday !== undefined && m.matchday !== null) ? Number(m.matchday) : null).filter(x => x !== null))).sort((a, b) => a - b);
-            if (fin.length === 0 && allMd.length > 0) {
-                // pick last day as final
-                const finalDay = allMd[allMd.length - 1];
-                fin = getMatchesByDay(matches, finalDay);
-                // previous one or two as semis
-                const semiDays = allMd.slice(Math.max(0, allMd.length - 3), allMd.length - 1);
-                sf = [].concat(...semiDays.map(d => getMatchesByDay(matches, d)));
-                // everything before that as quarters
-                const qDays = allMd.slice(0, Math.max(0, allMd.length - 3));
-                qf = [].concat(...qDays.map(d => getMatchesByDay(matches, d)));
-                // third place day if exact match present (second to last when more than 3 rounds)
-                if (allMd.length >= 3) {
-                    const thirdDay = allMd[allMd.length - 2];
-                    third = getMatchesByDay(matches, thirdDay).filter(m => m.match_stage && /third|3rd/i.test(String(m.match_stage)));
-                }
-            }
+            const qf = getMatchesForStage(matches, 'QF');
+            const sf = getMatchesForStage(matches, 'SF');
+            const third = getMatchesForStage(matches, 'THIRD_PLACE');
+            const fin = getMatchesForStage(matches, 'FINAL');
 
             const conns = [];
 
-            // connect QF -> SF: [0,1] -> SF0, [2,3] -> SF1
+            // Quarterfinals to semifinals.
             if (qf.length >= 4 && sf.length >= 2) {
                 conns.push({ from: qf[0]?.id, to: sf[0]?.id });
                 conns.push({ from: qf[1]?.id, to: sf[0]?.id });
                 conns.push({ from: qf[2]?.id, to: sf[1]?.id });
                 conns.push({ from: qf[3]?.id, to: sf[1]?.id });
             } else {
-                // fallback: connect in-order
                 for (let i = 0; i < sf.length; i++) {
                     const sources = qf.slice(i * 2, i * 2 + 2);
-                    sources.forEach((s) => conns.push({ from: s?.id, to: sf[i]?.id }));
+                    sources.forEach((s) => {
+                        conns.push({ from: s?.id, to: sf[i]?.id });
+                    });
                 }
             }
 
-            // connect SF -> Final
+            // Semifinals to final.
             if (sf.length >= 2 && fin.length >= 1) {
                 conns.push({ from: sf[0]?.id, to: fin[0]?.id });
                 conns.push({ from: sf[1]?.id, to: fin[0]?.id });
             } else {
-                sf.forEach(s => conns.push({ from: s?.id, to: fin[0]?.id }));
+                sf.forEach(s => {
+                    conns.push({ from: s?.id, to: fin[0]?.id });
+                });
             }
 
-            // connect SF -> Third place (losers) if present
+            // Semifinals to third-place match.
             if (third.length >= 1 && sf.length >= 2) {
                 conns.push({ from: sf[0]?.id, to: third[0]?.id });
                 conns.push({ from: sf[1]?.id, to: third[0]?.id });
             }
 
-            // build path strings if positions are available
             const finalConns = conns.map((c, idx) => {
                 const fromPos = pos[c.from];
                 const toPos = pos[c.to];
-                const path = (fromPos && toPos) ? createPath(fromPos, toPos) : '';
-                // reveal if source has a decisive winner
-                const src = matches.find(m => String(m.id) === String(c.from));
-                const revealed = src && src.home_score !== null && src.away_score !== null && src.home_score !== src.away_score;
-                return { id: `conn-${idx}`, from: c.from, to: c.to, d: path, revealed };
+
+                const path = (fromPos && toPos)
+                    ? createPath(fromPos, toPos)
+                    : '';
+
+                const src = matches.find(
+                    m => String(m.id) === String(c.from)
+                );
+
+                const revealed = src &&
+                    src.home_score !== null &&
+                    src.away_score !== null &&
+                    src.home_score !== src.away_score;
+
+                return {
+                    id: `conn-${idx}`,
+                    from: c.from,
+                    to: c.to,
+                    d: path,
+                    revealed
+                };
             }).filter(c => c.d);
 
             setConnectors(finalConns);
         };
 
-        // small timeout to allow DOM to render
         const t = setTimeout(build, 80);
+
         window.addEventListener('resize', build);
-        return () => { clearTimeout(t); window.removeEventListener('resize', build); };
+
+        return () => {
+            clearTimeout(t);
+            window.removeEventListener('resize', build);
+        };
     }, [matches]);
 
-    // After connectors render, set stroke lengths for animation
+    // Set SVG stroke lengths for the connector animation.
     useEffect(() => {
         const svg = svgRef.current;
         if (!svg) return;
+
         connectors.forEach((c) => {
             const path = svg.querySelector(`#${c.id}`);
             if (!path) return;
+
             try {
                 const len = path.getTotalLength();
+
                 path.style.strokeDasharray = len;
                 path.style.strokeDashoffset = c.revealed ? '0' : String(len);
                 path.style.transition = 'stroke-dashoffset 900ms ease';
             } catch (e) {
-                // ignore
+                // Ignore SVG measurement errors.
             }
         });
     }, [connectors]);
 
-    // Hide connectors after they finish drawing (so they point the path then disappear)
+    // Hide connectors after they finish drawing.
     const hideTimeoutsRef = useRef({});
+
     useEffect(() => {
         const svgEl = svgRef.current;
         if (!svgEl) return;
 
         connectors.forEach((c) => {
             if (!c.revealed) return;
-            // if already scheduled, skip
             if (hideTimeoutsRef.current[c.id]) return;
 
-            // schedule hide after 1.2s (allow draw animation to finish)
             const t = setTimeout(() => {
                 const path = svgEl.querySelector(`#${c.id}`);
+
                 if (path) {
                     try {
                         const len = path.getTotalLength();
-                        // animate stroke back and fade out
-                        path.style.transition = 'stroke-dashoffset 650ms ease, opacity 650ms ease';
+
+                        path.style.transition =
+                            'stroke-dashoffset 650ms ease, opacity 650ms ease';
+
                         path.style.strokeDashoffset = String(len);
                         path.style.opacity = '0';
                     } catch (e) {
-                        // ignore
+                        // Ignore SVG measurement errors.
                     }
                 }
-                // remove connector from state after fade completes
+
                 setTimeout(() => {
-                    setConnectors((prev) => prev.filter(x => x.id !== c.id));
+                    setConnectors(prev =>
+                        prev.filter(x => x.id !== c.id)
+                    );
+
                     delete hideTimeoutsRef.current[c.id];
                 }, 700);
             }, 1200);
@@ -268,128 +335,236 @@ export default function Bracket() {
         });
 
         return () => {
-            // clear any scheduled timeouts on cleanup
-            Object.values(hideTimeoutsRef.current).forEach((id) => clearTimeout(id));
+            Object.values(hideTimeoutsRef.current).forEach(
+                id => clearTimeout(id)
+            );
+
             hideTimeoutsRef.current = {};
         };
     }, [connectors]);
 
-    const stageMatches = (mds) => {
-        const arr = [];
-        if (Array.isArray(mds)) {
-            mds.forEach(md => arr.push(...getMatchesByDay(matches, md)));
-        } else arr.push(...getMatchesByDay(matches, mds));
-        return arr;
-    };
+    const stageMatches = stage => getMatchesForStage(matches, stage);
 
     const renderBox = (m) => (
-        <div key={m.id} className="br-match" ref={(el) => { boxRefs.current[m.id] = el; }}>
+        <div
+            key={m.id}
+            className="br-match"
+            ref={(el) => {
+                boxRefs.current[m.id] = el;
+            }}
+        >
             <div className="br-team br-home">
-                {(() => {
-                    const name = typeof m.home_team === 'object' ? m.home_team.name : m.home_team;
-                    if (isPlaceholder(name)) {
-                        // build friendly label
-                        const digits = (name.match(/(\d{1,3})/) || [null])[0];
-                        const num = digits ? parseInt(digits, 10) : null;
-                        const qfMap = { 22: 'A', 23: 'B', 24: 'C', 25: 'D' };
-                        const sfMap = { 26: 'A', 27: 'B' };
-                        let stageLabel = null; let slot = '';
-                        if (num && qfMap[num]) { stageLabel = 'Quarterfinal'; slot = ` ${qfMap[num]}`; }
-                        else if (num && sfMap[num]) { stageLabel = 'Semifinal'; slot = ` ${sfMap[num]}`; }
-                        else if (num === 28) stageLabel = 'Third Place';
-                        else if (num === 29) stageLabel = 'Final';
-                        const descriptor = /WINNER/i.test(name) ? 'Winner' : (/LOSER/i.test(name) ? 'Loser' : 'TBD');
-                        return (<span className="placeholder-pill">{descriptor} — {stageLabel ? `${stageLabel}${slot}` : 'Knockout'}</span>);
-                    }
-                    return name;
-                })()} <span className={`score ${flashMap[m.id]?.home ? 'score-flash' : ''}`}>{m.home_score ?? '-'}</span>
+                <span className="br-team-name">
+                    {renderBracketTeam(m.home_team, m)}
+                </span>
+
+                <span className={`score ${flashMap[m.id]?.home ? 'score-flash' : ''}`}>
+                    {m.home_score ?? '-'}
+                </span>
             </div>
+
+            <div className="br-match-divider">
+                <span>VS</span>
+            </div>
+
             <div className="br-team br-away">
-                {(() => {
-                    const name = typeof m.away_team === 'object' ? m.away_team.name : m.away_team;
-                    if (isPlaceholder(name)) {
-                        const digits = (name.match(/(\d{1,3})/) || [null])[0];
-                        const num = digits ? parseInt(digits, 10) : null;
-                        const qfMap = { 22: 'A', 23: 'B', 24: 'C', 25: 'D' };
-                        const sfMap = { 26: 'A', 27: 'B' };
-                        let stageLabel = null; let slot = '';
-                        if (num && qfMap[num]) { stageLabel = 'Quarterfinal'; slot = ` ${qfMap[num]}`; }
-                        else if (num && sfMap[num]) { stageLabel = 'Semifinal'; slot = ` ${sfMap[num]}`; }
-                        else if (num === 28) stageLabel = 'Third Place';
-                        else if (num === 29) stageLabel = 'Final';
-                        const descriptor = /WINNER/i.test(name) ? 'Winner' : (/LOSER/i.test(name) ? 'Loser' : 'TBD');
-                        return (<span className="placeholder-pill">{descriptor} — {stageLabel ? `${stageLabel}${slot}` : 'Knockout'}</span>);
-                    }
-                    return name;
-                })()} <span className={`score ${flashMap[m.id]?.away ? 'score-flash' : ''}`}>{m.away_score ?? '-'}</span>
+                <span className="br-team-name">
+                    {renderBracketTeam(m.away_team, m)}
+                </span>
+
+                <span className={`score ${flashMap[m.id]?.away ? 'score-flash' : ''}`}>
+                    {m.away_score ?? '-'}
+                </span>
             </div>
         </div>
     );
 
-    const qf = stageMatches([22, 23, 24, 25]);
-    const sf = stageMatches([26, 27]);
-    const third = stageMatches(28);
-    const fin = stageMatches(29);
+    const qf = stageMatches('QF');
+    const sf = stageMatches('SF');
+    const third = stageMatches('THIRD_PLACE');
+    const fin = stageMatches('FINAL');
+    const special = stageMatches('SPECIAL');
 
     return (
-        <div className="bracket-root" style={{ padding: 24 }}>
-            <style>{`
-                .score-flash { animation: scoreFlash 800ms ease-in-out; }
-                @keyframes scoreFlash { 0% { background: #fff5b1; } 50% { background: #fff5b1; } 100% { background: transparent; } }
-            `}</style>
+        <div className="bracket-root">
             <div className="bracket-header">
-                <h2>🔗 Tournament Bracket</h2>
-                <div>
-                    <label style={{ fontWeight: 700, color: '#1e3c72', marginRight: 10 }}>Category:</label>
-                    <select value={category} onChange={(e) => setCategory(e.target.value)} style={{ padding: '6px 10px', borderRadius: 8, marginRight: 12 }}>
-                        <option value="senior_boys">Senior Boys</option>
-                        <option value="girls">Girls</option>
-                        <option value="junior_boys">Junior Boys</option>
-                    </select>
+                <div className="bracket-heading">
+                    <span className="bracket-eyebrow">
+                        Competition Overview
+                    </span>
 
-                    <label style={{ fontWeight: 700, color: '#1e3c72', marginRight: 10 }}>Season:</label>
-                    {seasonsLoading ? (
-                        <div style={{ display: 'inline-block' }} className="loading">Loading seasons <span className="loading-dots"><span></span><span></span><span></span></span></div>
-                    ) : (
-                        <select value={selectedSeason || ''} onChange={(e) => setSelectedSeason(parseInt(e.target.value))} style={{ padding: '6px 10px', borderRadius: 8 }}>
-                            {seasons.map(s => (<option key={s.id} value={s.id}>{s.name}</option>))}
+                    <h2>Tournament Bracket</h2>
+
+                    <p>
+                        Follow the knockout stages and match progression
+                        throughout the competition.
+                    </p>
+                </div>
+
+                <div className="bracket-toolbar">
+                    <div className="bracket-control">
+                        <label htmlFor="bracket-category">
+                            Category
+                        </label>
+
+                        <select
+                            id="bracket-category"
+                            value={category}
+                            onChange={(e) => setCategory(e.target.value)}
+                        >
+                            {PUBLIC_CATEGORIES.map(item => (
+                                <option
+                                    key={item.value}
+                                    value={item.value}
+                                >
+                                    {item.label}
+                                </option>
+                            ))}
                         </select>
-                    )}
+                    </div>
+
+                    <div className="bracket-control">
+                        <label htmlFor="bracket-season">
+                            Season
+                        </label>
+
+                        {seasonsLoading ? (
+                            <div className="bracket-select-loading">
+                                Loading seasons
+                                <span className="loading-dots">
+                                    <span></span>
+                                    <span></span>
+                                    <span></span>
+                                </span>
+                            </div>
+                        ) : (
+                            <select
+                                id="bracket-season"
+                                value={selectedSeason || ''}
+                                onChange={(e) => setSelectedSeason(e.target.value)}
+                                disabled={!seasons.length}
+                            >
+                                {seasons.map(s => (
+                                    <option key={s.id} value={s.id}>
+                                        {s.name}
+                                    </option>
+                                ))}
+                            </select>
+                        )}
+                    </div>
                 </div>
             </div>
 
             {(!seasons || seasons.length === 0) ? (
-                <div style={{ padding: 24, color: '#666' }}>No seasons found for the selected category. Please select a different category or add a season in admin.</div>
-            ) : (matchesLoading ? (
-                <div className="loading">Loading bracket <span className="loading-dots"><span></span><span></span><span></span></span></div>
+                <div className="bracket-empty">
+                    <div className="bracket-empty-icon">—</div>
+                    <h3>No season available</h3>
+                    <p>
+                        No seasons were found for the selected category.
+                        Select another category or add a season in the admin panel.
+                    </p>
+                </div>
+            ) : matchesLoading ? (
+                <div className="bracket-loading">
+                    <div className="bracket-loader"></div>
+                    <h3>Loading tournament bracket</h3>
+                    <p>Please wait while the match information is retrieved.</p>
+                </div>
             ) : (
                 <div className="bracket-canvas" ref={containerRef}>
-                    <div className="col col-qf">
-                        <h4>Quarterfinals</h4>
-                        {qf.map(renderBox)}
+                    <div className="bracket-column col-qf">
+                        <div className="bracket-stage-heading">
+                            <span className="bracket-stage-number">01</span>
+                            <h4>Quarterfinals</h4>
+                        </div>
+
+                        {qf.length ? (
+                            qf.map(renderBox)
+                        ) : (
+                            <div className="bracket-stage-empty">
+                                No quarterfinal matches
+                            </div>
+                        )}
                     </div>
 
-                    <div className="col col-sf">
-                        <h4>Semifinals</h4>
-                        {sf.map(renderBox)}
-                        <h4 style={{ marginTop: 18 }}>Third Place</h4>
-                        {third.map(renderBox)}
+                    <div className="bracket-column col-sf">
+                        <div className="bracket-stage-heading">
+                            <span className="bracket-stage-number">02</span>
+                            <h4>Semifinals</h4>
+                        </div>
+
+                        {sf.length ? (
+                            sf.map(renderBox)
+                        ) : (
+                            <div className="bracket-stage-empty">
+                                No semifinal matches
+                            </div>
+                        )}
+
+                        {third.length > 0 && (
+                            <>
+                                <div className="bracket-stage-heading bracket-secondary-heading">
+                                    <span className="bracket-stage-number">03</span>
+                                    <h4>Third Place</h4>
+                                </div>
+
+                                {third.map(renderBox)}
+                            </>
+                        )}
                     </div>
 
-                    <div className="col col-final">
-                        <h4>Final</h4>
-                        {fin.map(renderBox)}
+                    <div className="bracket-column col-final">
+                        <div className="bracket-stage-heading">
+                            <span className="bracket-stage-number">04</span>
+                            <h4>Final</h4>
+                        </div>
+
+                        {fin.length ? (
+                            fin.map(renderBox)
+                        ) : (
+                            <div className="bracket-stage-empty">
+                                Final match pending
+                            </div>
+                        )}
+
+                        {special.length > 0 && (
+                            <>
+                                <div className="bracket-stage-heading bracket-secondary-heading">
+                                    <span className="bracket-stage-number">05</span>
+                                    <h4>Special</h4>
+                                </div>
+
+                                {special.map(renderBox)}
+                            </>
+                        )}
                     </div>
 
-                    <svg className="bracket-svg" ref={svgRef} xmlns="http://www.w3.org/2000/svg">
+                    <svg
+                        className="bracket-svg"
+                        ref={svgRef}
+                        xmlns="http://www.w3.org/2000/svg"
+                    >
                         {connectors.map(c => (
-                            <path key={c.id} id={c.id} d={c.d} className={`connector ${c.revealed ? 'revealed' : ''}`} stroke="#3b82f6" strokeWidth={3} fill="none" strokeLinecap="round" />
+                            <path
+                                key={c.id}
+                                id={c.id}
+                                d={c.d}
+                                className={`connector ${c.revealed ? 'revealed' : ''}`}
+                                stroke="#d6a83d"
+                                strokeWidth={3}
+                                fill="none"
+                                strokeLinecap="round"
+                            />
                         ))}
                     </svg>
                 </div>
-            ))}
+            )}
 
-            <p style={{ marginTop: 12, color: '#21e90bff', }}>Animated connectors draw in when a match result is decided.</p>
+            <div className="bracket-footer-note">
+                <span className="bracket-live-indicator"></span>
+                Match information refreshes automatically. Animated connectors
+                indicate progression when a match result is decided.
+            </div>
         </div>
     );
 }

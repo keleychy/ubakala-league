@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { fetchWithAuth } from '../api/auth';
+import './LeaguePolish.css';
 
 export default function ResultsEditor() {
     const [matches, setMatches] = useState([]);
@@ -113,16 +114,24 @@ export default function ResultsEditor() {
     }
 
     return (
-        <div style={{ padding: 20 }}>
-            <h2 style={{ marginBottom: 12 }}>Results Editor</h2>
-            {message && <div style={{ padding: 12 }}>{message.text}</div>}
+        <div className="league-polish-page">
+          <main className="league-polish-content">
+            <header className="league-page-header">
+                <div className="league-page-header__copy">
+                    <div className="league-page-eyebrow">Match administration</div>
+                    <h1 className="league-page-title">Results Editor</h1>
+                    <p className="league-page-subtitle">Update scores, match periods and final results.</p>
+                </div>
+            </header>
+            {message && <div className={`league-page-status${message.type === 'error' ? ' league-page-status--error' : ''}`}>{message.text}</div>}
             {loading ? <p>Loading matches...</p> : (
-                <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))' }}>
+                <div className="league-page-grid">
                     {matches.map(m => (
                         <MatchRow key={m.id} match={m} onSetResult={setResult} onMarkFinished={markFinished} />
                     ))}
                 </div>
             )}
+          </main>
         </div>
     );
 }
@@ -230,7 +239,7 @@ function MatchRow({ match, onSetResult, onMarkFinished }) {
     }
 
     return (
-        <div style={{ padding: 12, border: '1px solid #e5e7eb', borderRadius: 8, background: 'white', display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div className="league-match-editor-card" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
                 <div style={{ fontWeight: 700, color: '#0f172a' }}>{match.home_team.name} vs {match.away_team.name}</div>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>

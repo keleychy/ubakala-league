@@ -1,4 +1,5 @@
 import React from 'react';
+import './LeaguePolish.css';
 
 const History = () => {
   const historicalData = [
@@ -23,38 +24,28 @@ const History = () => {
   ];
 
   return (
-    <div style={{ padding: '40px 20px', maxWidth: '1000px', margin: '0 auto' }}>
-      <h2 style={{ color: '#1e3c72', marginBottom: '30px' }}>📜 League History</h2>
+    <div className="league-polish-page">
+      <main className="league-polish-content">
+        <header className="league-page-header">
+          <div className="league-page-header__copy">
+            <div className="league-page-eyebrow">Our competition</div>
+            <h1 className="league-page-title">League History</h1>
+            <p className="league-page-subtitle">A record of seasons, milestones and community football.</p>
+          </div>
+        </header>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
         {historicalData.map((item, idx) => (
           <div
             key={idx}
-            style={{
-              background: 'white',
-              border: '3px solid ' + (item.status === 'ongoing' ? '#667eea' : '#ccc'),
-              borderRadius: '12px',
-              padding: '24px',
-              boxShadow: item.status === 'ongoing' ? '0 8px 24px rgba(102, 126, 234, 0.15)' : '0 2px 8px rgba(0, 0, 0, 0.05)',
-              transition: 'all 0.3s ease',
-              position: 'relative',
-              left: idx % 2 === 0 ? '0' : '0'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.boxShadow = '0 8px 24px rgba(102, 126, 234, 0.2)';
-              e.currentTarget.style.transform = 'translateY(-4px)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.boxShadow = item.status === 'ongoing' ? '0 8px 24px rgba(102, 126, 234, 0.15)' : '0 2px 8px rgba(0, 0, 0, 0.05)';
-              e.currentTarget.style.transform = 'translateY(0)';
-            }}
+            className="league-page-card league-history-card"
           >
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '20px' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 20 }}>
               <div style={{
-                fontSize: '48px',
-                fontWeight: '800',
-                color: item.status === 'ongoing' ? '#667eea' : '#ccc',
-                minWidth: '80px',
+                fontSize: 'clamp(30px, 5vw, 44px)',
+                fontWeight: 800,
+                color: item.status === 'ongoing' ? 'var(--league-blue)' : '#9aa8b8',
+                minWidth: 78,
                 textAlign: 'center'
               }}>
                 {item.year}
@@ -62,41 +53,41 @@ const History = () => {
               <div style={{ flex: 1 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
                   <h3 style={{
-                    color: '#1e3c72',
-                    fontSize: '22px',
-                    fontWeight: '700',
-                    margin: '0'
+                    color: 'var(--league-navy)',
+                    fontSize: 20,
+                    fontWeight: 750,
+                    margin: 0
                   }}>
                     {item.title}
                   </h3>
                   {item.status === 'ongoing' && (
                     <span style={{
-                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                      color: 'white',
-                      padding: '4px 12px',
-                      borderRadius: '20px',
-                      fontSize: '12px',
-                      fontWeight: '600'
+                      background: '#edf3fa',
+                      color: 'var(--league-blue)',
+                      padding: '5px 10px',
+                      borderRadius: 999,
+                      fontSize: 11,
+                      fontWeight: 700
                     }}>
                       🔄 Ongoing
                     </span>
                   )}
                   {item.status === 'completed' && (
                     <span style={{
-                      background: '#dcfce7',
-                      color: '#16a34a',
+                      background: '#eef7f0',
+                      color: '#317347',
                       padding: '4px 12px',
                       borderRadius: '20px',
                       fontSize: '12px',
                       fontWeight: '600',
-                      border: '1px solid #86efac'
+                      border: '1px solid #cee6d4'
                     }}>
                       ✓ Completed
                     </span>
                   )}
                 </div>
                 <p style={{
-                  color: '#666',
+                  color: 'var(--league-muted)',
                   lineHeight: '1.6',
                   fontSize: '14px',
                   margin: '0'
@@ -113,16 +104,18 @@ const History = () => {
       <div style={{
         marginTop: '40px',
         padding: '30px',
-        background: 'linear-gradient(135deg, #f8f9ff 0%, #f0f4ff 100%)',
-        borderRadius: '12px',
+        background: '#fff',
+        borderRadius: 14,
         textAlign: 'center',
-        border: '2px solid #e0e7ff'
+        border: '1px solid var(--league-border)',
+        boxShadow: '0 5px 18px rgba(20, 43, 75, .055)'
       }}>
-        <h3 style={{ color: '#1e3c72', marginBottom: '12px' }}>⚽ League Milestones</h3>
-        <p style={{ color: '#666', fontSize: '14px', margin: '0' }}>
+        <h3 style={{ color: 'var(--league-navy)', marginBottom: 12 }}>League Milestones</h3>
+        <p style={{ color: 'var(--league-muted)', fontSize: 14, margin: 0, lineHeight: 1.6 }}>
           From 2023 to present, Ubakala Football League has grown to become a premier community sports competition with 12 participating teams and hundreds of spectators.
         </p>
       </div>
+      </main>
     </div>
   );
 };

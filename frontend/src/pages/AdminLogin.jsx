@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import './LeaguePolish.css';
 
 export default function AdminLogin() {
   const [username, setUsername] = useState('');
@@ -64,159 +65,50 @@ export default function AdminLogin() {
   }
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-      padding: '20px'
-    }}>
-      <div style={{
-        background: 'white',
-        borderRadius: '16px',
-        padding: '40px',
-        boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
-        maxWidth: '400px',
-        width: '100%'
-      }}>
-        <div style={{ textAlign: 'center', marginBottom: '30px' }}>
-          <div style={{
-            fontSize: '48px',
-            marginBottom: '12px'
-          }}>
-            🔐
-          </div>
-          <h2 style={{
-            color: '#1e3c72',
-            fontSize: '28px',
-            fontWeight: '700',
-            margin: '0 0 8px 0'
-          }}>
+    <div className="league-polish-page league-login-page">
+      <div className="league-login-card">
+        <div className="league-login-card__intro">
+          <div className="league-login-card__icon">🔐</div>
+          <div className="league-page-eyebrow">UBAKALA UNITY CUP</div>
+          <h1 className="league-page-title" style={{ color: 'var(--league-navy)', fontSize: 28 }}>
             Admin Login
-          </h2>
-          <p style={{
-            color: '#999',
-            fontSize: '14px',
-            margin: '0'
-          }}>
+          </h1>
+          <p style={{ color: 'var(--league-muted)', fontSize: 14, margin: '8px 0 0' }}>
             Manage matches and results
           </p>
         </div>
 
-        <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <form onSubmit={handleLogin} className="league-page-form">
           {error && (
-            <div style={{
-              background: '#fee2e2',
-              color: '#dc2626',
-              padding: '12px 16px',
-              borderRadius: '8px',
-              fontSize: '13px',
-              border: '1px solid #fca5a5'
-            }}>
+            <div className="league-page-status league-page-status--error">
               {error}
             </div>
           )}
 
-          <div>
-            <label style={{
-              display: 'block',
-              color: '#1e3c72',
-              fontWeight: '600',
-              marginBottom: '8px',
-              fontSize: '14px'
-            }}>
+          <label className="league-page-field">
               Username
-            </label>
             <input
               type="text"
               placeholder="Enter your username"
               value={username}
               onChange={e => setUsername(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '12px 16px',
-                border: '2px solid #e0e0e0',
-                borderRadius: '8px',
-                fontSize: '14px',
-                transition: 'all 0.3s ease',
-                boxSizing: 'border-box'
-              }}
-              onFocus={(e) => {
-                e.target.style.borderColor = '#667eea';
-                e.target.style.boxShadow = '0 0 8px rgba(102, 126, 234, 0.2)';
-              }}
-              onBlur={(e) => {
-                e.target.style.borderColor = '#e0e0e0';
-                e.target.style.boxShadow = 'none';
-              }}
               disabled={isLoading}
             />
-          </div>
+          </label>
 
-          <div>
-            <label style={{
-              display: 'block',
-              color: '#1e3c72',
-              fontWeight: '600',
-              marginBottom: '8px',
-              fontSize: '14px'
-            }}>
+          <label className="league-page-field">
               Password
-            </label>
             <input
               type="password"
               placeholder="Enter your password"
               value={password}
               onChange={e => setPassword(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '12px 16px',
-                border: '2px solid #e0e0e0',
-                borderRadius: '8px',
-                fontSize: '14px',
-                transition: 'all 0.3s ease',
-                boxSizing: 'border-box'
-              }}
-              onFocus={(e) => {
-                e.target.style.borderColor = '#667eea';
-                e.target.style.boxShadow = '0 0 8px rgba(102, 126, 234, 0.2)';
-              }}
-              onBlur={(e) => {
-                e.target.style.borderColor = '#e0e0e0';
-                e.target.style.boxShadow = 'none';
-              }}
               disabled={isLoading}
             />
-          </div>
+          </label>
 
           <button
             type="submit"
-            style={{
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              color: 'white',
-              border: 'none',
-              padding: '12px 20px',
-              borderRadius: '8px',
-              fontSize: '16px',
-              fontWeight: '600',
-              cursor: isLoading ? 'not-allowed' : 'pointer',
-              transition: 'all 0.3s ease',
-              opacity: isLoading ? 0.7 : 1,
-              marginTop: '12px'
-            }}
-            onMouseEnter={(e) => {
-              if (!isLoading) {
-                e.target.style.transform = 'translateY(-2px)';
-                e.target.style.boxShadow = '0 8px 16px rgba(102, 126, 234, 0.4)';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (!isLoading) {
-                e.target.style.transform = 'translateY(0)';
-                e.target.style.boxShadow = 'none';
-              }
-            }}
             disabled={isLoading}
           >
             {isLoading ? '⏳ Logging in...' : '🔑 Login'}

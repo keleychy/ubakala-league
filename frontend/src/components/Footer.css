@@ -1,55 +1,256 @@
-/* Footer styles - responsive layout for mobile */
-.ubakala-footer-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 32px;
-  align-items: start;
+
+/* =========================================
+   UBAKALA UNITY CUP - WEBSITE FOOTER
+   Navy blue and gold branding
+========================================= */
+
+.ubakala-footer {
+    width: 100%;
+    margin-top: 60px;
+    padding: 48px 0 22px;
+    color: #ffffff;
+    background: linear-gradient(
+        115deg,
+        #102b50 0%,
+        #173b70 55%,
+        #245286 100%
+    );
+    border-top: 3px solid #d6a83d;
+    box-sizing: border-box;
 }
 
-.ubakala-footer-bottom {
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  margin-top: 32px;
-  padding-top: 20px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
+.ubakala-footer * {
+    box-sizing: border-box;
+}
+
+.ubakala-footer-container {
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+/* =========================================
+   FOOTER GRID
+========================================= */
+
+.ubakala-footer-grid {
+    display: grid;
+    grid-template-columns: 1.3fr 1fr 0.8fr;
+    gap: 42px;
+    align-items: start;
+}
+
+.ubakala-footer-section {
+    min-width: 0;
+}
+
+.ubakala-footer-title {
+    margin: 0 0 10px;
+    color: #f3d98e;
+    font-size: 15px;
+    font-weight: 800;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+}
+
+.ubakala-footer-title-line {
+    width: 36px;
+    height: 3px;
+    margin-bottom: 16px;
+    border-radius: 3px;
+    background: #d6a83d;
+}
+
+/* =========================================
+   FOOTER TEXT
+========================================= */
+
+.ubakala-footer-text {
+    max-width: 440px;
+    margin: 0;
+    color: rgba(255, 255, 255, 0.82);
+    font-size: 13px;
+    line-height: 1.9;
+}
+
+/* =========================================
+   CONTACT DETAILS
+========================================= */
+
+.ubakala-footer-contact-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-bottom: 13px;
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.ubakala-footer-label {
+    color: rgba(255, 255, 255, 0.55);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    text-transform: uppercase;
 }
 
 .ubakala-footer a {
-  color: #bfe3ff;
-  text-decoration: none;
+    color: #f3d98e;
+    text-decoration: none;
+    transition: color 180ms ease;
 }
 
 .ubakala-footer a:hover {
-  text-decoration: underline;
+    color: #ffffff;
+    text-decoration: underline;
 }
+
+/* =========================================
+   QUICK LINKS
+========================================= */
+
+.ubakala-footer-links {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 13px 16px;
+}
+
+.ubakala-footer-links a {
+    display: inline-block;
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.ubakala-footer-links a::before {
+    content: "›";
+    display: inline-block;
+    margin-right: 7px;
+    color: #d6a83d;
+    font-size: 17px;
+    font-weight: 800;
+    vertical-align: -1px;
+}
+
+.ubakala-footer-links a:hover {
+    color: #f3d98e;
+}
+
+/* =========================================
+   FOOTER BOTTOM
+========================================= */
+
+.ubakala-footer-bottom {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 36px;
+    padding-top: 20px;
+    border-top: 1px solid rgba(255, 255, 255, 0.16);
+}
+
+.ubakala-footer-copyright,
+.ubakala-footer-credit {
+    margin: 0;
+    color: rgba(255, 255, 255, 0.68);
+    font-size: 12px;
+    line-height: 1.6;
+}
+
+.ubakala-footer-credit strong {
+    color: #f3d98e;
+    font-weight: 800;
+}
+
+/* =========================================
+   TABLET
+========================================= */
 
 @media (max-width: 900px) {
-  .ubakala-footer-grid {
-    grid-template-columns: 1fr 1fr;
-    gap: 20px;
-  }
+    .ubakala-footer-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 30px;
+    }
+
+    .ubakala-footer-section:first-child {
+        grid-column: 1 / -1;
+    }
+
+    .ubakala-footer-text {
+        max-width: 650px;
+    }
 }
 
+/* =========================================
+   MOBILE
+========================================= */
+
 @media (max-width: 600px) {
-  .ubakala-footer-grid {
-    grid-template-columns: 1fr;
-    gap: 18px;
-  }
+    .ubakala-footer {
+        margin-top: 40px;
+        padding: 32px 0 20px;
+    }
 
-  .ubakala-footer-bottom {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 10px;
-  }
+    .ubakala-footer-container {
+        padding: 0 16px;
+    }
 
-  .ubakala-footer {
-    padding: 28px 12px;
-  }
+    .ubakala-footer-grid {
+        grid-template-columns: 1fr;
+        gap: 26px;
+    }
 
-  .ubakala-footer .ubakala-footer-right {
-    text-align: left;
-    width: 100%;
-  }
+    .ubakala-footer-section:first-child {
+        grid-column: auto;
+    }
+
+    .ubakala-footer-title {
+        font-size: 14px;
+    }
+
+    .ubakala-footer-text {
+        font-size: 12px;
+        line-height: 1.8;
+    }
+
+    .ubakala-footer-contact-item {
+        font-size: 12px;
+    }
+
+    .ubakala-footer-links {
+        grid-template-columns: 1fr 1fr;
+        max-width: 300px;
+    }
+
+    .ubakala-footer-bottom {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+        margin-top: 28px;
+        padding-top: 16px;
+    }
+
+    .ubakala-footer-copyright,
+    .ubakala-footer-credit {
+        font-size: 11px;
+    }
+}
+
+/* =========================================
+   SMALL MOBILE
+========================================= */
+
+@media (max-width: 350px) {
+    .ubakala-footer-container {
+        padding: 0 12px;
+    }
+
+    .ubakala-footer-links {
+        grid-template-columns: 1fr;
+        gap: 11px;
+    }
 }

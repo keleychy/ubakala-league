@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import axios from 'axios';
+import './LeaguePolish.css';
 
 export default function GroupManager() {
   const [seasonId, setSeasonId] = useState(1);
@@ -109,45 +110,51 @@ export default function GroupManager() {
   };
 
   return (
-    <div>
-      <h2>Group Manager</h2>
-      <div>
-        <label>Season ID: </label>
+    <div className="league-polish-page">
+      <main className="league-polish-content">
+        <header className="league-page-header">
+          <div className="league-page-header__copy">
+            <div className="league-page-eyebrow">Competition administration</div>
+            <h1 className="league-page-title">Group Manager</h1>
+            <p className="league-page-subtitle">Organize teams across competition groups.</p>
+          </div>
+        </header>
+
+        <div className="league-manager-toolbar">
+        <label className="league-page-field">Season ID
         <input
           type="number"
           value={seasonId}
           onChange={(e) => setSeasonId(e.target.value)}
-          style={{ width: 80 }}
+          style={{ width: 130 }}
         />
-        <button onClick={fetchGroups} disabled={loading}>Refresh</button>
-      </div>
+        </label>
+        <button onClick={fetchGroups} disabled={loading}>{loading ? 'Refreshing…' : 'Refresh groups'}</button>
+        </div>
 
-      {message && <div style={{ marginTop: 8 }}>{message}</div>}
+      {message && <div className={`league-page-status${message.includes('Failed') || message.includes('Select') ? ' league-page-status--error' : ''}`}>{message}</div>}
+      {loading && groups.length === 0 && <div className="league-page-empty">Loading groups…</div>}
+      {!loading && groups.length === 0 && <div className="league-page-empty">No groups found for this season.</div>}
 
-      <div style={{ display: 'flex', gap: 16, marginTop: 16 }}>
+      <div className="league-manager-groups">
         {groups.map((g) => (
           <div
             key={g.id}
+            className="league-manager-group"
             onDragOver={onDragOver}
             onDragEnter={(e) => onDragEnter(e, g.id)}
             onDragLeave={onDragLeave}
             onDrop={(e) => { setDragOverGroup(null); onDrop(e, g.id); }}
-            style={{
-              border: '1px solid #ccc',
-              padding: 8,
-              minWidth: 160,
-              minHeight: 80,
-              background: dragOverGroup === g.id ? '#e6f7ff' : 'transparent',
-            }}
+            style={dragOverGroup === g.id ? { background: '#edf6ff', borderColor: '#7898bd' } : undefined}
           >
-            <h4>{g.name}</h4>
+            <h2 style={{ margin: '0 0 14px', color: 'var(--league-navy)', fontSize: 17 }}>Group {g.name}</h2>
             <ul style={{ listStyle: 'none', padding: 0 }}>
               {g.teams.map((t) => (
                 <li
                   key={t.id}
                   draggable
                   onDragStart={(e) => onDragStart(e, t, g.id)}
-                  style={{ padding: '6px 8px', border: '1px solid #eee', marginBottom: 6, cursor: 'grab', background: '#fafafa' }}
+                  className="league-manager-team"
                 >
                   <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <input
@@ -161,9 +168,9 @@ export default function GroupManager() {
                 </li>
               ))}
             </ul>
-            <div>
-              <label style={{ fontSize: 12, color: '#666' }}>Or select this group as target</label>
-              <div>
+            <div style={{ borderTop: '1px solid var(--league-border)', paddingTop: 12 }}>
+              <label style={{ fontSize: 12, color: 'var(--league-muted)' }}>Choose as destination group</label>
+              <div style={{ marginTop: 6 }}>
                 <input
                   type="radio"
                   name={`targetGroup`}
@@ -178,8 +185,11 @@ export default function GroupManager() {
       </div>
 
       <div style={{ marginTop: 16 }}>
-        <button onClick={handleMove} disabled={loading}>Move Selected Team</button>
+        <button onClick={handleMove} disabled={loading}>
+          {loading ? 'Saving…' : 'Move selected team'}
+        </button>
       </div>
+      </main>
     </div>
   );
 }

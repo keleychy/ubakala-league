@@ -1,466 +1,1324 @@
-import { useEffect, useState, useRef } from 'react';
+
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../api/api';
 import usePolling from '../utils/usePolling';
-import './Results.css';
+import {
+  formatMatchSchedule,
+  getMatchPeriodLabel,
+  getMatchStatusCode,
+  getMatchStatusLabel,
+  getMatchStageLabel
+} from '../utils/competition';
+
+const FLASH_DURATION = 800;
+
+const styles = `
+  .results-page {
+    --rs-primary: #173b70;
+    --rs-primary-dark: #102b50;
+    --rs-accent: #d6a83d;
+    --rs-text: #263449;
+    --rs-muted: #718096;
+    --rs-border: #e6ebf2;
+    --rs-background: #f5f7fb;
+    min-height: 100vh;
+    padding: 38px 22px 64px;
+    background: var(--rs-background);
+    color: var(--rs-text);
+  }
+
+  .results-container {
+    max-width: 1250px;
+    margin: 0 auto;
+  }
+
+  .results-heading {
+    position: relative;
+    overflow: hidden;
+    margin-bottom: 25px;
+    padding: 27px 30px 28px;
+    border: 1px solid rgba(214, 168, 61, .55);
+    border-left: 5px solid var(--rs-accent);
+    border-radius: 16px;
+    background: linear-gradient(115deg, #102b50 0%, #173b70 58%, #245286 100%);
+    box-shadow: 0 12px 28px rgba(16, 43, 80, .14);
+  }
+
+  .results-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    margin-bottom: 11px;
+    padding: 6px 10px;
+    border: 1px solid rgba(240, 208, 132, .35);
+    border-radius: 999px;
+    background: rgba(214, 168, 61, .13);
+    color: #f0d084;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 1.6px;
+    text-transform: uppercase;
+  }
+
+  .results-title {
+    margin: 0;
+    color: #fff;
+    font-size: clamp(28px, 3.5vw, 38px);
+    font-weight: 800;
+    letter-spacing: -1px;
+    line-height: 1.15;
+  }
+
+  .results-subtitle {
+    margin: 9px 0 0;
+    color: rgba(235, 242, 251, .82);
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  .results-filter-panel {
+    display: flex;
+    align-items: flex-end;
+    gap: 16px;
+    flex-wrap: wrap;
+    padding: 20px;
+    margin-bottom: 25px;
+    background: #fff;
+    border: 1px solid var(--rs-border);
+    border-radius: 14px;
+    box-shadow: 0 3px 14px rgba(20, 43, 75, .035);
+  }
+
+  .results-filter {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 190px;
+    flex: 1;
+  }
+
+  .results-filter label {
+    color: #526176;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: .8px;
+    text-transform: uppercase;
+  }
+
+  .results-filter select {
+    width: 100%;
+    min-height: 44px;
+    padding: 0 38px 0 13px;
+    border: 1px solid #dce3ed;
+    border-radius: 8px;
+    background: #fbfcfe;
+    color: var(--rs-primary-dark);
+    font-size: 14px;
+    font-weight: 600;
+    outline: none;
+    cursor: pointer;
+  }
+
+  .results-filter select:focus {
+    border-color: #5276a7;
+    box-shadow: 0 0 0 3px rgba(82, 118, 167, .12);
+  }
+
+  .results-section-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+    margin: 27px 0 16px;
+  }
+
+  .results-section-title {
+    margin: 0;
+    color: var(--rs-primary-dark);
+    font-size: 17px;
+    font-weight: 800;
+  }
+
+  .results-section-caption {
+    margin: 5px 0 0;
+    color: var(--rs-muted);
+    font-size: 12px;
+  }
+
+  .results-count {
+    display: inline-flex;
+    align-items: center;
+    min-height: 31px;
+    padding: 0 11px;
+    border: 1px solid #dce5f0;
+    border-radius: 7px;
+    background: #fff;
+    color: var(--rs-primary);
+    font-size: 11px;
+    font-weight: 800;
+  }
+
+  .results-live-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    color: #c33c3c;
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: .8px;
+  }
+
+  .results-live-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #d64545;
+    box-shadow: 0 0 0 4px rgba(214, 69, 69, .12);
+    animation: resultsPulse 1.4s infinite;
+  }
+
+  @keyframes resultsPulse {
+    50% { opacity: .45; }
+  }
+
+  .results-stage {
+    margin-bottom: 25px;
+  }
+
+  .results-stage-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 13px 17px;
+    margin-bottom: 13px;
+    border: 1px solid var(--rs-border);
+    border-left: 4px solid var(--rs-accent);
+    border-radius: 9px;
+    background: #fff;
+  }
+
+  .results-stage-heading h3 {
+    margin: 0;
+    color: var(--rs-primary-dark);
+    font-size: 14px;
+    font-weight: 800;
+  }
+
+  .results-stage-count {
+    color: #8793a4;
+    font-size: 10px;
+    font-weight: 800;
+  }
+
+  .results-match-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 430px), 1fr));
+    gap: 15px;
+  }
+
+  .results-match-card {
+    min-width: 0;
+    overflow: hidden;
+    border: 1px solid var(--rs-border);
+    border-radius: 13px;
+    background: #fff;
+    box-shadow: 0 3px 14px rgba(20, 43, 75, .04);
+    transition: box-shadow .2s ease, transform .2s ease;
+  }
+
+  .results-match-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 22px rgba(20, 43, 75, .08);
+  }
+
+  .results-match-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    padding: 12px 16px;
+    border-bottom: 1px solid #edf0f4;
+    background: #fafbfd;
+  }
+
+  .results-match-meta-left {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    flex-wrap: wrap;
+    color: #77869a;
+    font-size: 10px;
+    font-weight: 700;
+  }
+
+  .results-match-meta-right {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+  }
+
+  .results-status {
+    display: inline-flex;
+    align-items: center;
+    min-height: 23px;
+    padding: 0 8px;
+    border-radius: 5px;
+    background: #edf2f8;
+    color: #526176;
+    font-size: 9px;
+    font-weight: 900;
+    letter-spacing: .5px;
+    text-transform: uppercase;
+  }
+
+  .results-status.completed {
+    background: #e9f6ef;
+    color: #16804b;
+  }
+
+  .results-status.live {
+    background: #fff0f0;
+    color: #c33c3c;
+  }
+
+  .results-status.awarded {
+    background: #fff6e5;
+    color: #956819;
+  }
+
+  .results-status.void {
+    background: #f1f2f4;
+    color: #697586;
+  }
+
+  .results-status.postponed,
+  .results-status.abandoned {
+    background: #fff4e5;
+    color: #8a5a16;
+  }
+
+  .results-status.cancelled {
+    background: #fcecec;
+    color: #a63b3b;
+  }
+
+  .results-status.scheduled {
+    background: #edf2f8;
+    color: #526176;
+  }
+
+  .results-period {
+    display: inline-flex;
+    align-items: center;
+    min-height: 23px;
+    padding: 0 8px;
+    border: 1px solid #dce5f0;
+    border-radius: 5px;
+    background: #f4f7fb;
+    color: #526176;
+    font-size: 9px;
+    font-weight: 800;
+  }
+
+  .results-match-body {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center;
+    gap: 12px;
+    padding: 21px 17px;
+  }
+
+  .results-team {
+    min-width: 0;
+    color: #263b57;
+    font-size: 13px;
+    font-weight: 800;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+  }
+
+  .results-team.home {
+    text-align: right;
+  }
+
+  .results-team.away {
+    text-align: left;
+  }
+
+  .results-score-area {
+    min-width: 92px;
+    text-align: center;
+  }
+
+  .results-score {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 9px;
+    color: var(--rs-primary-dark);
+    font-size: 25px;
+    font-weight: 900;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+  }
+
+  .results-score-separator {
+    color: #9aa6b5;
+    font-size: 18px;
+    font-weight: 500;
+  }
+
+  .results-pending {
+    color: #9aa6b5;
+    font-size: 12px;
+    font-weight: 800;
+  }
+
+  .results-penalties {
+    margin-top: 9px;
+    color: #7b8797;
+    font-size: 10px;
+    font-weight: 700;
+  }
+
+  .results-original-score {
+    margin-top: 7px;
+    color: #8a94a3;
+    font-size: 10px;
+  }
+
+  .results-match-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+    padding: 11px 16px;
+    border-top: 1px solid #edf0f4;
+    color: #8490a0;
+    font-size: 10px;
+  }
+
+  .results-match-venue {
+    overflow-wrap: anywhere;
+  }
+
+  .results-awarded-info {
+    padding: 10px 16px;
+    border-top: 1px solid #f1e2bd;
+    background: #fffaf0;
+    color: #89651e;
+    font-size: 11px;
+    line-height: 1.5;
+  }
+
+  .results-flash {
+    animation: resultsFlash ${FLASH_DURATION}ms ease-in-out;
+  }
+
+  @keyframes resultsFlash {
+    0%, 50% { background: #fff1bf; }
+    100% { background: transparent; }
+  }
+
+  .results-bracket {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+    gap: 14px;
+    margin-bottom: 27px;
+  }
+
+  .results-bracket-card {
+    overflow: hidden;
+    border: 1px solid var(--rs-border);
+    border-radius: 11px;
+    background: #fff;
+  }
+
+  .results-bracket-title {
+    padding: 11px 13px;
+    border-bottom: 1px solid var(--rs-border);
+    background: #f7f9fc;
+    color: var(--rs-primary-dark);
+    font-size: 11px;
+    font-weight: 900;
+    text-transform: uppercase;
+  }
+
+  .results-bracket-team {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    padding: 11px 13px;
+    color: #40516a;
+    font-size: 11px;
+    font-weight: 700;
+  }
+
+  .results-bracket-team + .results-bracket-team {
+    border-top: 1px solid #edf0f4;
+  }
+
+  .results-bracket-team.winner {
+    background: #fffbef;
+    color: #8c681d;
+  }
+
+  .results-bracket-score {
+    color: var(--rs-primary-dark);
+    font-size: 13px;
+    font-weight: 900;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .results-loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 11px;
+    padding: 40px 15px;
+    color: #536780;
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .results-spinner {
+    width: 19px;
+    height: 19px;
+    border: 2px solid #dbe3ed;
+    border-top-color: var(--rs-primary);
+    border-radius: 50%;
+    animation: resultsSpin .7s linear infinite;
+  }
+
+  @keyframes resultsSpin {
+    to { transform: rotate(360deg); }
+  }
+
+  .results-state {
+    padding: 54px 20px;
+    border: 1px solid var(--rs-border);
+    border-radius: 13px;
+    background: #fff;
+    text-align: center;
+  }
+
+  .results-state-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 54px;
+    height: 54px;
+    margin-bottom: 15px;
+    border-radius: 16px;
+    background: #edf2f8;
+    color: var(--rs-primary);
+    font-size: 22px;
+    font-weight: 800;
+  }
+
+  .results-state h3 {
+    margin: 0 0 7px;
+    color: var(--rs-primary-dark);
+    font-size: 16px;
+    font-weight: 800;
+  }
+
+  .results-state p {
+    max-width: 440px;
+    margin: 0 auto;
+    color: var(--rs-muted);
+    font-size: 13px;
+    line-height: 1.6;
+  }
+
+  .results-error {
+    padding: 13px 15px;
+    margin: 15px 0;
+    border: 1px solid #f0c4c4;
+    border-radius: 9px;
+    background: #fff4f4;
+    color: #b42323;
+    font-size: 12px;
+    line-height: 1.5;
+  }
+
+  @media (max-width: 650px) {
+    .results-page {
+      padding: 27px 13px 45px;
+    }
+
+    .results-heading {
+      margin-bottom: 22px;
+      padding: 22px 19px 23px;
+    }
+
+    .results-title {
+      font-size: 29px;
+    }
+
+    .results-filter-panel {
+      gap: 13px;
+      padding: 15px;
+    }
+
+    .results-filter {
+      min-width: 100%;
+    }
+
+    .results-match-list {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 13px;
+    }
+
+    .results-match-body {
+      gap: 7px;
+      padding: 19px 11px;
+    }
+
+    .results-team {
+      font-size: 11px;
+    }
+
+    .results-score-area {
+      min-width: 76px;
+    }
+
+    .results-score {
+      gap: 6px;
+      font-size: 22px;
+    }
+
+    .results-match-meta,
+    .results-match-footer {
+      padding-left: 12px;
+      padding-right: 12px;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .results-page *,
+    .results-page *::before,
+    .results-page *::after {
+      animation-duration: .01ms !important;
+      transition-duration: .01ms !important;
+    }
+  }
+`;
+
+/* Handles both direct arrays and common API response wrappers. */
+const extractList = (data) => {
+  if (Array.isArray(data)) return data;
+
+  if (Array.isArray(data?.results)) return data.results;
+  if (Array.isArray(data?.data)) return data.data;
+  if (Array.isArray(data?.matches)) return data.matches;
+  if (Array.isArray(data?.seasons)) return data.seasons;
+
+  return [];
+};
+
+const getSeasonId = (season) => {
+  if (season && typeof season === 'object') {
+    return season.id ?? season.pk ?? null;
+  }
+
+  return season ?? null;
+};
+
+const getMatchSeasonId = (match) => {
+  return (
+    getSeasonId(match?.season) ??
+    match?.season_id ??
+    match?.seasonId ??
+    null
+  );
+};
+
+const getTeamName = (team) => {
+  if (!team) return 'TBC';
+
+  if (typeof team === 'object') {
+    return (
+      team.name ??
+      team.team?.name ??
+      team.team_name ??
+      'TBC'
+    );
+  }
+
+  return String(team);
+};
+
+const isPlaceholder = (team) => {
+  const name = getTeamName(team).trim().toUpperCase();
+
+  return (
+    name.startsWith('WINNER') ||
+    name.startsWith('LOSER') ||
+    name === 'TBC' ||
+    name === 'TBD'
+  );
+};
+
+const formatPlaceholder = (team) => {
+  const name = getTeamName(team);
+
+  if (!isPlaceholder(team)) return name;
+
+  const match = name.match(/^(WINNER|LOSER)[\s_-]*(.*)$/i);
+
+  if (!match) return name;
+
+  const type = match[1].toUpperCase();
+  const reference = match[2].replace(/[_-]/g, ' ').trim();
+
+  return reference ? `${type} OF ${reference}` : type;
+};
+
+const getStageName = (match) => {
+  return getMatchStageLabel(match) || match?.stage || 'Other Matches';
+};
+
+const getMatchDate = (match) => {
+  return (
+    match?.actual_start ||
+    match?.match_date ||
+    match?.scheduled_at ||
+    null
+  );
+};
+
+const isMatchAwarded = (match) => getMatchStatusCode(match) === 'AWARDED';
+
+const isMatchVoid = (match) => getMatchStatusCode(match) === 'VOID';
+
+const getAwardedName = (match) => {
+  const awardedTo = match?.awarded_to ?? match?.awarded_winner_team_id;
+
+  if (!awardedTo) return '';
+
+  if (typeof awardedTo === 'object') {
+    return awardedTo.name || awardedTo.team_name || '';
+  }
+
+  if (String(awardedTo) === String(match?.home_team_id ?? match?.home_team?.id)) {
+    return getTeamName(match.home_team);
+  }
+  if (String(awardedTo) === String(match?.away_team_id ?? match?.away_team?.id)) {
+    return getTeamName(match.away_team);
+  }
+
+  return String(awardedTo);
+};
 
 const Results = () => {
   const [matches, setMatches] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [filteredMatches, setFilteredMatches] = useState([]);
   const [seasons, setSeasons] = useState([]);
-  const [selectedSeason, setSelectedSeason] = useState(null);
+  const [selectedSeason, setSelectedSeason] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [flashMap, setFlashMap] = useState({});
+
+  const prevMatchesRef = useRef({});
   const timeoutRef = useRef(null);
-  const FLASH_DURATION = 800;
+  const highlightTimeoutRef = useRef(null);
+
+  /* Load available seasons. */
   useEffect(() => {
+    let cancelled = false;
+
+    const loadSeasons = async () => {
+      try {
+        const data = await api.getSeasons();
+
+        if (cancelled) return;
+
+        const seasonList = extractList(data);
+        setSeasons(seasonList);
+
+        if (seasonList.length > 0) {
+          const firstSeasonId = getSeasonId(seasonList[0]);
+
+          setSelectedSeason(
+            firstSeasonId !== null && firstSeasonId !== undefined
+              ? String(firstSeasonId)
+              : ''
+          );
+        } else {
+          setSelectedSeason('');
+          setLoading(false);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          console.error('Failed to load seasons:', err);
+          setError(err?.message || 'Failed to load seasons');
+          setLoading(false);
+        }
+      }
+    };
+
+    loadSeasons();
+
     return () => {
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      cancelled = true;
     };
   }, []);
 
-
-  useEffect(() => {
-    // Fetch seasons
-    api.getSeasons().then(data => {
-      setSeasons(data);
-      if (data.length > 0) {
-        setSelectedSeason(data[0].id);
-      }
-    }).catch(console.error);
-  }, []);
-
-  // usePolling will call this repeatedly (with optional jitter)
+  /* Fetch matches and detect score/team changes. */
   const fetchScores = async () => {
     try {
       const data = await api.getMatches();
-      const prev = prevMatchesRef.current || {};
-      // detect score diffs
-      const scoreDiffs = {};
-      (data || []).forEach((m) => {
-        const old = prev[m.id];
-        if (!old) return;
-        const changed = {};
-        if (m.home_score !== old.home_score) changed.home = true;
-        if (m.away_score !== old.away_score) changed.away = true;
-        if (Object.keys(changed).length > 0) scoreDiffs[m.id] = changed;
-      });
-      if (data && Array.isArray(data)) {
-        data.forEach((m) => {
-          try {
-            const prevMatch = prev[m.id];
-            const prevHome = prevMatch ? (typeof prevMatch.home_team === 'object' ? prevMatch.home_team.name : prevMatch.home_team) : null;
-            const prevAway = prevMatch ? (typeof prevMatch.away_team === 'object' ? prevMatch.away_team.name : prevMatch.away_team) : null;
-            const nowHome = typeof m.home_team === 'object' ? m.home_team.name : m.home_team;
-            const nowAway = typeof m.away_team === 'object' ? m.away_team.name : m.away_team;
-            const wasPending = /WINNER|LOSER/i.test(prevHome) || /WINNER|LOSER/i.test(prevAway);
-            const nowResolved = !(/WINNER|LOSER/i.test(nowHome) || /WINNER|LOSER/i.test(nowAway));
-            if (wasPending && nowResolved) {
-              setHighlighted((h) => ({ ...h, [m.id]: true }));
-              setTimeout(() => {
-                setHighlighted((h) => {
-                  const next = { ...h };
-                  delete next[m.id];
-                  return next;
-                });
-              }, 2500);
-            }
-          } catch (e) {
-            // ignore comparison errors for safety
+      const incoming = extractList(data);
+
+      const nextPrevious = {};
+      const changedScores = {};
+      const resolvedTeams = {};
+
+      incoming.forEach((match) => {
+        const id = match?.id;
+
+        if (id === undefined || id === null) return;
+
+        const previous = prevMatchesRef.current[id];
+
+        if (previous) {
+          const scoreChanged =
+            previous.home_score !== match.home_score ||
+            previous.away_score !== match.away_score;
+
+          if (scoreChanged) {
+            changedScores[id] = true;
           }
-        });
-      }
-      if (Object.keys(scoreDiffs).length === 0) {
-        setMatches(data || []);
-        setLoading(false);
-        prevMatchesRef.current = (data || []).reduce((acc, m) => { acc[m.id] = m; return acc; }, {});
-      } else {
-        if (timeoutRef.current) clearTimeout(timeoutRef.current);
-        setFlashMap(scoreDiffs);
+
+          const previousHome = getTeamName(previous.home_team);
+          const previousAway = getTeamName(previous.away_team);
+          const currentHome = getTeamName(match.home_team);
+          const currentAway = getTeamName(match.away_team);
+
+          if (
+            (isPlaceholder(previous.home_team) &&
+              !isPlaceholder(match.home_team)) ||
+            (isPlaceholder(previous.away_team) &&
+              !isPlaceholder(match.away_team)) ||
+            (previousHome !== currentHome &&
+              !isPlaceholder(match.home_team)) ||
+            (previousAway !== currentAway &&
+              !isPlaceholder(match.away_team))
+          ) {
+            resolvedTeams[id] = true;
+          }
+        }
+
+        nextPrevious[id] = match;
+      });
+
+      if (Object.keys(changedScores).length > 0) {
+        setFlashMap(changedScores);
+
+        if (timeoutRef.current) {
+          clearTimeout(timeoutRef.current);
+        }
+
         timeoutRef.current = setTimeout(() => {
-          setMatches(data || []);
           setFlashMap({});
-          setLoading(false);
-          prevMatchesRef.current = (data || []).reduce((acc, m) => { acc[m.id] = m; return acc; }, {});
           timeoutRef.current = null;
         }, FLASH_DURATION);
       }
-    } catch (error) {
-      console.error('Error fetching matches:', error);
-      setMatches([]);
+
+      if (Object.keys(resolvedTeams).length > 0) {
+        if (highlightTimeoutRef.current) {
+          clearTimeout(highlightTimeoutRef.current);
+        }
+
+        highlightTimeoutRef.current = setTimeout(() => {
+          highlightTimeoutRef.current = null;
+        }, 2500);
+      }
+
+      prevMatchesRef.current = nextPrevious;
+
+      setMatches(incoming);
+      setError(null);
+      setLoading(false);
+    } catch (err) {
+      console.error('Failed to fetch match results:', err);
+      setError(err?.message || 'Unable to load match results');
       setLoading(false);
     }
   };
 
-  // poll matches every 5-10s (randomized to avoid stampeding)
-  usePolling(fetchScores, { minInterval: 5000, maxInterval: 10000, immediate: true });
+  usePolling(fetchScores, {
+    minInterval: 5000,
+    maxInterval: 10000,
+    immediate: true
+  });
 
-  // Filter matches by selected season
+  /* Clear pending timers when the page unmounts. */
   useEffect(() => {
-    if (selectedSeason && matches.length > 0) {
-      const filtered = matches.filter(m => {
-        const seasonId = typeof m.season === 'object' ? m.season.id : m.season;
-        return seasonId === selectedSeason;
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+
+      if (highlightTimeoutRef.current) {
+        clearTimeout(highlightTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  /* Filter and sort matches by selected season. */
+  const filteredMatches = useMemo(() => {
+    let result = matches;
+
+    if (selectedSeason) {
+      result = result.filter((match) => {
+        const seasonId = getMatchSeasonId(match);
+
+        return (
+          seasonId !== null &&
+          seasonId !== undefined &&
+          String(seasonId) === String(selectedSeason)
+        );
       });
-      // Sort by match_date descending (most recent first)
-      filtered.sort((a, b) => new Date(b.match_date) - new Date(a.match_date));
-      setFilteredMatches(filtered);
-    } else {
-      setFilteredMatches([]);
-    }
-  }, [selectedSeason, matches]);
-
-  const formatDate = (dateStr) => {
-    try {
-      const date = new Date(dateStr);
-      return date.toLocaleString();
-    } catch {
-      return dateStr;
-    }
-  };
-
-  // removed unused getSeasonName to satisfy eslint
-
-  // Map matchday -> stage name
-  const matchdayToStage = (md) => {
-    if (!md && md !== 0) return 'Group Stage';
-    if (md >= 22 && md <= 25) return 'Quarterfinals';
-    if (md >= 26 && md <= 27) return 'Semifinals';
-    if (md === 28) return 'Third Place';
-    if (md === 29) return 'Final';
-    return 'Group Stage';
-  };
-
-  const isPlaceholder = (teamName) => {
-    if (!teamName) return false;
-    return /WINNER|LOSER/i.test(teamName);
-  };
-
-  const formatPlaceholder = (teamName, match) => {
-    if (!teamName) return null;
-    // Extract a numeric reference if present (e.g., MD22 or 22)
-    const digits = (teamName.match(/(\d{1,3})/) || [null])[0];
-    const num = digits ? parseInt(digits, 10) : null;
-    let descriptor = 'TBD';
-    if (/WINNER/i.test(teamName)) descriptor = 'Winner';
-    else if (/LOSER/i.test(teamName)) descriptor = 'Loser';
-    else if (/RUNNER|FINALIST/i.test(teamName)) descriptor = 'Finalist';
-
-    // Map known matchday numbers to friendly slot labels
-    const qfMap = { 22: 'A', 23: 'B', 24: 'C', 25: 'D' };
-    const sfMap = { 26: 'A', 27: 'B' };
-
-    let slotLabel = '';
-    let stageLabel = null;
-    if (num && qfMap[num]) {
-      stageLabel = 'Quarterfinal';
-      slotLabel = ` ${qfMap[num]}`;
-    } else if (num && sfMap[num]) {
-      stageLabel = 'Semifinal';
-      slotLabel = ` ${sfMap[num]}`;
-    } else if (num === 28) {
-      stageLabel = 'Third Place';
-    } else if (num === 29) {
-      stageLabel = 'Final';
-    } else if (match && match.matchday) {
-      // fallback: use match's matchday to provide context
-      const md = Number(match.matchday);
-      stageLabel = matchdayToStage(md);
     }
 
-    const label = slotLabel ? `${stageLabel}${slotLabel}` : (stageLabel || 'Knockout');
+    return [...result].sort((a, b) => {
+      const dateA = getMatchDate(a)
+        ? new Date(getMatchDate(a)).getTime()
+        : 0;
+
+      const dateB = getMatchDate(b)
+        ? new Date(getMatchDate(b)).getTime()
+        : 0;
+
+      return dateB - dateA;
+    });
+  }, [matches, selectedSeason]);
+
+  /* Group fixtures by competition stage. */
+  const groupedMatches = useMemo(() => {
+    const groups = {};
+
+    filteredMatches.forEach((match) => {
+      const stage = getStageName(match);
+
+      if (!groups[stage]) {
+        groups[stage] = [];
+      }
+
+      groups[stage].push(match);
+    });
+
+    const stageOrder = [
+      'Final',
+      'Special',
+      'Third Place',
+      'Semifinals',
+      'Quarterfinals',
+      'Group Stage'
+    ];
+
+    return Object.entries(groups).sort(([a], [b]) => {
+      const ai = stageOrder.findIndex(
+        (stage) => stage.toLowerCase() === a.toLowerCase()
+      );
+
+      const bi = stageOrder.findIndex(
+        (stage) => stage.toLowerCase() === b.toLowerCase()
+      );
+
+      if (ai === -1 && bi === -1) return a.localeCompare(b);
+      if (ai === -1) return 1;
+      if (bi === -1) return -1;
+
+      return ai - bi;
+    });
+  }, [filteredMatches]);
+
+  /* Identify knockout matches for the overview. */
+  const bracketStages = [
+    {
+      label: 'Semi-final 1',
+      keys: ['SF1', 'Semi Final 1', 'Semifinal 1']
+    },
+    {
+      label: 'Semi-final 2',
+      keys: ['SF2', 'Semi Final 2', 'Semifinal 2']
+    },
+    {
+      label: 'Third Place',
+      keys: ['Third Place', '3rd Place']
+    },
+    {
+      label: 'Special Match',
+      keys: ['Special']
+    },
+    {
+      label: 'Final',
+      keys: ['Final']
+    }
+  ];
+
+  const bracketMatches = bracketStages
+    .map((stage) => {
+      const match = filteredMatches.find((item) => {
+        const label = String(
+          item?.stage ||
+          item?.round ||
+          item?.match_name ||
+          ''
+        ).toLowerCase();
+
+        return stage.keys.some(
+          (key) => label === key.toLowerCase()
+        );
+      });
+
+      return { ...stage, match };
+    })
+    .filter((item) => item.match);
+
+  /* Render an individual knockout result. */
+  const renderBracket = (match, label) => {
+    const hasScores =
+      match?.home_score !== null &&
+      match?.home_score !== undefined &&
+      match?.away_score !== null &&
+      match?.away_score !== undefined;
+
+    const homeWinner =
+      hasScores &&
+      Number(match.home_score) > Number(match.away_score);
+
+    const awayWinner =
+      hasScores &&
+      Number(match.away_score) > Number(match.home_score);
 
     return (
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-        <span className="placeholder-pill">{descriptor} — {label}</span>
-      </span>
+      <div className="results-bracket-card" key={match.id}>
+        <div className="results-bracket-title">{label}</div>
+
+        <div className={`results-bracket-team ${homeWinner ? 'winner' : ''}`}>
+          <span>{formatPlaceholder(match.home_team)}</span>
+
+          <span className="results-bracket-score">
+            {hasScores ? match.home_score : '—'}
+          </span>
+        </div>
+
+        <div className={`results-bracket-team ${awayWinner ? 'winner' : ''}`}>
+          <span>{formatPlaceholder(match.away_team)}</span>
+
+          <span className="results-bracket-score">
+            {hasScores ? match.away_score : '—'}
+          </span>
+        </div>
+      </div>
     );
   };
 
-  const renderTeam = (teamValue, match) => {
-    const name = typeof teamValue === 'object' ? teamValue.name : teamValue;
-    if (!name) return <span style={{ color: '#94a3b8' }}>— TBD —</span>;
-    if (isPlaceholder(name)) return formatPlaceholder(name, match);
-    return <span style={{ fontWeight: 700, color: '#1e3c72' }}>{name}</span>;
-  };
+  /* Render an individual match card. */
+  const renderMatch = (match) => {
+    const hasScores =
+      match?.home_score !== null &&
+      match?.home_score !== undefined &&
+      match?.away_score !== null &&
+      match?.away_score !== undefined;
 
-  const prevMatchesRef = useRef({});
-  const [highlighted, setHighlighted] = useState({});
+    const statusCode = getMatchStatusCode(match);
+    const status = getMatchStatusLabel(match);
+    const period = statusCode === 'LIVE' ? getMatchPeriodLabel(match) : null;
+    const matchDate = getMatchDate(match);
 
-  const groupMatchesByStage = (matchesArr) => {
-    const groups = {};
-    matchesArr.forEach((m) => {
-      const stage = matchdayToStage(m.matchday);
-      if (!groups[stage]) groups[stage] = [];
-      groups[stage].push(m);
-    });
-    // Order stages in a natural bracket order if present
-    const order = ['Final', 'Third Place', 'Semifinals', 'Quarterfinals', 'Group Stage'];
-    const ordered = {};
-    order.forEach((s) => { if (groups[s]) ordered[s] = groups[s].sort((a, b) => a.matchday - b.matchday); });
-    // append any other stages
-    Object.keys(groups).forEach((s) => { if (!ordered[s]) ordered[s] = groups[s].sort((a, b) => a.matchday - b.matchday); });
-    return ordered;
-  };
+    const homeName = formatPlaceholder(match.home_team);
+    const awayName = formatPlaceholder(match.away_team);
 
-  return (
-    <div style={{ padding: '40px 20px', maxWidth: '1000px', margin: '0 auto' }}>
-      <style>{`
-        .score-flash { animation: scoreFlash ${FLASH_DURATION}ms ease-in-out; }
-        @keyframes scoreFlash { 0% { background: #fff5b1; } 50% { background: #fff5b1; } 100% { background: transparent; } }
+    const homePenalty =
+      match?.home_penalty_score ?? match?.home_penalties;
 
-        /* LIVE badge styles */
-        .live-badge {
-          display: inline-flex;
-          align-items: center;
-          gap: 8px;
-          padding: 6px 10px;
-          border-radius: 999px;
-          background: linear-gradient(90deg,#ffecec,#fff1f2);
-          color: #bf1e2e;
-          font-weight: 800;
-          font-size: 12px;
-          border: 1px solid rgba(190,24,93,0.08);
-          animation: livePulse 1400ms ease-in-out infinite;
-        }
+    const awayPenalty =
+      match?.away_penalty_score ?? match?.away_penalties;
 
-        .live-dot {
-          width: 8px;
-          height: 8px;
-          border-radius: 50%;
-          background: #ff3b30;
-          box-shadow: 0 0 8px rgba(255,59,48,0.85);
-          animation: liveDot 1400ms ease-in-out infinite;
-        }
+    const hasPenalties =
+      homePenalty !== null &&
+      homePenalty !== undefined &&
+      awayPenalty !== null &&
+      awayPenalty !== undefined;
 
-        @keyframes livePulse {
-          0% { transform: scale(1); }
-          50% { transform: scale(1.03); }
-          100% { transform: scale(1); }
-        }
+    const originalHome = match?.official_home_score ?? match?.original_home_score;
+    const originalAway = match?.official_away_score ?? match?.original_away_score;
 
-        @keyframes liveDot {
-          0% { box-shadow: 0 0 4px rgba(255,59,48,0.6); transform: scale(1); }
-          50% { box-shadow: 0 0 12px rgba(255,59,48,0.95); transform: scale(1.15); }
-          100% { box-shadow: 0 0 4px rgba(255,59,48,0.6); transform: scale(1); }
-        }
-      `}</style>
-      <div style={{ padding: 'clamp(20px, 5vw, 40px) clamp(15px, 3vw, 20px)', maxWidth: '1000px', margin: '0 auto' }}>
-        <h2 style={{ color: '#1e3c72', marginBottom: '30px' }}>📊 Live Scores & Results</h2>
+    const hasOriginalScore =
+      originalHome !== null &&
+      originalHome !== undefined &&
+      originalAway !== null &&
+      originalAway !== undefined;
 
-        {/* Season selector */}
-        <div style={{
-          marginBottom: '30px',
-          padding: '20px',
-          background: '#f8f9ff',
-          borderRadius: '10px',
-          border: '2px solid #667eea'
-        }}>
-          <label style={{ fontWeight: '600', color: '#1e3c72', fontSize: 'clamp(13px, 2.5vw, 16px)', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-            Select Season:
-            <select
-              value={selectedSeason || ''}
-              onChange={(e) => setSelectedSeason(parseInt(e.target.value))}
-              style={{
-                marginLeft: '0',
-                padding: '10px 14px',
-                border: '2px solid #667eea',
-                borderRadius: '8px',
-                fontSize: 'clamp(12px, 2.5vw, 14px)',
-                fontWeight: '500',
-                background: 'white',
-                cursor: 'pointer',
-                minWidth: 'clamp(150px, 60vw, 250px)'
-              }}
+    const flash = Boolean(flashMap[match.id]);
+    const awardedName = getAwardedName(match);
+
+    return (
+      <article className="results-match-card" key={match.id}>
+        <div className="results-match-meta">
+          <div className="results-match-meta-left">
+            {match?.matchday !== null &&
+              match?.matchday !== undefined && (
+                <span>Matchday {match.matchday}</span>
+              )}
+
+            {match?.match_number && (
+              <span>Match {match.match_number}</span>
+            )}
+          </div>
+
+          <div className="results-match-meta-right">
+            {statusCode === 'LIVE' && (
+              <span className="results-live-indicator">
+                <span className="results-live-dot" />
+                LIVE
+              </span>
+            )}
+
+            {period && <span className="results-period">{period}</span>}
+
+            <span
+              className={`results-status ${statusCode ? statusCode.toLowerCase() : ''
+                } ${statusCode === 'LIVE'
+                  ? 'live'
+                  : statusCode === 'FINISHED'
+                    ? 'completed'
+                    : statusCode === 'AWARDED'
+                      ? 'awarded'
+                      : statusCode === 'VOID'
+                        ? 'void'
+                        : ''
+                }`}
             >
-              <option value="">-- Select a season --</option>
-              {seasons.map(season => (
-                <option key={season.id} value={season.id}>
-                  {season.name}
-                </option>
-              ))}
-            </select>
-          </label>
+              {status}
+            </span>
+          </div>
         </div>
 
-        {/* Matches list (grouped by stage) */}
-        {loading ? (
-          <div className="loading">⏳ Loading matches<span className="loading-dots"><span></span><span></span><span></span></span></div>
-        ) : filteredMatches.length > 0 ? (
-          (() => {
-            const grouped = groupMatchesByStage(filteredMatches);
-            const total = filteredMatches.length;
-            return (
-              <div>
-                {/* Compact header: show only total matches to declutter badges */}
-                <div style={{ display: 'flex', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap' }}>
-                  <div style={{ marginLeft: 'auto', padding: 'clamp(6px, 1vw, 8px) clamp(10px, 2vw, 12px)', borderRadius: '999px', border: '1px solid rgba(30,41,59,0.06)', background: 'rgba(238,242,255,0.6)', color: '#0f172a', fontWeight: 700, fontSize: 'clamp(11px, 2vw, 13px)' }}>📌 {total} match{total !== 1 ? 'es' : ''}</div>
-                </div>
+        <div className="results-match-body">
+          <div className="results-team home" title={homeName}>
+            {homeName}
+          </div>
 
-                {/* Compact bracket visual (Semifinals -> Final) */}
-                {(() => {
-                  // Use filteredMatches (current season) and coerce matchday to number
-                  const sf1 = filteredMatches.find(m => Number(m.matchday) === 26) || null;
-                  const sf2 = filteredMatches.find(m => Number(m.matchday) === 27) || null;
-                  const third = filteredMatches.find(m => Number(m.matchday) === 28) || null;
-                  const finalMatch = filteredMatches.find(m => Number(m.matchday) === 29) || null;
-                  if (!sf1 && !sf2 && !finalMatch) return null;
-                  const sf1Played = sf1 && sf1.is_played;
-                  const sf2Played = sf2 && sf2.is_played;
-                  const finalPlayed = finalMatch && finalMatch.is_played;
-                  const animateConnector = finalPlayed || (sf1Played && sf2Played);
-                  const compactBox = (title, match) => (
-                    <div style={{ minWidth: 'clamp(180px, 40vw, 220px)', padding: 'clamp(8px, 2vw, 10px)', borderRadius: '8px', background: '#ffffff', boxShadow: '0 1px 6px rgba(2,6,23,0.04)', border: '1px solid #e6eefb' }}>
-                      <div style={{ fontSize: 'clamp(11px, 2vw, 13px)', color: '#0f172a', fontWeight: 800, marginBottom: 6 }}>{title}</div>
-                      {match ? (
-                        <div>
-                          <div style={{ fontWeight: 700, fontSize: 'clamp(12px, 2vw, 14px)' }}>{renderTeam(match.home_team, match)} <span className={flashMap[match.id]?.home ? 'score-flash' : ''} style={{ color: '#2b6cb0', margin: '0 6px' }}>{match.home_score ?? '-'}</span></div>
-                          <div style={{ fontWeight: 700, marginTop: 6, fontSize: 'clamp(12px, 2vw, 14px)' }}>{renderTeam(match.away_team, match)} <span className={flashMap[match.id]?.away ? 'score-flash' : ''} style={{ color: '#2b6cb0', margin: '0 6px' }}>{match.away_score ?? '-'}</span></div>
-                          {(match.penalty_home !== null || match.penalty_away !== null) && (
-                            <div style={{ marginTop: 6, fontSize: '12px', color: '#92400e', fontWeight: 700 }}>
-                              Penalties: {match.penalty_home !== null ? match.penalty_home : '-'} - {match.penalty_away !== null ? match.penalty_away : '-'}
-                            </div>
-                          )}
-                          <div style={{ marginTop: 8, fontSize: 'clamp(10px, 1.5vw, 12px)', color: '#6b7280' }}>MD {match.matchday} • {formatDate(match.match_date)}</div>
-                        </div>
-                      ) : (
-                        <div style={{ color: '#94a3b8', fontSize: 'clamp(11px, 2vw, 12px)' }}>— not scheduled —</div>
-                      )}
-                    </div>
-                  );
-
-                  return (
-                    <div className={"compact-bracket" + (animateConnector ? ' center' : '')} style={{ marginBottom: '18px', flexWrap: 'wrap' }}>
-                      <div className="compact-left">
-                        {compactBox('Semifinal 1', sf1)}
-                        {compactBox('Semifinal 2', sf2)}
-                      </div>
-                      <div className="connector-col">
-                        {/* animated connector line */}
-                        <div className={"connector-line" + (animateConnector ? ' draw' : '')} />
-                      </div>
-                      <div className="compact-right">
-                        {compactBox('Third Place', third)}
-                        {compactBox('Final', finalMatch)}
-                      </div>
-                    </div>
-                  );
-                })()}
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
-                  {Object.entries(grouped).map(([stage, matches]) => (
-                    <div key={stage}>
-                      <h3 style={{ margin: '6px 0 12px', color: '#0f172a', fontSize: 'clamp(14px, 2.5vw, 16px)' }}>{stage}</h3>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                        {matches.map((match) => {
-                          const homeScore = match.home_score !== null ? match.home_score : '-';
-                          const awayScore = match.away_score !== null ? match.away_score : '-';
-                          const isPlayed = match.is_played;
-                          const isVoid = !!match.void;
-                          // determine live state: not marked played, not void/awarded, and either scores present or current time within a match window
-                          const now = new Date();
-                          // prefer actual_start if set (for delayed starts); otherwise use scheduled match_date
-                          const start = match.actual_start ? new Date(match.actual_start) : (match.match_date ? new Date(match.match_date) : null);
-                          const duration = (match.match_duration_minutes != null) ? Number(match.match_duration_minutes) : 150;
-                          const end = start ? new Date(start) : null;
-                          if (end) end.setMinutes(end.getMinutes() + duration);
-                          const hasScores = match.home_score !== null || match.away_score !== null;
-                          const isLive = !isPlayed && !isVoid && !match.awarded && (hasScores || (start && now >= start && now <= end));
-
-                          return (
-                            <div
-                              key={match.id}
-                              className={highlighted[match.id] ? 'match-highlight' : ''}
-                              style={{
-                                border: isVoid ? '2px dashed #dc2626' : '2px solid #e6edf8',
-                                padding: 'clamp(10px, 3vw, 14px)',
-                                borderRadius: '10px',
-                                backgroundColor: isVoid ? '#fff1f2' : (isPlayed ? '#f8fafc' : '#ffffff'),
-                                boxShadow: '0 1px 6px rgba(2,6,23,0.06)'
-                              }}
-                            >
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', flexWrap: 'wrap' }}>
-                                  <div style={{ fontWeight: 700, color: '#0f172a', flex: 1, minWidth: '200px' }}>
-                                    <span style={{ color: '#4c51bf', fontWeight: 700, fontSize: 'clamp(12px, 2.5vw, 15px)' }}>{renderTeam(match.home_team, match)}</span>
-                                    <span className={flashMap[match.id]?.home ? 'score-flash' : ''} style={{ margin: '0 clamp(6px, 2vw, 10px)', color: '#2b6cb0', fontSize: 'clamp(16px, 3vw, 18px)', fontWeight: 700 }}>{homeScore}</span>
-                                    <span style={{ color: '#374151' }}>-</span>
-                                    <span className={flashMap[match.id]?.away ? 'score-flash' : ''} style={{ margin: '0 clamp(6px, 2vw, 10px)', color: '#2b6cb0', fontSize: 'clamp(16px, 3vw, 18px)', fontWeight: 700 }}>{awayScore}</span>
-                                    <span style={{ color: '#4c51bf', fontWeight: 700, fontSize: 'clamp(12px, 2.5vw, 15px)' }}>{renderTeam(match.away_team, match)}</span>
-                                    {(match.penalty_home !== null || match.penalty_away !== null) && (
-                                      <div style={{ marginTop: 6, fontSize: '13px', color: '#92400e', fontWeight: 700 }}>
-                                        Penalties: {match.penalty_home !== null ? match.penalty_home : '-'} - {match.penalty_away !== null ? match.penalty_away : '-'}
-                                      </div>
-                                    )}
-                                  </div>
-                                  <div style={{ display: 'flex', gap: 'clamp(6px, 1vw, 8px)', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                                    {match.awarded && (
-                                      (() => {
-                                        const reasonRaw = match.awarded_reason ? String(match.awarded_reason) : '';
-                                        const reason = reasonRaw ? `(${reasonRaw.charAt(0).toUpperCase() + reasonRaw.slice(1)})` : '';
-                                        const awardedToObj = match.awarded_to && typeof match.awarded_to === 'object' ? match.awarded_to : null;
-                                        return (
-                                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                                            <span style={{ padding: '6px 10px', borderRadius: 999, background: 'linear-gradient(90deg,#fff7ed,#fff1e6)', color: '#b45309', fontWeight: 800, fontSize: '12px', border: '1px solid rgba(234,88,12,0.12)', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                                              <span style={{ fontSize: 14 }}>🚨</span>
-                                              <span style={{ fontWeight: 800 }}>Awarded</span>
-                                            </span>
-                                            {/* Inline reason instead of hover */}
-                                            {reason && <span style={{ fontSize: '12px', color: '#92400e', fontWeight: 700 }}>{reason}</span>}
-                                            {/* Show awarded-to name only when available as an object with a name; do not show numeric IDs */}
-                                            {awardedToObj && awardedToObj.name && (
-                                              <span style={{ fontSize: '12px', color: '#0f172a', background: 'rgba(237,246,255,0.9)', padding: '4px 8px', borderRadius: 6, border: '1px solid rgba(2,6,23,0.04)', fontWeight: 600 }}>
-                                                to {awardedToObj.name}
-                                              </span>
-                                            )}
-                                          </span>
-                                        );
-                                      })()
-                                    )}
-                                    {/* Live / ongoing badge when match is in progress (disappears after end or when marked played) */}
-                                    {isLive && (
-                                      <span className="live-badge">
-                                        <span className="live-dot" />
-                                        <span style={{ fontWeight: 800 }}>LIVE</span>
-                                      </span>
-                                    )}
-                                    {match.awarded && (match.original_home_score !== null || match.original_away_score !== null) && (
-                                      <span style={{ fontSize: '12px', color: '#7c2d12', background: 'rgba(255,247,237,0.7)', padding: '4px 8px', borderRadius: 6, border: '1px solid rgba(249,115,22,0.08)', fontWeight: 600 }}>
-                                        Original: {match.original_home_score ?? '-'} - {match.original_away_score ?? '-'}
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-
-                                <div style={{ fontSize: 'clamp(11px, 2vw, 13px)', color: '#6b7280', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-                                  <span>📅 {formatDate(match.match_date)}</span>
-                                  {match.venue && <span>📍 {match.venue}</span>}
-                                  {match.matchday && <span>🔢 MD {match.matchday}</span>}
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ))}
-                </div>
+          <div className="results-score-area">
+            {hasScores ? (
+              <div className={`results-score ${flash ? 'results-flash' : ''}`}>
+                <span>{match.home_score}</span>
+                <span className="results-score-separator">:</span>
+                <span>{match.away_score}</span>
               </div>
-            );
-          })()
-        ) : (
-          <div style={{
-            textAlign: 'center',
-            padding: '60px 20px',
-            color: '#999'
-          }}>
-            <p style={{ fontSize: '18px' }}>No matches found for the selected season.</p>
-            <p style={{ fontSize: '14px', marginTop: '8px' }}>Select a different season to view its matches.</p>
+            ) : (
+              <div className="results-pending">VS</div>
+            )}
+
+            {hasPenalties && (
+              <div className="results-penalties">
+                Penalties: {homePenalty} - {awayPenalty}
+              </div>
+            )}
+
+            {hasOriginalScore && isMatchAwarded(match) && (
+              <div className="results-original-score">
+                Original score: {originalHome} - {originalAway}
+              </div>
+            )}
+          </div>
+
+          <div className="results-team away" title={awayName}>
+            {awayName}
+          </div>
+        </div>
+
+        {isMatchAwarded(match) && (
+          <div className="results-awarded-info">
+            <strong>Match awarded.</strong>
+            {(match?.award_reason || match?.awarded_reason) &&
+              ` ${match.award_reason || match.awarded_reason}`}
+            {awardedName && ` Awarded to: ${awardedName}.`}
           </div>
         )}
-      </div>
+
+        {isMatchVoid(match) && (
+          <div className="results-awarded-info">
+            This fixture has been declared void.
+            {(match?.void_reason || match?.notes) &&
+              ` ${match.void_reason || match.notes}`}
+          </div>
+        )}
+
+        <div className="results-match-footer">
+          <span>
+            {matchDate
+              ? formatMatchSchedule(match)
+              : 'Schedule pending'}
+          </span>
+
+          <span className="results-match-venue">
+            {match?.venue || match?.location || ''}
+          </span>
+        </div>
+      </article>
+    );
+  };
+
+  const selectedSeasonName =
+    seasons.find(
+      (season) =>
+        String(getSeasonId(season)) === String(selectedSeason)
+    )?.name || '';
+
+  return (
+    <div className="results-page">
+      <style>{styles}</style>
+
+      <main className="results-container">
+        <header className="results-heading">
+          <div className="results-eyebrow">
+            Competition Overview
+          </div>
+
+          <h1 className="results-title">
+            Match Results
+          </h1>
+
+          <p className="results-subtitle">
+            Live scores, completed fixtures and match updates.
+          </p>
+        </header>
+
+        <section
+          className="results-filter-panel"
+          aria-label="Results filters"
+        >
+          <div className="results-filter">
+            <label htmlFor="results-season">Season</label>
+
+            <select
+              id="results-season"
+              value={selectedSeason}
+              onChange={(event) => setSelectedSeason(event.target.value)}
+              disabled={!seasons.length}
+            >
+              {!seasons.length && (
+                <option value="">No season available</option>
+              )}
+
+              {seasons.map((season, index) => {
+                const seasonId = getSeasonId(season);
+
+                return (
+                  <option
+                    key={seasonId ?? index}
+                    value={seasonId ?? ''}
+                  >
+                    {season.name || season.title || `Season ${index + 1}`}
+                  </option>
+                );
+              })}
+            </select>
+          </div>
+        </section>
+
+        {error && (
+          <div className="results-error" role="alert">
+            {error}
+          </div>
+        )}
+
+        {loading && (
+          <div className="results-loading" role="status">
+            <span className="results-spinner" />
+            <span>Loading match results...</span>
+          </div>
+        )}
+
+        {!loading && (
+          <>
+            <div className="results-section-top">
+              <div>
+                <h2 className="results-section-title">
+                  {selectedSeasonName || 'Competition Fixtures'}
+                </h2>
+
+                <p className="results-section-caption">
+                  Match scores, fixtures and competition progress.
+                </p>
+              </div>
+
+              <span className="results-count">
+                {filteredMatches.length} MATCH
+                {filteredMatches.length === 1 ? '' : 'ES'}
+              </span>
+            </div>
+
+            {bracketMatches.length > 0 && (
+              <section aria-label="Knockout results">
+                <div className="results-section-top">
+                  <div>
+                    <h2 className="results-section-title">
+                      Knockout Overview
+                    </h2>
+
+                    <p className="results-section-caption">
+                      Semi-finals and final-stage fixtures.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="results-bracket">
+                  {bracketMatches.map((item) =>
+                    renderBracket(item.match, item.label)
+                  )}
+                </div>
+              </section>
+            )}
+
+            {filteredMatches.length === 0 ? (
+              <div className="results-state">
+                <div className="results-state-icon" aria-hidden="true">
+                  —
+                </div>
+
+                <h3>No match results available</h3>
+
+                <p>
+                  There are currently no fixtures or results to display
+                  for this season.
+                </p>
+              </div>
+            ) : (
+              <div>
+                {groupedMatches.map(([stage, stageMatches]) => (
+                  <section className="results-stage" key={stage}>
+                    <div className="results-stage-heading">
+                      <h3>{stage}</h3>
+
+                      <span className="results-stage-count">
+                        {stageMatches.length} MATCH
+                        {stageMatches.length === 1 ? '' : 'ES'}
+                      </span>
+                    </div>
+
+                    <div className="results-match-list">
+                      {stageMatches.map(renderMatch)}
+                    </div>
+                  </section>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+      </main>
     </div>
   );
 };
 
 export default Results;
-

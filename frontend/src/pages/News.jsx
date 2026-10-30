@@ -1,15 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api/api';
-
-function formatDate(iso) {
-  try {
-    const d = new Date(iso);
-    return d.toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
-  } catch (e) {
-    return iso;
-  }
-}
+import './LeaguePolish.css';
 
 function excerpt(text, length = 120) {
   if (!text) return '';
@@ -39,17 +31,24 @@ const News = () => {
   }, []);
 
   return (
-    <div style={{ padding: '40px 20px', maxWidth: '1000px', margin: '0 auto' }}>
-      <h2 style={{ color: '#1e3c72', marginBottom: '30px' }}>📰 Latest News</h2>
+    <div className="league-polish-page">
+      <main className="league-polish-content">
+        <header className="league-page-header">
+          <div className="league-page-header__copy">
+            <div className="league-page-eyebrow">From the league</div>
+            <h1 className="league-page-title">Latest News</h1>
+            <p className="league-page-subtitle">Announcements, match reports and updates from the competition.</p>
+          </div>
+        </header>
 
       {loading && (
-        <div style={{ marginBottom: '20px', color: '#555' }}>Loading news…</div>
+        <div className="league-page-empty">Loading news…</div>
       )}
       {error && (
-        <div style={{ marginBottom: '20px', color: '#b91c1c', fontWeight: 600 }}>Error: {error}</div>
+        <div className="league-page-status league-page-status--error">Error: {error}</div>
       )}
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      <div style={{ display: 'grid', gap: 16 }}>
         {newsItems.length > 0 && newsItems.map((item) => {
           // placeholder image when none provided: use project favicon for consistent fallback
           const imgSrc = item.image_url && item.image_url.length ? item.image_url : '/favicon.ico';
@@ -57,13 +56,8 @@ const News = () => {
             <div
               key={item.id}
               onClick={() => navigate(`/news/${item.id}`)}
+              className="league-page-card league-news-card"
               style={{
-                background: 'white',
-                border: '2px solid #667eea',
-                borderRadius: '12px',
-                padding: '12px',
-                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.04)',
-                transition: 'all 0.2s ease',
                 cursor: 'pointer',
                 overflow: 'hidden'
               }}
@@ -72,18 +66,18 @@ const News = () => {
                 <img
                   src={imgSrc}
                   alt={item.title}
-                  style={{ width: 110, height: 70, objectFit: 'cover', borderRadius: 8, flexShrink: 0 }}
+                  style={{ width: 130, height: 88, objectFit: 'cover', borderRadius: 9, flexShrink: 0 }}
                   onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = '/favicon.ico'; }}
                 />
                 <div style={{ flex: 1 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', gap: '12px' }}>
                     <div>
-                      <h3 style={{ margin: 0, color: '#1e3c72', fontSize: 18 }}>{item.title}</h3>
-                      <div style={{ color: '#6b7280', fontSize: 13 }}>{item.subtitle || excerpt(item.content, 120)}</div>
+                      <h2 style={{ margin: '0 0 5px', color: 'var(--league-navy)', fontSize: 18 }}>{item.title}</h2>
+                      <div style={{ color: 'var(--league-muted)', fontSize: 13 }}>{item.subtitle || excerpt(item.content, 120)}</div>
                     </div>
-                    <div style={{ color: '#999', fontSize: 12, marginLeft: 12 }}>{item.author || 'Unknown'}</div>
+                    <div style={{ color: 'var(--league-muted)', fontSize: 12, marginLeft: 12, whiteSpace: 'nowrap' }}>{item.author || 'Unknown'}</div>
                   </div>
-                  <div style={{ marginTop: 8, color: '#555', fontSize: 14 }}>{excerpt(item.content, 180)}</div>
+                  <div style={{ marginTop: 10, color: 'var(--league-ink)', fontSize: 14, lineHeight: 1.6 }}>{excerpt(item.content, 180)}</div>
                 </div>
               </div>
             </div>
@@ -93,19 +87,13 @@ const News = () => {
 
       {/* Placeholder for empty state */}
       {!loading && newsItems.length === 0 && (
-        <div style={{
-          marginTop: '40px',
-          padding: '40px',
-          background: '#f8f9ff',
-          borderRadius: '12px',
-          textAlign: 'center',
-          border: '2px dashed #667eea'
-        }}>
-          <p style={{ color: '#999', fontSize: '14px' }}>
+        <div className="league-page-empty">
+          <p style={{ color: 'inherit', fontSize: 14, margin: 0 }}>
             More updates coming soon! Stay tuned for the latest news about Ubakala Football League.
           </p>
         </div>
       )}
+      </main>
     </div>
   );
 };
