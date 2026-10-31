@@ -7,6 +7,7 @@ import Standings from './pages/Standings';
 import News from './pages/News';
 import NewsDetail from './pages/NewsDetail';
 import History from './pages/History';
+import RulesRegulations from './pages/RulesRegulations';
 import AdminLogin from './pages/AdminLogin';
 import AdminDashboard from './pages/AdminDashboard';
 import NewsUploader from './pages/NewsUploader';
@@ -70,6 +71,7 @@ export default function App() {
                 <Route path="/news" element={<News />} />
                 <Route path="/news/:id" element={<NewsDetail />} />
                 <Route path="/history" element={<History />} />
+                <Route path="/rules-regulations" element={<RulesRegulations />} />
                 <Route path="/admin" element={<AdminLogin />} />
                 <Route path="/admin-dashboard" element={<AdminDashboard />} />
                 <Route path="/news-uploader" element={<RequireAuth allowedGroups={["NewsUploader"]}><NewsUploader /></RequireAuth>} />

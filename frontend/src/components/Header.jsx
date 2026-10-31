@@ -109,6 +109,10 @@ export default function Header() {
             History
           </Link>
 
+          <Link to="/rules-regulations" className="nav-link">
+            Rules &amp; Regulations
+          </Link>
+
           {username ? (
             <>
               <span className="header-username">
@@ -185,6 +189,10 @@ export default function Header() {
             History
           </Link>
 
+          <Link to="/rules-regulations" className="nav-link" onClick={closeMenu}>
+            Rules &amp; Regulations
+          </Link>
+
           {username ? (
             <div className="mobile-admin-section">
               <span className="mobile-username">
@@ -213,7 +221,6 @@ export default function Header() {
     </header>
   );
 }
-
 
 
 

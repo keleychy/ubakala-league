@@ -1,0 +1,212 @@
+.rules-page {
+  min-height: 65vh;
+  padding: 38px 22px 56px;
+  background: #f5f7fb;
+  color: #263449;
+}
+
+.rules-content {
+  width: min(100%, 980px);
+  margin: 0 auto;
+}
+
+.rules-header {
+  margin-bottom: 24px;
+  padding: 30px clamp(20px, 5vw, 42px);
+  border: 1px solid rgba(214, 168, 61, .55);
+  border-left: 5px solid #d6a83d;
+  border-radius: 16px;
+  background: linear-gradient(115deg, #102b50 0%, #173b70 58%, #245286 100%);
+  box-shadow: 0 12px 28px rgba(16, 43, 80, .14);
+}
+
+.rules-header h1 {
+  margin: 0;
+  color: #fff;
+  font-size: clamp(25px, 4vw, 36px);
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.rules-header p {
+  margin: 10px 0 0;
+  color: #f0d084;
+  font-size: clamp(12px, 2vw, 15px);
+  font-weight: 750;
+  letter-spacing: 1.2px;
+  line-height: 1.5;
+}
+
+.rules-document {
+  padding: clamp(20px, 4vw, 38px);
+  border: 1px solid #e3e9f1;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 5px 18px rgba(20, 43, 75, .055);
+}
+
+.rules-section {
+  padding: 24px 0;
+  border-bottom: 1px solid #e7ecf2;
+}
+
+.rules-section:first-child {
+  padding-top: 0;
+}
+
+.rules-section:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.rules-section__title {
+  margin: 0 0 14px;
+  padding: 0 0 10px;
+  border-bottom: 2px solid #d6a83d;
+  color: #102b50;
+  font-size: clamp(16px, 2vw, 19px);
+  font-weight: 800;
+  line-height: 1.4;
+}
+
+.rules-section p {
+  margin: 0 0 13px;
+  color: #39485c;
+  font-size: 15px;
+  line-height: 1.75;
+}
+
+.rules-section p:last-child {
+  margin-bottom: 0;
+}
+
+.rules-category {
+  margin-top: 19px;
+}
+
+.rules-category h3 {
+  margin: 0 0 8px;
+  color: #173b70;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.rules-list {
+  display: grid;
+  gap: 8px;
+  margin: 10px 0 14px;
+  padding-left: 24px;
+  color: #39485c;
+  font-size: 15px;
+  line-height: 1.65;
+}
+
+.rules-list--penalties {
+  list-style: none;
+  padding-left: 0;
+}
+
+.rules-total {
+  color: #102b50 !important;
+}
+
+.rules-download {
+  display: grid;
+  gap: 18px;
+  margin-top: 24px;
+  padding: clamp(22px, 4vw, 32px);
+  border: 1px solid rgba(214, 168, 61, .55);
+  border-radius: 14px;
+  background: linear-gradient(135deg, #fff 0%, #fbf8ef 100%);
+  box-shadow: 0 8px 24px rgba(20, 43, 75, .08);
+}
+
+.rules-download__copy h2 {
+  margin: 0 0 10px;
+  color: #102b50;
+  font-size: clamp(18px, 2.5vw, 23px);
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.rules-download__copy p {
+  margin: 0;
+  color: #4a586b;
+  font-size: 15px;
+  line-height: 1.7;
+}
+
+.rules-page .rules-download__button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 11px;
+  width: fit-content;
+  min-height: 52px;
+  margin: 0;
+  padding: 12px 18px;
+  border: 1px solid #d6a83d;
+  border-radius: 8px;
+  background: #102b50;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.45;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color .16s ease, box-shadow .16s ease;
+}
+
+.rules-page .rules-download__button:hover {
+  background: #173b70;
+  box-shadow: 0 5px 14px rgba(16, 43, 80, .18);
+}
+
+.rules-download__button svg {
+  width: 25px;
+  height: 25px;
+  flex: 0 0 auto;
+  fill: none;
+  stroke: #f0d084;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.5;
+}
+
+.rules-download__button svg text {
+  fill: #f0d084;
+  stroke: none;
+  font-size: 4px;
+  font-weight: 800;
+}
+
+@media (max-width: 600px) {
+  .rules-page {
+    padding: 24px 14px 38px;
+  }
+
+  .rules-header {
+    margin-bottom: 16px;
+    border-radius: 12px;
+  }
+
+  .rules-document {
+    border-radius: 11px;
+  }
+
+  .rules-section {
+    padding: 20px 0;
+  }
+
+  .rules-section p,
+  .rules-list,
+  .rules-download__copy p {
+    font-size: 14px;
+  }
+
+  .rules-page .rules-download__button {
+    width: 100%;
+    justify-content: flex-start;
+  }
+}
