@@ -30,6 +30,27 @@ function doGet(e) {
 }
 
 /**
+ * Handles authenticated administrator requests.
+ * The Firebase ID token is verified server-side for every request.
+ */
+function doPost(e) {
+  try {
+    const body = JSON.parse(e && e.postData ? e.postData.contents || '{}' : '{}');
+    const user = authenticateAdmin_(body.idToken);
+    const data = handleAdminPost_(body, user);
+    return jsonResponse({ success: true, data: data });
+  } catch (error) {
+    console.error('Admin API POST error:', error);
+    return jsonResponse({
+      success: false,
+      error: error && error.safeMessage
+        ? error.safeMessage
+        : 'The administrator request could not be completed'
+    });
+  }
+}
+
+/**
  * Converts an object into a JSON HTTP response.
  */
 function jsonResponse(data) {
@@ -335,6 +356,637 @@ function handleApiGet(parameters) {
   };
 }
 
+function handleAdminPost_(body, user) {
+  const action = requiredText_(body.action, 'action');
+
+  if (action === 'admin.me') {
+    return { email: user.email, role: user.role };
+  }
+  if (action === 'admin.matches.list') {
+    requireAdminPermission_(user, 'matches');
+    const references = readReferences_();
+    return getSheetRecords('Matches')
+      .map(record => normalizeMatch_(record, references));
+  }
+  if (action === 'admin.news.list') {
+    requireAdminPermission_(user, 'news');
+    return getSheetRecords('News').map(normalizeNews_);
+  }
+  if (action === 'admin.seasons.list') {
+    requireAdminPermission_(user, 'teams');
+    return getSheetRecords('Seasons').map(normalizeSeason_);
+  }
+  if (action === 'admin.matches.setResult') {
+    requireAdminPermission_(user, 'matches');
+    return setMatchResult_(body, user);
+  }
+  if (action === 'admin.matches.setPeriod') {
+    requireAdminPermission_(user, 'matches');
+    return setMatchPeriod_(body, user);
+  }
+  if (action === 'admin.matches.markFinished') {
+    requireAdminPermission_(user, 'matches');
+    return markMatchFinished_(body, user);
+  }
+  if (action === 'admin.news.create') {
+    requireAdminPermission_(user, 'news');
+    return createNews_(body, user);
+  }
+  if (action === 'admin.news.update') {
+    requireAdminPermission_(user, 'news');
+    return updateNews_(body, user);
+  }
+  if (action === 'admin.news.delete') {
+    requireAdminPermission_(user, 'news');
+    return deleteNews_(body, user);
+  }
+  if (action === 'admin.groups.list') {
+    requireAdminPermission_(user, 'teams');
+    return getGroupsWithTeams_(optionalId_(body.season_id)).map(item => ({
+      id: item.group.id,
+      season_id: item.group.season_id,
+      name: item.group.name,
+      teams: item.teams
+    }));
+  }
+  if (action === 'admin.teams.createManual') {
+    requireAdminPermission_(user, 'teams');
+    return createManualTeam_(body, user);
+  }
+  if (action === 'admin.teams.move') {
+    requireAdminPermission_(user, 'teams');
+    return moveTeam_(body, user);
+  }
+  if (action === 'admin.teams.import') {
+    requireAdminPermission_(user, 'teams');
+    return importTeams_(body, user);
+  }
+
+  throw apiError_('Unknown or unsupported administrator action');
+}
+
+function authenticateAdmin_(idToken) {
+  const token = requiredText_(idToken, 'Firebase ID token');
+  const apiKey = PropertiesService.getScriptProperties()
+    .getProperty('FIREBASE_WEB_API_KEY');
+  if (!apiKey) {
+    throw apiError_('Administrator authentication is not configured');
+  }
+
+  const url = 'https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=' +
+    encodeURIComponent(apiKey);
+  const response = UrlFetchApp.fetch(url, {
+    method: 'post',
+    contentType: 'application/json',
+    payload: JSON.stringify({ idToken: token }),
+    muteHttpExceptions: true
+  });
+  if (response.getResponseCode() !== 200) {
+    throw apiError_('Sign-in is invalid or has expired');
+  }
+
+  let result;
+  try {
+    result = JSON.parse(response.getContentText());
+  } catch (error) {
+    throw apiError_('Sign-in could not be verified');
+  }
+  const firebaseUser = result && result.users && result.users[0];
+  const email = firebaseUser && optionalText_(firebaseUser.email);
+  if (!firebaseUser || !email || firebaseUser.disabled || !firebaseUser.emailVerified) {
+    throw apiError_('Verify your email address before using administrator tools');
+  }
+
+  const matchingRole = getSheetRecords('UserRoles').find(record =>
+    optionalText_(record.email) &&
+    optionalText_(record.email).toLowerCase() === email.toLowerCase() &&
+    optionalBoolean_(record.active, 'UserRoles.active') === true
+  );
+  const role = matchingRole ? optionalText_(matchingRole.role) : null;
+  if (!role || !isSupportedAdminRole_(role)) {
+    throw apiError_('This account is not authorized for administrator access');
+  }
+
+  return { email: email.toLowerCase(), role: role };
+}
+
+function isSupportedAdminRole_(role) {
+  return ['admin', 'resultseditor', 'newsuser'].includes(normalizeRole_(role));
+}
+
+function requireAdminPermission_(user, permission) {
+  const role = normalizeRole_(user.role);
+  const allowed =
+    role === 'admin' ||
+    (role === 'resultseditor' && permission === 'matches') ||
+    (role === 'newsuser' && permission === 'news');
+  if (!allowed) {
+    throw apiError_('You do not have permission to perform this action');
+  }
+}
+
+function normalizeRole_(role) {
+  return String(role || '').toLowerCase().replace(/[\s_-]+/g, '');
+}
+
+function apiError_(message) {
+  const error = new Error(message);
+  error.safeMessage = message;
+  return error;
+}
+
+function withAdminWriteLock_(callback) {
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(10000)) {
+    throw apiError_('Another administrator update is in progress; try again shortly');
+  }
+  try {
+    return callback();
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function getSheetHeaders_(sheet) {
+  const lastColumn = sheet.getLastColumn();
+  if (lastColumn < 1) {
+    throw new Error(sheet.getName() + ' sheet has no header row');
+  }
+  return sheet.getRange(1, 1, 1, lastColumn).getDisplayValues()[0]
+    .map(header => String(header).trim());
+}
+
+function getRecordRow_(sheet, id) {
+  const headers = getSheetHeaders_(sheet);
+  const idIndex = headers.indexOf('id');
+  if (idIndex < 0 || headers.lastIndexOf('id') !== idIndex) {
+    throw new Error(sheet.getName() + ' sheet must have one id column');
+  }
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) {
+    throw apiError_('Record not found');
+  }
+  const ids = sheet.getRange(2, idIndex + 1, lastRow - 1, 1).getDisplayValues();
+  const offset = ids.findIndex(row => String(row[0]).trim() === String(id));
+  if (offset < 0) {
+    throw apiError_('Record not found');
+  }
+  return { headers: headers, rowNumber: offset + 2 };
+}
+
+function appendAuditLog_(user, action, entityType, entityId, oldValue, newValue, reason) {
+  const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName('AuditLog');
+  if (!sheet) {
+    throw new Error('AuditLog sheet not found');
+  }
+  const headers = getSheetHeaders_(sheet);
+  const required = [
+    'id', 'timestamp', 'user_email', 'action', 'entity_type',
+    'entity_id', 'old_value', 'new_value', 'reason'
+  ];
+  required.forEach(header => {
+    if (headers.indexOf(header) < 0 || headers.lastIndexOf(header) !== headers.indexOf(header)) {
+      throw new Error('AuditLog sheet must have one ' + header + ' column');
+    }
+  });
+  const values = {
+    id: Utilities.getUuid(),
+    timestamp: new Date().toISOString(),
+    user_email: user.email,
+    action: action,
+    entity_type: entityType,
+    entity_id: String(entityId),
+    old_value: JSON.stringify(oldValue === undefined ? null : oldValue),
+    new_value: JSON.stringify(newValue === undefined ? null : newValue),
+    reason: optionalText_(reason) || ''
+  };
+  sheet.appendRow(headers.map(header =>
+    Object.prototype.hasOwnProperty.call(values, header) ? values[header] : ''
+  ));
+}
+
+function readRowObject_(sheet, headers, rowNumber) {
+  const values = sheet.getRange(rowNumber, 1, 1, headers.length).getDisplayValues()[0];
+  return headers.reduce((record, header, index) => {
+    if (header) record[header] = values[index] === undefined ? '' : values[index];
+    return record;
+  }, {});
+}
+
+function updateRecordFieldsAndAudit_(sheetName, id, updates, user, action, reason) {
+  return withAdminWriteLock_(() => {
+    const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(sheetName);
+    if (!sheet) throw new Error(sheetName + ' sheet not found');
+    const location = getRecordRow_(sheet, id);
+    const oldRecord = readRowObject_(sheet, location.headers, location.rowNumber);
+    const nextRecord = Object.assign({}, oldRecord, updates);
+    Object.keys(updates).forEach(field => {
+      const index = location.headers.indexOf(field);
+      if (index < 0 || location.headers.lastIndexOf(field) !== index) {
+        throw new Error(sheetName + ' sheet must have one ' + field + ' column');
+      }
+    });
+
+    Object.keys(updates).forEach(field => {
+      const index = location.headers.indexOf(field);
+      sheet.getRange(location.rowNumber, index + 1).setValue(updates[field]);
+    });
+    try {
+      appendAuditLog_(user, action, sheetName, id, oldRecord, nextRecord, reason);
+    } catch (error) {
+      Object.keys(updates).forEach(field => {
+        const index = location.headers.indexOf(field);
+        sheet.getRange(location.rowNumber, index + 1).setValue(oldRecord[field]);
+      });
+      throw error;
+    }
+    return nextRecord;
+  });
+}
+
+function appendRecordAndAudit_(sheetName, record, user, action, entityId, reason) {
+  return withAdminWriteLock_(() => {
+    const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(sheetName);
+    if (!sheet) throw new Error(sheetName + ' sheet not found');
+    const headers = getSheetHeaders_(sheet);
+    Object.keys(record).forEach(field => {
+      if (headers.indexOf(field) < 0 || headers.lastIndexOf(field) !== headers.indexOf(field)) {
+        throw new Error(sheetName + ' sheet must have one ' + field + ' column');
+      }
+    });
+    const rowNumber = sheet.getLastRow() + 1;
+    sheet.getRange(rowNumber, 1, 1, headers.length).setValues([
+      headers.map(header =>
+        Object.prototype.hasOwnProperty.call(record, header) ? record[header] : ''
+      )
+    ]);
+    try {
+      appendAuditLog_(user, action, sheetName, entityId, null, record, reason);
+    } catch (error) {
+      sheet.deleteRow(rowNumber);
+      throw error;
+    }
+    return record;
+  });
+}
+
+function requireRecordId_(body, fieldName) {
+  return requiredId_(body.id, fieldName || 'id');
+}
+
+function requiredNonNegativeInteger_(value, fieldName) {
+  if (value === '' || value === null || value === undefined) {
+    throw apiError_(fieldName + ' is required');
+  }
+  const number = Number(value);
+  if (!Number.isInteger(number) || number < 0) {
+    throw apiError_(fieldName + ' must be a non-negative integer');
+  }
+  return number;
+}
+
+function setMatchResult_(body, user) {
+  const id = requireRecordId_(body, 'match id');
+  const updates = {
+    home_score: requiredNonNegativeInteger_(body.home_score, 'home_score'),
+    away_score: requiredNonNegativeInteger_(body.away_score, 'away_score')
+  };
+  const homePenalties = body.home_penalties !== undefined
+    ? body.home_penalties
+    : body.penalty_home;
+  const awayPenalties = body.away_penalties !== undefined
+    ? body.away_penalties
+    : body.penalty_away;
+  if (homePenalties !== undefined || awayPenalties !== undefined) {
+    if (homePenalties === undefined || awayPenalties === undefined) {
+      throw apiError_('Both penalty scores must be provided together');
+    }
+    updates.home_penalties = requiredNonNegativeInteger_(homePenalties, 'home_penalties');
+    updates.away_penalties = requiredNonNegativeInteger_(awayPenalties, 'away_penalties');
+  }
+  return updateRecordFieldsAndAudit_(
+    'Matches', id, updates, user, 'match.result.updated', body.reason
+  );
+}
+
+function setMatchPeriod_(body, user) {
+  const id = requireRecordId_(body, 'match id');
+  const period = requiredText_(body.current_period, 'current_period');
+  const allowedPeriods = [
+    'not_started', 'first_half', '1st_half', 'halftime', 'half_time',
+    'second_half', '2nd_half', 'extra_time', 'extra_time_first_half',
+    'extra_time_second_half', 'penalties', 'shootout', 'ended'
+  ];
+  if (!allowedPeriods.includes(period.toLowerCase().replace(/[\s-]+/g, '_'))) {
+    throw apiError_('current_period is not supported');
+  }
+  return updateRecordFieldsAndAudit_(
+    'Matches', id, { current_period: period }, user, 'match.period.updated', body.reason
+  );
+}
+
+function markMatchFinished_(body, user) {
+  const id = requireRecordId_(body, 'match id');
+  return updateRecordFieldsAndAudit_(
+    'Matches',
+    id,
+    { status: 'FINISHED', current_period: 'ENDED' },
+    user,
+    'match.finished',
+    body.reason
+  );
+}
+
+function validateNewsInput_(body, partial) {
+  const updates = {};
+  ['title', 'subtitle', 'content', 'author', 'image_url'].forEach(field => {
+    if (partial && body[field] === undefined) return;
+    const value = optionalText_(body[field]);
+    if (field === 'title' || field === 'content') {
+      if (!value) throw apiError_(field + ' is required');
+      if (field === 'content' && value.length < 20) {
+        throw apiError_('content must be at least 20 characters');
+      }
+      updates[field] = value;
+    } else {
+      updates[field] = value || '';
+    }
+  });
+  if (updates.image_url) {
+    let imageUrl;
+    try {
+      imageUrl = new URL(updates.image_url);
+    } catch (error) {
+      throw apiError_('image_url must be a valid URL');
+    }
+    if (imageUrl.protocol !== 'https:' && imageUrl.protocol !== 'http:') {
+      throw apiError_('image_url must use HTTP or HTTPS');
+    }
+  }
+  return updates;
+}
+
+function createNews_(body, user) {
+  const timestamp = new Date().toISOString();
+  const id = Utilities.getUuid();
+  const record = Object.assign(validateNewsInput_(body, false), {
+    id: id,
+    published: body.published === false ? 'FALSE' : 'TRUE',
+    created_at: timestamp,
+    updated_at: timestamp
+  });
+  appendRecordAndAudit_(
+    'News', record, user, 'news.created', id, body.reason
+  );
+  return normalizeNews_(record);
+}
+
+function updateNews_(body, user) {
+  const id = requireRecordId_(body, 'news id');
+  const updates = validateNewsInput_(body, true);
+  if (body.published !== undefined) {
+    if (typeof body.published !== 'boolean') {
+      throw apiError_('published must be a boolean');
+    }
+    updates.published = body.published ? 'TRUE' : 'FALSE';
+  }
+  if (!Object.keys(updates).length) {
+    throw apiError_('No news fields were provided');
+  }
+  updates.updated_at = new Date().toISOString();
+  const updated = updateRecordFieldsAndAudit_(
+    'News', id, updates, user, 'news.updated', body.reason
+  );
+  return normalizeNews_(updated);
+}
+
+function deleteNews_(body, user) {
+  const id = requireRecordId_(body, 'news id');
+  return withAdminWriteLock_(() => {
+    const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName('News');
+    if (!sheet) throw new Error('News sheet not found');
+    const location = getRecordRow_(sheet, id);
+    const oldRecord = readRowObject_(sheet, location.headers, location.rowNumber);
+    appendAuditLog_(user, 'news.deleted', 'News', id, oldRecord, null, body.reason);
+    try {
+      sheet.deleteRow(location.rowNumber);
+    } catch (error) {
+      sheet.insertRowBefore(location.rowNumber);
+      sheet.getRange(location.rowNumber, 1, 1, location.headers.length)
+        .setValues([location.headers.map(header => oldRecord[header] || '')]);
+      throw error;
+    }
+    return { id: id, deleted: true };
+  });
+}
+
+function findSeasonForTeam_(category, seasonId) {
+  const normalizedCategory = requiredText_(category, 'category').toLowerCase();
+  const season = getSheetRecords('Seasons')
+    .map(normalizeSeason_)
+    .find(item => item.id === String(seasonId) && item.category === normalizedCategory);
+  if (!season) {
+    throw apiError_('The selected season does not match the selected category');
+  }
+  return season;
+}
+
+function findGroupForTeam_(seasonId, groupName) {
+  const name = requiredText_(groupName, 'group_name').toLowerCase();
+  const group = getSheetRecords('Groups')
+    .map(normalizeGroup_)
+    .find(item => item.season_id === String(seasonId) && item.name.toLowerCase() === name);
+  if (!group) {
+    throw apiError_('The selected group does not belong to the selected season');
+  }
+  return group;
+}
+
+function canonicalTeamName_(value) {
+  return requiredText_(value, 'team name').toLowerCase().replace(/\s+/g, ' ');
+}
+
+function findTeamByName_(name) {
+  const canonical = canonicalTeamName_(name);
+  return getSheetRecords('Teams')
+    .map(normalizeTeam_)
+    .find(team => canonicalTeamName_(team.name) === canonical) || null;
+}
+
+function findTeamAssignment_(seasonId, teamId) {
+  return getSheetRecords('TeamGroups')
+    .map(normalizeTeamGroup_)
+    .find(item => item.season_id === String(seasonId) && item.team_id === String(teamId)) || null;
+}
+
+function createTeamRecord_(name) {
+  return {
+    id: Utilities.getUuid(),
+    name: requiredText_(name, 'team_name'),
+    short_name: '',
+    logo: '',
+    archived: 'FALSE'
+  };
+}
+
+function createTeamAssignment_(seasonId, groupId, teamId) {
+  return {
+    id: Utilities.getUuid(),
+    season_id: String(seasonId),
+    group_id: String(groupId),
+    team_id: String(teamId)
+  };
+}
+
+function createManualTeam_(body, user) {
+  const teamName = requiredText_(body.team_name, 'team_name');
+  const season = findSeasonForTeam_(body.category, body.season_id);
+  const group = findGroupForTeam_(season.id, body.group_name);
+  let team = findTeamByName_(teamName);
+  if (team && findTeamAssignment_(season.id, team.id)) {
+    throw apiError_('This team is already assigned in the selected season');
+  }
+
+  if (!team) {
+    team = appendRecordAndAudit_(
+      'Teams',
+      createTeamRecord_(teamName),
+      user,
+      'team.created',
+      'new',
+      body.reason
+    );
+  }
+  const assignment = appendRecordAndAudit_(
+    'TeamGroups',
+    createTeamAssignment_(season.id, group.id, team.id),
+    user,
+    'team.assigned',
+    team.id,
+    body.reason
+  );
+  return {
+    team: normalizeTeam_(team),
+    assignment: normalizeTeamGroup_(assignment)
+  };
+}
+
+function moveTeam_(body, user) {
+  const teamId = requiredId_(body.team_id, 'team_id');
+  const targetGroupId = requiredId_(body.to_group_id, 'to_group_id');
+  const seasonId = requiredId_(body.season_id, 'season_id');
+  const groups = getSheetRecords('Groups').map(normalizeGroup_);
+  const targetGroup = groups.find(group =>
+    group.id === targetGroupId && group.season_id === seasonId
+  );
+  if (!targetGroup) {
+    throw apiError_('The destination group does not belong to the selected season');
+  }
+  const assignment = findTeamAssignment_(seasonId, teamId);
+  if (!assignment) {
+    throw apiError_('The team is not assigned in the selected season');
+  }
+  if (assignment.group_id === targetGroupId) {
+    return assignment;
+  }
+  const duplicate = getSheetRecords('TeamGroups')
+    .map(normalizeTeamGroup_)
+    .some(item =>
+      item.season_id === seasonId &&
+      item.group_id === targetGroupId &&
+      item.team_id === teamId
+    );
+  if (duplicate) {
+    throw apiError_('The team is already assigned to the destination group');
+  }
+  const updated = updateRecordFieldsAndAudit_(
+    'TeamGroups',
+    assignment.id,
+    { group_id: targetGroupId },
+    user,
+    'team.group_moved',
+    body.reason
+  );
+  return normalizeTeamGroup_(updated);
+}
+
+function getImportValue_(row, names) {
+  const keys = Object.keys(row || {});
+  const match = keys.find(key =>
+    names.includes(String(key).trim().toLowerCase().replace(/[\s_-]+/g, ''))
+  );
+  return match ? optionalText_(row[match]) : null;
+}
+
+function importTeams_(body, user) {
+  if (!Array.isArray(body.rows) || body.rows.length === 0) {
+    throw apiError_('The import must contain at least one team row');
+  }
+  if (body.rows.length > 500) {
+    throw apiError_('A maximum of 500 team rows can be imported at once');
+  }
+  const results = [];
+
+  body.rows.forEach((row, index) => {
+    const teamName = getImportValue_(row, ['teamname', 'name']);
+    const category = getImportValue_(row, ['category']);
+    const seasonValue = getImportValue_(row, ['season', 'seasonid']);
+    const groupName = getImportValue_(row, ['group', 'groupname']);
+    try {
+      if (!teamName || !category || !seasonValue || !groupName) {
+        throw apiError_('Team Name, Category, Season and Group are required');
+      }
+      const categoryKey = category.toLowerCase().replace(/[\s-]+/g, '_');
+      const seasons = getSheetRecords('Seasons').map(normalizeSeason_);
+      const season = seasons.find(item =>
+        item.category === categoryKey &&
+        (item.id === seasonValue || item.name.toLowerCase() === seasonValue.toLowerCase() ||
+          String(item.year) === seasonValue)
+      );
+      if (!season) {
+        throw apiError_('No matching season was found for this category');
+      }
+      const group = findGroupForTeam_(season.id, groupName);
+      let team = findTeamByName_(teamName);
+      let created = false;
+      if (!team) {
+        team = appendRecordAndAudit_(
+          'Teams', createTeamRecord_(teamName), user, 'team.created', 'import', ''
+        );
+        created = true;
+      }
+      if (findTeamAssignment_(season.id, team.id)) {
+        results.push({
+          team: teamName,
+          status: 'skipped',
+          reason: 'Already assigned in this season'
+        });
+        return;
+      }
+      appendRecordAndAudit_(
+        'TeamGroups',
+        createTeamAssignment_(season.id, group.id, team.id),
+        user,
+        'team.imported',
+        team.id,
+        ''
+      );
+      results.push({
+        team: teamName,
+        status: created ? 'created' : 'assigned',
+        reason: ''
+      });
+    } catch (error) {
+      results.push({
+        team: teamName || 'Row ' + (index + 2),
+        status: 'error',
+        reason: error && error.safeMessage ? error.safeMessage : 'Import row could not be processed'
+      });
+    }
+  });
+  return { results: results };
+}
+
 function readReferences_() {
   const teams = getSheetRecords('Teams').map(normalizeTeam_);
   const seasons = getSheetRecords('Seasons').map(normalizeSeason_);
@@ -371,7 +1023,7 @@ function getGroupsWithTeams_(seasonId) {
   });
 
   return groups.map(group => ({
-    group: { id: group.id, name: group.name },
+    group: { id: group.id, season_id: group.season_id, name: group.name },
     teams: assignmentsByGroup[group.id] || []
   }));
 }
@@ -481,10 +1133,13 @@ function normalizeNews_(record) {
   return {
     id: requiredId_(record.id, 'News.id'),
     title: requiredText_(record.title, 'News.title'),
+    subtitle: optionalText_(record.subtitle),
     content: optionalText_(record.content),
+    author: optionalText_(record.author),
     image_url: optionalText_(record.image_url),
     published: optionalBoolean_(record.published, 'News.published'),
     created_at: optionalText_(record.created_at),
+    published_at: optionalText_(record.published_at) || optionalText_(record.created_at),
     updated_at: optionalText_(record.updated_at)
   };
 }

@@ -358,6 +358,49 @@
   color: var(--league-ink) !important;
 }
 
+.league-session-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  background: rgba(8, 24, 45, .55);
+}
+
+.league-session-warning {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  z-index: 9999;
+  width: min(420px, calc(100vw - 32px));
+  padding: 26px;
+  transform: translate(-50%, -50%);
+  border: 1px solid var(--league-border);
+  border-top: 4px solid var(--league-gold);
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 16px 42px rgba(8, 24, 45, .22);
+  text-align: center;
+}
+
+.league-session-warning h2 {
+  margin: 0 0 10px;
+  color: var(--league-navy);
+  font-size: 21px;
+}
+
+.league-session-warning p {
+  margin: 0 0 20px;
+  color: var(--league-muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.league-session-warning > div {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 @media (max-width: 650px) {
   .league-polish-page {
     padding: 27px 13px 44px;

@@ -1,65 +1,63 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './LeaguePolish.css';
+import { callAdminApi } from '../api/adminApi';
+import {
+  sendAdminPasswordReset,
+  signInAdmin,
+  signOutAdmin
+} from '../api/firebaseAuth';
 
 export default function AdminLogin() {
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [resetSent, setResetSent] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const nav = useNavigate();
 
-  async function handleLogin(e) {
-    e.preventDefault();
+  async function handleLogin(event) {
+    event.preventDefault();
     setError('');
+    setResetSent(false);
     setIsLoading(true);
 
     try {
-      const res = await fetch('https://ubakalaunitycup.onrender.com/api/token/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password })
-      });
-
-      if (!res.ok) {
-        setError('Invalid username or password. Please try again.');
-        setIsLoading(false);
-        return;
-      }
-
-      const data = await res.json();
-      localStorage.setItem('access', data.access);
-      localStorage.setItem('refresh', data.refresh);
-      localStorage.setItem('username', username); // Store username for dashboard display
-      // fetch /me to discover groups/role
-      try {
-        const meRes = await fetch('https://ubakalaunitycup.onrender.com/api/me/', {
-          headers: { 'Authorization': `Bearer ${data.access}` }
-        });
-        if (meRes.ok) {
-          const me = await meRes.json();
-          localStorage.setItem('groups', JSON.stringify(me.groups || []));
-          // Redirect based on role/groups
-          if (me.is_superuser) {
-            nav('/admin-dashboard');
-          } else if ((me.groups || []).includes('NewsUploader')) {
-            nav('/news-uploader');
-          } else if ((me.groups || []).includes('ResultsEditor')) {
-            nav('/results-editor');
-          } else {
-            nav('/');
-          }
-        } else {
-          // fallback to admin dashboard
-          nav('/admin-dashboard');
-        }
-      } catch (err) {
+      await signInAdmin(email, password);
+      const profile = await callAdminApi('admin.me');
+      const role = String(profile?.role || '').toLowerCase().replace(/[\s_-]+/g, '');
+      if (role === 'admin') {
         nav('/admin-dashboard');
-      } finally {
-        setIsLoading(false);
+      } else if (role === 'resultseditor') {
+        nav('/results-editor');
+      } else if (role === 'newsuser') {
+        nav('/news-uploader');
+      } else {
+        await signOutAdmin();
+        setError('This account is not authorized for administrator access.');
       }
-    } catch (err) {
-      setError('Connection error. Please check your server connection.');
+    } catch (loginError) {
+      await signOutAdmin().catch(() => {});
+      setError(loginError.message || 'Unable to sign in. Check your email and password.');
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  async function handlePasswordReset() {
+    setError('');
+    setResetSent(false);
+    if (!email.trim()) {
+      setError('Enter your administrator email address first.');
+      return;
+    }
+    setIsLoading(true);
+    try {
+      await sendAdminPasswordReset(email);
+      setResetSent(true);
+    } catch (resetError) {
+      setError(resetError.message || 'Unable to send password reset email.');
+    } finally {
       setIsLoading(false);
     }
   }
@@ -74,7 +72,7 @@ export default function AdminLogin() {
             Admin Login
           </h1>
           <p style={{ color: 'var(--league-muted)', fontSize: 14, margin: '8px 0 0' }}>
-            Manage matches and results
+            Sign in with your administrator email
           </p>
         </div>
 
@@ -86,36 +84,48 @@ export default function AdminLogin() {
           )}
 
           <label className="league-page-field">
-              Username
+            Email
             <input
-              type="text"
-              placeholder="Enter your username"
-              value={username}
-              onChange={e => setUsername(e.target.value)}
+              type="email"
+              autoComplete="username"
+              placeholder="Enter your administrator email"
+              value={email}
+              onChange={event => setEmail(event.target.value)}
+              required
               disabled={isLoading}
             />
           </label>
 
           <label className="league-page-field">
-              Password
+            Password
             <input
               type="password"
+              autoComplete="current-password"
               placeholder="Enter your password"
               value={password}
-              onChange={e => setPassword(e.target.value)}
+              onChange={event => setPassword(event.target.value)}
+              required
               disabled={isLoading}
             />
           </label>
 
+          <button type="submit" disabled={isLoading}>
+            {isLoading ? 'Signing in...' : 'Login'}
+          </button>
           <button
-            type="submit"
+            type="button"
+            className="league-button-secondary"
+            onClick={handlePasswordReset}
             disabled={isLoading}
           >
-            {isLoading ? '⏳ Logging in...' : '🔑 Login'}
+            Send password reset email
           </button>
+          {resetSent && (
+            <div className="league-page-status">
+              If the account exists, a password reset email has been sent.
+            </div>
+          )}
         </form>
-
-        {/* Demo account info removed */}
       </div>
     </div>
   );

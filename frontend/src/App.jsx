@@ -73,12 +73,36 @@ export default function App() {
                 <Route path="/history" element={<History />} />
                 <Route path="/rules-regulations" element={<RulesRegulations />} />
                 <Route path="/admin" element={<AdminLogin />} />
-                <Route path="/admin-dashboard" element={<AdminDashboard />} />
-                <Route path="/news-uploader" element={<RequireAuth allowedGroups={["NewsUploader"]}><NewsUploader /></RequireAuth>} />
-                <Route path="/results-editor" element={<RequireAuth allowedGroups={["ResultsEditor"]}><ResultsEditor /></RequireAuth>} />
-                <Route path="/upload-teams" element={<UploadTeams />} />
-                <Route path="/add-team-manual" element={<ManualTeamForm />} />
-                <Route path="/group-manager" element={<GroupManager />} />
+                <Route path="/admin-dashboard" element={
+                  <RequireAuth allowedRoles={['admin', 'ResultsEditor', 'newsuser']}>
+                    <AdminDashboard />
+                  </RequireAuth>
+                } />
+                <Route path="/news-uploader" element={
+                  <RequireAuth allowedRoles={['newsuser']}>
+                    <NewsUploader />
+                  </RequireAuth>
+                } />
+                <Route path="/results-editor" element={
+                  <RequireAuth allowedRoles={['ResultsEditor']}>
+                    <ResultsEditor />
+                  </RequireAuth>
+                } />
+                <Route path="/upload-teams" element={
+                  <RequireAuth allowedRoles={['admin']}>
+                    <UploadTeams />
+                  </RequireAuth>
+                } />
+                <Route path="/add-team-manual" element={
+                  <RequireAuth allowedRoles={['admin']}>
+                    <ManualTeamForm />
+                  </RequireAuth>
+                } />
+                <Route path="/group-manager" element={
+                  <RequireAuth allowedRoles={['admin']}>
+                    <GroupManager />
+                  </RequireAuth>
+                } />
               </Routes>
             </main>
             <Footer />

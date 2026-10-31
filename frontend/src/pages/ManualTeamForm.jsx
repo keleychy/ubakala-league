@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import { callAdminApi } from '../api/adminApi';
 import './LeaguePolish.css';
 
 const ManualTeamForm = () => {
@@ -11,6 +11,7 @@ const ManualTeamForm = () => {
     { label: 'Senior Boys', value: 'senior_boys' },
     { label: 'Girls', value: 'girls' },
     { label: 'Junior Boys', value: 'junior_boys' },
+    { label: 'Intermediate', value: 'intermediate' },
   ];
   const [seasons, setSeasons] = useState([]);
   const [groups, setGroups] = useState([]);
@@ -19,24 +20,44 @@ const ManualTeamForm = () => {
 
   // Load seasons when category changes
   useEffect(() => {
-    if (category) {
-      axios.get(`https://ubakalaunitycup.onrender.com/api/seasons/?category=${category}`)
-        .then(res => setSeasons(res.data))
-        .catch(() => setSeasons([]));
-    } else {
+    let active = true;
+    if (!category) {
       setSeasons([]);
+      return () => { active = false; };
     }
+    callAdminApi('admin.seasons.list')
+      .then(items => {
+        if (active) {
+          setSeasons((items || []).filter(item => item.category === category));
+        }
+      })
+      .catch(error => {
+        if (active) {
+          setSeasons([]);
+          setError(error.message || 'Failed to load seasons');
+        }
+      });
+    return () => { active = false; };
   }, [category]);
 
   // Load groups when season changes
   useEffect(() => {
-    if (season) {
-      axios.get(`https://ubakalaunitycup.onrender.com/api/groups/?season=${season}`)
-        .then(res => setGroups(res.data))
-        .catch(() => setGroups([]));
-    } else {
+    let active = true;
+    if (!season) {
       setGroups([]);
+      return () => { active = false; };
     }
+    callAdminApi('admin.groups.list', { season_id: season })
+      .then(items => {
+        if (active) setGroups((items || []).map(item => ({ id: item.id, name: item.name })));
+      })
+      .catch(error => {
+        if (active) {
+          setGroups([]);
+          setError(error.message || 'Failed to load groups');
+        }
+      });
+    return () => { active = false; };
   }, [season]);
 
   const handleSubmit = async (e) => {
@@ -44,15 +65,15 @@ const ManualTeamForm = () => {
     setError(null);
     setResult(null);
     try {
-      const response = await axios.post('https://ubakalaunitycup.onrender.com/api/manual-team-group/', {
+      const response = await callAdminApi('admin.teams.createManual', {
         team_name: teamName,
         category,
         season_id: season,
         group_name: group,
       });
-      setResult(response.data);
+      setResult(response);
     } catch (err) {
-      setError(err.response?.data?.error || 'Error adding team');
+      setError(err.message || 'Error adding team');
     }
   };
 

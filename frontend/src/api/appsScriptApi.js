@@ -124,10 +124,13 @@ function normalizeNews(item) {
   return {
     id: requiredId(item.id, 'News.id'),
     title: normalizeText(item.title) || '',
+    subtitle: normalizeText(item.subtitle),
     content: normalizeText(item.content) || '',
+    author: normalizeText(item.author),
     image_url: normalizeText(item.image_url),
     published: normalizeBoolean(item.published, 'News.published'),
     created_at: normalizeText(item.created_at),
+    published_at: normalizeText(item.published_at) || normalizeText(item.created_at),
     updated_at: normalizeText(item.updated_at)
   };
 }

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import axios from 'axios';
+import * as XLSX from '@e965/xlsx';
+import { callAdminApi } from '../api/adminApi';
 import './LeaguePolish.css';
 
 const UploadTeams = () => {
@@ -18,17 +19,23 @@ const UploadTeams = () => {
     setLoading(true);
     setError(null);
     setResults(null);
-    const formData = new FormData();
-    formData.append('file', file);
     try {
-      const response = await axios.post('https://ubakalaunitycup.onrender.com/api/import-excel/', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
+      if (file.size > 10 * 1024 * 1024) {
+        throw new Error('The Excel file must be 10 MB or smaller.');
+      }
+      const workbook = XLSX.read(await file.arrayBuffer(), { type: 'array' });
+      const firstSheet = workbook.SheetNames[0];
+      if (!firstSheet) throw new Error('The Excel file has no worksheets.');
+      const rows = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheet], {
+        defval: '',
+        raw: false
       });
-      setResults(response.data.results);
+      if (!rows.length) throw new Error('The first worksheet contains no team rows.');
+
+      const response = await callAdminApi('admin.teams.import', { rows });
+      setResults(response.results || []);
     } catch (err) {
-      setError(err.response?.data?.error || 'Upload failed');
+      setError(err.message || 'Upload failed');
     } finally {
       setLoading(false);
     }
@@ -48,7 +55,12 @@ const UploadTeams = () => {
       <form onSubmit={handleSubmit} className="league-page-form">
         <label className="league-page-field">
           Excel file
-          <input className="league-upload-file" type="file" accept=".xlsx,.xls" onChange={handleFileChange} />
+          <input
+            className="league-upload-file"
+            type="file"
+            accept=".xlsx,.xls"
+            onChange={handleFileChange}
+          />
         </label>
         <button type="submit" disabled={loading || !file}>
           {loading ? 'Uploading...' : 'Upload'}
@@ -68,7 +80,8 @@ const UploadTeams = () => {
         </div>
       )}
       <div style={{ marginTop: 22, padding: 14, borderRadius: 9, background: '#f5f8fc', color: 'var(--league-muted)', fontSize: 13, lineHeight: 1.6 }}>
-        <strong>Excel columns required:</strong> Team Name, Category, Season, Group
+        <strong>Excel columns required:</strong> Team Name, Category, Season, Group.
+        The first worksheet is imported; files are limited to 10 MB.
       </div>
       </section>
       </main>

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { fetchWithAuth, logout } from '../api/auth';
-import { API_URL } from '../api/api';
+import { callAdminApi } from '../api/adminApi';
+import { signOutAdmin } from '../api/firebaseAuth';
 import { useNavigate } from 'react-router-dom';
 
 export default function NewsUploader() {
@@ -29,36 +29,27 @@ export default function NewsUploader() {
         setErrors({});
         setIsLoading(true);
         try {
-            const url = editingId ? `${API_URL}/news/${editingId}/` : `${API_URL}/news/`;
-            const method = editingId ? 'PATCH' : 'POST';
-            const res = await fetchWithAuth(url, {
-                method,
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ title, subtitle, content, image_url: image, author })
+            const action = editingId ? 'admin.news.update' : 'admin.news.create';
+            await callAdminApi(action, {
+                ...(editingId ? { id: editingId } : {}),
+                title,
+                subtitle,
+                content,
+                image_url: image,
+                author
             });
-            if (!res.ok) {
-                // Try to provide the server response to help debugging
-                let bodyText = '';
-                try {
-                    const json = await res.json();
-                    bodyText = JSON.stringify(json);
-                } catch (e) {
-                    bodyText = await res.text();
-                }
-                console.error('News upload failed', res.status, bodyText);
-                if (res.status === 403) {
-                    setMessage({ type: 'error', text: 'Forbidden: you do not have permission to post news' });
-                    return;
-                }
-                setMessage({ type: 'error', text: bodyText || `Failed (${res.status})` });
-            } else {
-                setTitle(''); setContent(''); setImage(''); setSubtitle(''); setImgValid(null); setErrors({});
-                setEditingId(null);
-                setMessage({ type: 'success', text: editingId ? 'News updated' : 'News created' });
-                await loadNews();
-            }
+            setTitle('');
+            setContent('');
+            setImage('');
+            setSubtitle('');
+            setAuthor('');
+            setImgValid(null);
+            setErrors({});
+            setEditingId(null);
+            setMessage({ type: 'success', text: editingId ? 'News updated' : 'News created' });
+            await loadNews();
         } catch (err) {
-            setMessage({ type: 'error', text: 'Network error' });
+            setMessage({ type: 'error', text: err.message || 'News update failed' });
         } finally {
             setIsLoading(false);
         }
@@ -75,12 +66,10 @@ export default function NewsUploader() {
 
     async function loadNews() {
         try {
-            const data = await fetch(`${API_URL}/news/`);
-            if (!data.ok) return;
-            const json = await data.json();
-            setNewsList(Array.isArray(json) ? json : []);
-        } catch (e) {
-            // ignore
+            const items = await callAdminApi('admin.news.list');
+            setNewsList(Array.isArray(items) ? items : []);
+        } catch (error) {
+            setMessage({ type: 'error', text: error.message || 'Failed to load news' });
         }
     }
 
@@ -98,15 +87,11 @@ export default function NewsUploader() {
     async function handleDelete(id) {
         if (!window.confirm('Delete this news item?')) return;
         try {
-            const res = await fetchWithAuth(`${API_URL}/news/${id}/`, { method: 'DELETE' });
-            if (res.ok) {
-                setMessage({ type: 'success', text: 'Deleted' });
-                await loadNews();
-            } else {
-                setMessage({ type: 'error', text: 'Failed to delete' });
-            }
-        } catch (e) {
-            setMessage({ type: 'error', text: 'Network error' });
+            await callAdminApi('admin.news.delete', { id });
+            setMessage({ type: 'success', text: 'Deleted' });
+            await loadNews();
+        } catch (error) {
+            setMessage({ type: 'error', text: error.message || 'Failed to delete' });
         }
     }
 
@@ -118,7 +103,7 @@ export default function NewsUploader() {
         <div style={{ padding: 40, maxWidth: 800, margin: '0 auto' }}>
             <h2>Upload News</h2>
             <div style={{ textAlign: 'right', marginBottom: 8 }}>
-                <button onClick={() => { logout(); nav('/admin'); }} style={{ padding: '6px 10px' }}>Logout</button>
+                <button onClick={async () => { await signOutAdmin(); nav('/admin'); }} style={{ padding: '6px 10px' }}>Logout</button>
             </div>
             {message && (
                 <div style={{ padding: 12, borderRadius: 8, background: message.type === 'error' ? '#fee2e2' : '#ecfdf5', color: message.type === 'error' ? '#b91c1c' : '#065f46' }}>

@@ -1,9 +1,10 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import axios from 'axios';
+import { callAdminApi } from '../api/adminApi';
 import './LeaguePolish.css';
 
 export default function GroupManager() {
-  const [seasonId, setSeasonId] = useState(1);
+  const [seasonId, setSeasonId] = useState('');
+  const [seasons, setSeasons] = useState([]);
   const [groups, setGroups] = useState([]);
   const [selectedTeam, setSelectedTeam] = useState(null);
   const [targetGroup, setTargetGroup] = useState(null);
@@ -12,17 +13,36 @@ export default function GroupManager() {
   const [dragOverGroup, setDragOverGroup] = useState(null);
 
   const fetchGroups = useCallback(async () => {
+    if (!seasonId) {
+      setGroups([]);
+      return;
+    }
     setLoading(true);
     try {
-      const res = await axios.get(`/api/groups-with-teams/?season=${seasonId}`);
-      setGroups(res.data);
-    } catch (err) {
-      console.error(err);
-      setMessage('Failed to load groups');
+      const data = await callAdminApi('admin.groups.list', { season_id: seasonId });
+      setGroups(data || []);
+    } catch (error) {
+      setMessage(error.message || 'Failed to load groups');
     } finally {
       setLoading(false);
     }
   }, [seasonId]);
+
+  useEffect(() => {
+    let active = true;
+    callAdminApi('admin.seasons.list')
+      .then(items => {
+        if (!active) return;
+        const available = items || [];
+        setSeasons(available);
+        const currentSeason = available.find(item => item.active && !item.archived) || available[0];
+        setSeasonId(currentSeason ? currentSeason.id : '');
+      })
+      .catch(error => {
+        if (active) setMessage(error.message || 'Failed to load seasons');
+      });
+    return () => { active = false; };
+  }, []);
 
   useEffect(() => {
     fetchGroups();
@@ -35,7 +55,7 @@ export default function GroupManager() {
     }
     setLoading(true);
     try {
-      await axios.post('/api/move-team/', {
+      await callAdminApi('admin.teams.move', {
         team_id: selectedTeam.id,
         to_group_id: targetGroup,
         season_id: seasonId,
@@ -44,9 +64,8 @@ export default function GroupManager() {
       setSelectedTeam(null);
       setTargetGroup(null);
       fetchGroups();
-    } catch (err) {
-      console.error(err);
-      setMessage('Failed to move team');
+    } catch (error) {
+      setMessage(error.message || 'Failed to move team');
     } finally {
       setLoading(false);
     }
@@ -97,11 +116,14 @@ export default function GroupManager() {
 
       // Call backend to persist
       setLoading(true);
-      await axios.post('/api/move-team/', { team_id: teamId, to_group_id: toGroupId, season_id: seasonId });
+      await callAdminApi('admin.teams.move', {
+        team_id: teamId,
+        to_group_id: toGroupId,
+        season_id: seasonId
+      });
       setMessage('Team moved');
-    } catch (err) {
-      console.error(err);
-      setMessage('Failed to move team');
+    } catch (error) {
+      setMessage(error.message || 'Failed to move team');
       // On error, refresh from server to restore correct state
       fetchGroups();
     } finally {
@@ -121,13 +143,19 @@ export default function GroupManager() {
         </header>
 
         <div className="league-manager-toolbar">
-        <label className="league-page-field">Season ID
-        <input
-          type="number"
+        <label className="league-page-field">Season
+        <select
           value={seasonId}
           onChange={(e) => setSeasonId(e.target.value)}
-          style={{ width: 130 }}
-        />
+          disabled={!seasons.length}
+        >
+          {!seasons.length && <option value="">No seasons found</option>}
+          {seasons.map(season => (
+            <option key={season.id} value={season.id}>
+              {season.name} — {season.category}
+            </option>
+          ))}
+        </select>
         </label>
         <button onClick={fetchGroups} disabled={loading}>{loading ? 'Refreshing…' : 'Refresh groups'}</button>
         </div>

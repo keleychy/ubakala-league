@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { fetchWithAuth } from '../api/auth';
+import { callAdminApi } from '../api/adminApi';
 import './LeaguePolish.css';
 
 export default function ResultsEditor() {
@@ -22,17 +22,15 @@ export default function ResultsEditor() {
     async function loadMatches() {
         setLoading(true);
         try {
-            const res = await fetchWithAuth('https://ubakalaunitycup.onrender.com/api/matches/', {
-                headers: {}
-            });
-            if (res.ok) {
-                const data = await res.json();
-                // Filter to matches not yet played (upcoming / live)
-                const pending = (data || []).filter(m => !m.is_played);
-                setMatches(pending);
-            }
+            const data = await callAdminApi('admin.matches.list');
+            const editable = (data || []).filter(match =>
+                !['FINISHED', 'AWARDED', 'CANCELLED', 'VOID'].includes(
+                    String(match.status || '').toUpperCase()
+                )
+            );
+            setMatches(editable);
         } catch (err) {
-            setMessage({ type: 'error', text: 'Failed to load matches' });
+            setMessage({ type: 'error', text: err.message || 'Failed to load matches' });
         } finally {
             setLoading(false);
         }
@@ -41,74 +39,37 @@ export default function ResultsEditor() {
     async function setResult(matchId, home_score, away_score, penalty_home = null, penalty_away = null) {
         setMessage(null);
         try {
-            const payload = { home_score, away_score };
+            const payload = { id: matchId, home_score, away_score };
             if (penalty_home !== null && penalty_away !== null) {
                 payload.penalty_home = penalty_home;
                 payload.penalty_away = penalty_away;
             }
-
-            const res = await fetchWithAuth(`https://ubakalaunitycup.onrender.com/api/matches/${matchId}/set_result/`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-            if (!res.ok) {
-                if (res.status === 403) {
-                    setMessage({ type: 'error', text: 'Forbidden: you do not have permission to update results' });
-                    return;
-                }
-                const err = await res.text();
-                setMessage({ type: 'error', text: err || 'Failed to set result' });
-            } else {
-                const updated = await res.json();
-                setMessage({ type: 'success', text: 'Result updated' });
-                // Merge only score-related fields into the local match to avoid
-                // accepting any backend-driven `is_played` change from set_result.
-                setMatches((prev) => prev.map((m) => {
-                    if (!m || m.id !== updated.id) return m;
-                    return {
-                        ...m,
-                        home_score: updated.home_score,
-                        away_score: updated.away_score,
-                        penalty_home: updated.penalty_home,
-                        penalty_away: updated.penalty_away,
-                        actual_start: updated.actual_start,
-                    };
-                }));
-                // Notify other parts of the app about score changes only.
-                try {
-                    window.dispatchEvent(new CustomEvent('match-scores-saved', { detail: updated }));
-                } catch (e) {
-                    // ignore if running in non-browser test env
-                }
-            }
+            const updated = await callAdminApi('admin.matches.setResult', payload);
+            setMessage({ type: 'success', text: 'Result updated' });
+            setMatches(prev => prev.map(match =>
+                match.id === updated.id ? { ...match, ...updated } : match
+            ));
+            window.dispatchEvent(new CustomEvent('match-scores-saved', { detail: updated }));
+            return updated;
         } catch (err) {
-            setMessage({ type: 'error', text: 'Network error' });
+            setMessage({ type: 'error', text: err.message || 'Failed to set result' });
+            throw err;
         }
     }
 
     async function markFinished(matchId, extra_time_minutes = null) {
         setMessage(null);
         try {
-            const payload = {};
-            if (extra_time_minutes !== null) payload.extra_time_minutes = extra_time_minutes;
-            const res = await fetchWithAuth(`https://ubakalaunitycup.onrender.com/api/matches/${matchId}/mark_finished/`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
+            const updated = await callAdminApi('admin.matches.markFinished', {
+                id: matchId,
+                extra_time_minutes
             });
-            if (!res.ok) {
-                const err = await res.text();
-                setMessage({ type: 'error', text: err || 'Failed to mark finished' });
-                return null;
-            }
-            const updated = await res.json();
             setMessage({ type: 'success', text: 'Match marked finished' });
-            setMatches((prev) => prev.map((m) => (m.id === updated.id ? updated : m)));
-            try { window.dispatchEvent(new CustomEvent('match-updated', { detail: updated })); } catch (e) { }
+            setMatches(prev => prev.filter(match => match.id !== updated.id));
+            window.dispatchEvent(new CustomEvent('match-updated', { detail: updated }));
             return updated;
         } catch (err) {
-            setMessage({ type: 'error', text: 'Network error' });
+            setMessage({ type: 'error', text: err.message || 'Failed to mark finished' });
             return null;
         }
     }
@@ -256,23 +217,16 @@ function MatchRow({ match, onSetResult, onMarkFinished }) {
                         try {
                             window.dispatchEvent(new CustomEvent('match-period-changed', { detail: { id: match.id, period: val } }));
                         } catch (err) { }
-                        // persist to backend via PATCH /api/matches/{id}/
+                        // Persist the period through the authenticated Apps Script API.
                         try {
-                            const res = await fetchWithAuth(`https://ubakalaunitycup.onrender.com/api/matches/${match.id}/`, {
-                                method: 'PATCH',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ current_period: val })
+                            const updated = await callAdminApi('admin.matches.setPeriod', {
+                                id: match.id,
+                                current_period: val
                             });
-                            if (res.ok) {
-                                const updated = await res.json();
-                                try { window.dispatchEvent(new CustomEvent('match-updated', { detail: updated })); } catch (e) { }
-                            } else {
-                                // rollback on error by resetting local period to match value
-                                const text = await res.text();
-                                setLocalMsg({ type: 'error', text: text || 'Failed to save period' });
-                            }
+                            window.dispatchEvent(new CustomEvent('match-updated', { detail: updated }));
                         } catch (err) {
-                            setLocalMsg({ type: 'error', text: 'Network error saving period' });
+                            setPeriod(match.current_period || 'not_started');
+                            setLocalMsg({ type: 'error', text: err.message || 'Failed to save period' });
                         }
                     }} style={{ marginLeft: 8, padding: '6px 8px', borderRadius: 6, border: '1px solid #d1d5db', fontSize: 12 }}>
                         <option value="not_started">Not started</option>

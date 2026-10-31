@@ -2,29 +2,36 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import './Header.css';
-import { logout } from '../api/auth';
+import { onAuthStateChanged } from 'firebase/auth';
+import { getFirebaseAuth } from '../api/firebaseClient';
+import { signOutAdmin } from '../api/firebaseAuth';
 
 export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
   const navigate = useNavigate();
   const [username, setUsername] = useState(null);
+  const [logoutError, setLogoutError] = useState('');
 
   useEffect(() => {
-    setUsername(localStorage.getItem('username'));
-
-    const onStorage = () => {
-      setUsername(localStorage.getItem('username'));
-    };
-
-    window.addEventListener('storage', onStorage);
-
-    return () => window.removeEventListener('storage', onStorage);
+    try {
+      return onAuthStateChanged(getFirebaseAuth(), user => {
+        setUsername(user?.email || null);
+      });
+    } catch {
+      setUsername(null);
+      return undefined;
+    }
   }, []);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     setMenuOpen(false);
-    logout();
-    navigate('/admin');
+    setLogoutError('');
+    try {
+      await signOutAdmin();
+      navigate('/admin');
+    } catch (error) {
+      setLogoutError(error.message || 'Unable to sign out.');
+    }
   };
 
   const closeMenu = () => setMenuOpen(false);
@@ -32,6 +39,9 @@ export default function Header() {
   return (
     <header className="site-header">
       <div className="header-container">
+        {logoutError && (
+          <div className="header-auth-error" role="alert">{logoutError}</div>
+        )}
 
         <div className="header-brand">
           <button
@@ -221,7 +231,5 @@ export default function Header() {
     </header>
   );
 }
-
-
 
 
