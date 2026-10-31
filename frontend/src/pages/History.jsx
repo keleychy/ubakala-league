@@ -4,10 +4,16 @@ import './LeaguePolish.css';
 const History = () => {
   const historicalData = [
     {
-      year: '2025',
+      year: '2026',
       title: 'Current Season',
-      description: 'Ubakala Football League Season 2025 - 3 categories (Senior Boys, Junior Boys, Girls) with group stage and knockout rounds.',
+      description: 'Ubakala Football League Season 2026 - 4 categories (Senior Boys, Junior Boys, Girls, Intermediate) with group stage and knockout rounds.',
       status: 'ongoing'
+    },
+    {
+      year: '2025',
+      title: 'Season 2025',
+      description: 'Ubakala Football League Season 2025.',
+      status: 'completed'
     },
     {
       year: '2024',

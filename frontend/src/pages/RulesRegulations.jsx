@@ -42,7 +42,7 @@ const regulationSections = [
     categories: [
       {
         heading: 'Junior Boys Category',
-        paragraphs: ['The approved maximum weight is 65kg.']
+        paragraphs: ['The approved maximum weight is 50kg.']
       },
       {
         heading: 'Intermediate Category',
@@ -158,7 +158,7 @@ export default function RulesRegulations() {
     <div className="rules-page">
       <main className="rules-content">
         <header className="rules-header">
-          <h1>UBakala FOOTBALL COMPETITION</h1>
+          <h1>UBAKALA FOOTBALL COMPETITION</h1>
           <p>RULES, REGULATIONS AND PARTICIPANT GUIDE</p>
         </header>
 
