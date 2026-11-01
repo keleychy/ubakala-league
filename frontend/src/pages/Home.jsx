@@ -334,6 +334,18 @@ export default function Home() {
                     ? match.away_team.name
                     : match.away_team;
 
+                const rawCategory = match.season?.category || match.category;
+                const categoryLabel = rawCategory
+                  ? PUBLIC_CATEGORIES.find(
+                      ({ value }) =>
+                        value === String(rawCategory).trim().toLowerCase()
+                    )?.label ||
+                    String(rawCategory)
+                      .trim()
+                      .replace(/_/g, ' ')
+                      .replace(/\b\w/g, (letter) => letter.toUpperCase())
+                  : null;
+
                 const homeScore =
                   match.home_score !== null && match.home_score !== undefined
                     ? match.home_score
@@ -368,7 +380,7 @@ export default function Home() {
                     }}
                     role="button"
                     tabIndex={0}
-                    aria-label={`${homeTeam} versus ${awayTeam}. View match details.`}
+                    aria-label={`${homeTeam} versus ${awayTeam}.${categoryLabel ? ` ${categoryLabel} category.` : ''} View match details.`}
                   >
                     <div className="home-match-topline">
                       <span className="home-match-competition">
@@ -449,6 +461,13 @@ export default function Home() {
                     </div>
 
                     <div className="home-match-details">
+                      {categoryLabel && (
+                        <div className="home-match-detail">
+                          <span className="home-detail-label">CATEGORY</span>
+                          <span>{categoryLabel}</span>
+                        </div>
+                      )}
+
                       <div className="home-match-detail">
                         <span className="home-detail-label">DATE &amp; TIME</span>
                         <span>{formatMatchSchedule(match)}</span>
