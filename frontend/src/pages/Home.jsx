@@ -384,7 +384,7 @@ export default function Home() {
                   >
                     <div className="home-match-topline">
                       <span className="home-match-competition">
-                        {match.season?.name || 'League Match'}
+                        {categoryLabel || match.season?.name || ''}
                       </span>
                       <span className="home-match-stage">
                         {getMatchStageLabel(match)}
