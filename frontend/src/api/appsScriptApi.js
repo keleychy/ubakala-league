@@ -76,6 +76,16 @@ function normalizeReference(reference) {
   };
 }
 
+function normalizeSeasonReference(season) {
+  const reference = normalizeReference(season);
+  return reference
+    ? {
+        ...reference,
+        category: normalizeText(season.category)?.toLowerCase() || null
+      }
+    : null;
+}
+
 function normalizeMatch(match) {
   const stage = normalizeText(match.stage ?? match.match_stage);
   const homeTeam = normalizeReference(match.home_team);
@@ -91,7 +101,7 @@ function normalizeMatch(match) {
     ...match,
     id: requiredId(match.id, 'Matches.id'),
     season_id: requiredId(match.season_id ?? match.season?.id ?? match.season, 'Matches.season_id'),
-    season: normalizeReference(match.season),
+    season: normalizeSeasonReference(match.season),
     group_id: normalizeText(match.group_id ?? match.group?.id),
     group: normalizeReference(match.group),
     match_number: normalizeNumber(match.match_number, 'Matches.match_number'),

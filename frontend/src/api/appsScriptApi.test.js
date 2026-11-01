@@ -122,6 +122,7 @@ describe('Apps Script read API', () => {
     expect(match.id).toBe('UFC26-SENIOR-M030');
     expect(match.match_number).toBe(30);
     expect(match.matchday).toBe(30);
+    expect(match.season.category).toBe('senior_boys');
     expect(match.stage).toBe('FINAL');
     expect(match.match_date).toBe('2026-12-20');
     expect(match.kickoff_time).toBe('16:00');
