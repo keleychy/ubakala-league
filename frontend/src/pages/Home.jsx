@@ -27,6 +27,7 @@ export default function Home() {
   const [teamsLoadedOnce, setTeamsLoadedOnce] = useState(false);
   const [matchesLoadedOnce, setMatchesLoadedOnce] = useState(false);
   const [championMap, setChampionMap] = useState({});
+  const [seasonCategoryMap, setSeasonCategoryMap] = useState({});
   const navigate = useNavigate();
   const prevMatchesRef = useRef({});
   const [flashMap, setFlashMap] = useState({});
@@ -51,6 +52,16 @@ export default function Home() {
             try {
               const seasons = await api.getSeasons(cat);
               if (!seasons || seasons.length === 0) return;
+
+              if (mounted) {
+                setSeasonCategoryMap((current) => {
+                  const next = { ...current };
+                  seasons.forEach((season) => {
+                    next[String(season.id)] = label;
+                  });
+                  return next;
+                });
+              }
 
               const seasonId = seasons[0].id;
               const seasonMatches = await api.getMatches({
@@ -334,7 +345,15 @@ export default function Home() {
                     ? match.away_team.name
                     : match.away_team;
 
-                const rawCategory = match.season?.category || match.category;
+                const seasonId =
+                  match.season_id ||
+                  (typeof match.season === 'object'
+                    ? match.season?.id
+                    : match.season);
+                const rawCategory =
+                  match.season?.category ||
+                  match.category ||
+                  seasonCategoryMap[String(seasonId)];
                 const categoryLabel = rawCategory
                   ? PUBLIC_CATEGORIES.find(
                       ({ value }) =>
