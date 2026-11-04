@@ -1,25 +1,36 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { api } from '../api/api';
 import './LeaguePolish.css';
 
-function excerpt(text, length = 120) {
+function excerpt(text, length = 165) {
   if (!text) return '';
-  const oneLine = text.split(/\r?\n/)[0];
-  return oneLine.length > length ? oneLine.slice(0, length).trim() + '…' : oneLine;
+  const plainText = String(text).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+  return plainText.length > length
+    ? `${plainText.slice(0, length).trim()}…`
+    : plainText;
+}
+
+function formatDate(value) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleDateString(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  });
 }
 
 const News = () => {
   const [newsItems, setNewsItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const navigate = useNavigate();
 
   useEffect(() => {
     let mounted = true;
     api.getNews().then((data) => {
       if (!mounted) return;
-      // Expect data as array of news objects
       setNewsItems(Array.isArray(data) ? data : []);
       setLoading(false);
     }).catch((err) => {
@@ -32,67 +43,72 @@ const News = () => {
 
   return (
     <div className="league-polish-page">
-      <main className="league-polish-content">
+      <main className="league-polish-content news-listing">
         <header className="league-page-header">
           <div className="league-page-header__copy">
             <div className="league-page-eyebrow">From the league</div>
             <h1 className="league-page-title">Latest News</h1>
-            <p className="league-page-subtitle">Announcements, match reports and updates from the competition.</p>
+            <p className="league-page-subtitle">
+              Announcements, match reports and updates from the competition.
+            </p>
           </div>
         </header>
 
-      {loading && (
-        <div className="league-page-empty">Loading news…</div>
-      )}
-      {error && (
-        <div className="league-page-status league-page-status--error">Error: {error}</div>
-      )}
+        {loading && (
+          <div className="league-page-empty" role="status">Loading news…</div>
+        )}
+        {error && (
+          <div className="league-page-status league-page-status--error" role="alert">
+            Error: {error}
+          </div>
+        )}
 
-      <div style={{ display: 'grid', gap: 16 }}>
-        {newsItems.length > 0 && newsItems.map((item) => {
-          // placeholder image when none provided: use project favicon for consistent fallback
-          const imgSrc = item.image_url && item.image_url.length ? item.image_url : '/favicon.ico';
-          return (
-            <div
-              key={item.id}
-              onClick={() => navigate(`/news/${item.id}`)}
-              className="league-page-card league-news-card"
-              style={{
-                cursor: 'pointer',
-                overflow: 'hidden'
-              }}
-            >
-              <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
-                <img
-                  src={imgSrc}
-                  alt={item.title}
-                  style={{ width: 130, height: 88, objectFit: 'cover', borderRadius: 9, flexShrink: 0 }}
-                  onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = '/favicon.ico'; }}
-                />
-                <div style={{ flex: 1 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', gap: '12px' }}>
-                    <div>
-                      <h2 style={{ margin: '0 0 5px', color: 'var(--league-navy)', fontSize: 18 }}>{item.title}</h2>
-                      <div style={{ color: 'var(--league-muted)', fontSize: 13 }}>{item.subtitle || excerpt(item.content, 120)}</div>
-                    </div>
-                    <div style={{ color: 'var(--league-muted)', fontSize: 12, marginLeft: 12, whiteSpace: 'nowrap' }}>{item.author || 'Unknown'}</div>
+        {!loading && !error && newsItems.length > 0 && (
+          <div className="news-card-grid">
+            {newsItems.map((item) => {
+              const date = formatDate(item.published_at || item.created_at);
+              return (
+                <Link
+                  key={item.id}
+                  to={`/news/${item.id}`}
+                  className="league-page-card league-news-card news-story-card"
+                  aria-label={`Read ${item.title || 'news article'}`}
+                >
+                  <div className="news-story-image">
+                    <img
+                      src={item.image_url || '/favicon.ico'}
+                      alt=""
+                      loading="lazy"
+                      onError={(event) => {
+                        event.currentTarget.onerror = null;
+                        event.currentTarget.src = '/favicon.ico';
+                      }}
+                    />
                   </div>
-                  <div style={{ marginTop: 10, color: 'var(--league-ink)', fontSize: 14, lineHeight: 1.6 }}>{excerpt(item.content, 180)}</div>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+                  <div className="news-story-copy">
+                    <div className="news-story-meta">
+                      <span>{item.author || 'Ubakala Football League'}</span>
+                      {date && <time dateTime={item.published_at || item.created_at}>{date}</time>}
+                    </div>
+                    <h2>{item.title || 'Untitled article'}</h2>
+                    {item.subtitle && <p className="news-story-subtitle">{item.subtitle}</p>}
+                    <p className="news-story-excerpt">
+                      {excerpt(item.content || item.subtitle)}
+                    </p>
+                    <span className="news-story-link">Read story <span aria-hidden="true">→</span></span>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        )}
 
-      {/* Placeholder for empty state */}
-      {!loading && newsItems.length === 0 && (
-        <div className="league-page-empty">
-          <p style={{ color: 'inherit', fontSize: 14, margin: 0 }}>
-            More updates coming soon! Stay tuned for the latest news about Ubakala Football League.
-          </p>
-        </div>
-      )}
+        {!loading && !error && newsItems.length === 0 && (
+          <div className="league-page-empty news-list-empty">
+            <h2>News and updates are on the way</h2>
+            <p>Check back soon for the latest from Ubakala Football League.</p>
+          </div>
+        )}
       </main>
     </div>
   );
