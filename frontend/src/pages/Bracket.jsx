@@ -3,7 +3,6 @@ import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { api } from '../api/api';
 import './Bracket.css';
 import './Results.css';
-import usePolling from '../utils/usePolling';
 import {
     getMatchStageLabel,
     getMatchesForStage,
@@ -48,17 +47,17 @@ export default function Bracket() {
     const [seasonsLoading, setSeasonsLoading] = useState(true);
     const [matchesLoading, setMatchesLoading] = useState(true);
     const [category, setCategory] = useState('senior_boys');
-    const [seasonsLoadedOnce, setSeasonsLoadedOnce] = useState(false);
-    const [matchesLoadedOnce, setMatchesLoadedOnce] = useState(false);
+    const [refreshing, setRefreshing] = useState(false);
+    const seasonsLoadedOnceRef = useRef(false);
+    const matchesLoadedOnceRef = useRef(false);
 
     const containerRef = useRef(null);
     const boxRefs = useRef({});
     const svgRef = useRef(null);
     const [connectors, setConnectors] = useState([]);
 
-    // Poll seasons so the dropdown stays current.
     const fetchSeasons = useCallback(async () => {
-        if (!seasonsLoadedOnce) setSeasonsLoading(true);
+        if (!seasonsLoadedOnceRef.current) setSeasonsLoading(true);
 
         try {
             const s = await api.getSeasons(category);
@@ -73,24 +72,18 @@ export default function Bracket() {
         } catch (e) {
             console.error(e);
         } finally {
-            if (!seasonsLoadedOnce) setSeasonsLoading(false);
-            setSeasonsLoadedOnce(true);
+            if (!seasonsLoadedOnceRef.current) setSeasonsLoading(false);
+            seasonsLoadedOnceRef.current = true;
         }
-    }, [category, seasonsLoadedOnce]);
-
-    usePolling(fetchSeasons, {
-        minInterval: 7000,
-        maxInterval: 12000,
-        immediate: true
-    });
+    }, [category]);
 
     // Refresh seasons and clear matches when category changes.
     useEffect(() => {
-        setSeasonsLoadedOnce(false);
+        seasonsLoadedOnceRef.current = false;
         setSeasons([]);
         setSelectedSeason(null);
         setMatches([]);
-        setMatchesLoadedOnce(false);
+        matchesLoadedOnceRef.current = false;
 
         fetchSeasons();
     }, [category, fetchSeasons]);
@@ -98,7 +91,7 @@ export default function Bracket() {
     const fetchMatchesForSeason = useCallback(async () => {
         if (!selectedSeason) return;
 
-        if (!matchesLoadedOnce) setMatchesLoading(true);
+        if (!matchesLoadedOnceRef.current) setMatchesLoading(true);
 
         try {
             const m = await api.getMatches({ season: selectedSeason });
@@ -144,25 +137,26 @@ export default function Bracket() {
         } catch (e) {
             console.error(e);
         } finally {
-            if (!matchesLoadedOnce) setMatchesLoading(false);
-            setMatchesLoadedOnce(true);
+            if (!matchesLoadedOnceRef.current) setMatchesLoading(false);
+            matchesLoadedOnceRef.current = true;
+            setRefreshing(false);
         }
-    }, [selectedSeason, matchesLoadedOnce]);
-
-    usePolling(fetchMatchesForSeason, {
-        minInterval: 5000,
-        maxInterval: 10000,
-        immediate: true
-    });
+    }, [selectedSeason]);
 
     // Fetch matches immediately when the selected season changes.
     useEffect(() => {
         if (!selectedSeason) return;
 
-        setMatchesLoadedOnce(false);
+        matchesLoadedOnceRef.current = false;
         setMatches([]);
         fetchMatchesForSeason();
     }, [selectedSeason, fetchMatchesForSeason]);
+
+    const handleRefresh = () => {
+        if (!selectedSeason) return;
+        setRefreshing(true);
+        fetchMatchesForSeason();
+    };
 
     useEffect(() => {
         return () => {
@@ -452,6 +446,15 @@ export default function Bracket() {
                             </select>
                         )}
                     </div>
+
+                    <button
+                        className="bracket-refresh"
+                        type="button"
+                        onClick={handleRefresh}
+                        disabled={!selectedSeason || matchesLoading || refreshing}
+                    >
+                        {refreshing ? 'Refreshing…' : 'Refresh bracket'}
+                    </button>
                 </div>
             </div>
 

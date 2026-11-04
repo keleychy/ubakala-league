@@ -1,6 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { api, isAppsScriptReadApiEnabled } from '../api/api';
-import usePolling from '../utils/usePolling';
 import { isGroupStageMatch, PUBLIC_CATEGORIES } from '../utils/competition';
 
 const PERIOD_LABELS = {
@@ -126,6 +125,28 @@ const styles = `
   .standings-filter select:focus {
     border-color: #5276a7;
     box-shadow: 0 0 0 3px rgba(82, 118, 167, .12);
+  }
+
+  .standings-refresh {
+    min-height: 44px;
+    padding: 0 16px;
+    border: 1px solid var(--st-primary);
+    border-radius: 8px;
+    background: var(--st-primary);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background .2s, opacity .2s;
+  }
+
+  .standings-refresh:hover:not(:disabled) {
+    background: var(--st-primary-dark);
+  }
+
+  .standings-refresh:disabled {
+    cursor: not-allowed;
+    opacity: .65;
   }
 
   /* Section heading */
@@ -516,6 +537,7 @@ const Standings = () => {
   const [standings, setStandings] = useState([]);
   const [flashMap, setFlashMap] = useState({});
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
 
   const standingsLoadedOnceRef = useRef({});
@@ -529,6 +551,7 @@ const Standings = () => {
     lastSeasonRef.current = null;
     setStandings([]);
     setSelectedGroup(null);
+    setSelectedSeason(null);
     setLoading(true);
     setError(null);
 
@@ -769,6 +792,7 @@ const Standings = () => {
       setError(err?.message || 'Failed to load grouped standings');
     } finally {
       setLoading(false);
+      setRefreshing(false);
 
       if (selectedSeason) {
         standingsLoadedOnceRef.current[selectedSeason] = true;
@@ -776,11 +800,8 @@ const Standings = () => {
     }
   };
 
-  usePolling(fetchGrouped, {
-    minInterval: 5000,
-    maxInterval: 10000,
-    immediate: true
-  });
+  const fetchGroupedRef = useRef(fetchGrouped);
+  fetchGroupedRef.current = fetchGrouped;
 
   // Existing optimistic match-update handling.
   useEffect(() => {
@@ -923,7 +944,14 @@ const Standings = () => {
     setFlashMap({});
     setStandings([]);
     setLoading(true);
+    fetchGroupedRef.current();
   }, [selectedSeason]);
+
+  const handleRefresh = () => {
+    if (!selectedSeason) return;
+    setRefreshing(true);
+    fetchGroupedRef.current();
+  };
 
   const visibleGroups = standings.filter((gblock) => (
     selectedGroup === null || String(selectedGroup) === String(gblock.group.id)
@@ -983,6 +1011,15 @@ const Standings = () => {
               ))}
             </select>
           </div>
+
+          <button
+            className="standings-refresh"
+            type="button"
+            onClick={handleRefresh}
+            disabled={!selectedSeason || loading || refreshing}
+          >
+            {refreshing ? 'Refreshing…' : 'Refresh standings'}
+          </button>
         </section>
 
         {periodNotification && (

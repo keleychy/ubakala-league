@@ -13,6 +13,7 @@ export const isAppsScriptReadApiEnabled = () =>
     ? process.env.REACT_APP_API_PROVIDER === 'apps-script'
     : process.env.NODE_ENV === 'production';
 
+const inFlightRequests = new Map();
 let appsScriptApiInstance;
 
 function getAppsScriptApi() {
@@ -32,12 +33,28 @@ function buildUrl(path) {
 }
 
 export async function fetchJSON(path) {
-  const res = await fetch(buildUrl(path));
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(err || 'API error');
+  const url = buildUrl(path);
+  if (inFlightRequests.has(url)) {
+    return inFlightRequests.get(url);
   }
-  return res.json();
+
+  const request = (async () => {
+    const res = await fetch(url);
+    if (!res.ok) {
+      const err = await res.text();
+      throw new Error(err || 'API error');
+    }
+    return res.json();
+  })();
+  inFlightRequests.set(url, request);
+
+  try {
+    return await request;
+  } finally {
+    if (inFlightRequests.get(url) === request) {
+      inFlightRequests.delete(url);
+    }
+  }
 }
 
 export const api = {

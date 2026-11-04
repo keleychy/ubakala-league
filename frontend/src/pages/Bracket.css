@@ -135,6 +135,28 @@
     opacity: 0.65;
 }
 
+.bracket-root .bracket-refresh {
+    min-height: 40px;
+    padding: 0 14px;
+    border: 1px solid var(--br-gold);
+    border-radius: 7px;
+    background: var(--br-gold);
+    color: var(--br-navy);
+    font-size: 12px;
+    font-weight: 800;
+    cursor: pointer;
+    transition: background 0.2s, opacity 0.2s;
+}
+
+.bracket-root .bracket-refresh:hover:not(:disabled) {
+    background: var(--br-gold-light);
+}
+
+.bracket-root .bracket-refresh:disabled {
+    cursor: not-allowed;
+    opacity: 0.65;
+}
+
 .bracket-root .bracket-select-loading {
     display: flex;
     align-items: center;

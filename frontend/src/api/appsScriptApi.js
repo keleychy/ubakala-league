@@ -162,6 +162,7 @@ export function createAppsScriptApi(baseUrl, fetchImpl = fetch) {
     typeof window === 'undefined' ? 'http://localhost' : window.location.origin
   );
   const groupsWithTeamsCache = new Map();
+  const inFlightRequests = new Map();
 
   async function getAction(action, parameters = {}) {
     const url = new URL(endpointUrl);
@@ -172,17 +173,33 @@ export function createAppsScriptApi(baseUrl, fetchImpl = fetch) {
       }
     });
 
-    const response = await fetchImpl(url.toString());
-    if (!response.ok) {
-      const body = await response.text();
-      throw new Error(body || `Apps Script request failed (${response.status})`);
+    const requestUrl = url.toString();
+    if (inFlightRequests.has(requestUrl)) {
+      return inFlightRequests.get(requestUrl);
     }
 
-    const payload = await response.json();
-    if (!payload || payload.success !== true) {
-      throw new Error(payload?.error || 'Apps Script request failed');
+    const request = (async () => {
+      const response = await fetchImpl(requestUrl);
+      if (!response.ok) {
+        const body = await response.text();
+        throw new Error(body || `Apps Script request failed (${response.status})`);
+      }
+
+      const payload = await response.json();
+      if (!payload || payload.success !== true) {
+        throw new Error(payload?.error || 'Apps Script request failed');
+      }
+      return payload.data;
+    })();
+    inFlightRequests.set(requestUrl, request);
+
+    try {
+      return await request;
+    } finally {
+      if (inFlightRequests.get(requestUrl) === request) {
+        inFlightRequests.delete(requestUrl);
+      }
     }
-    return payload.data;
   }
 
   return {

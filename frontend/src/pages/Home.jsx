@@ -222,14 +222,14 @@ export default function Home() {
   };
 
   usePolling(fetchTeams, {
-    minInterval: 5000,
-    maxInterval: 10000,
+    minInterval: 60000,
+    maxInterval: 60000,
     immediate: true
   });
 
   usePolling(fetchMatches, {
-    minInterval: 5000,
-    maxInterval: 10000,
+    minInterval: 60000,
+    maxInterval: 60000,
     immediate: true
   });
 

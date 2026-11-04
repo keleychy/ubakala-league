@@ -17,6 +17,12 @@ export default function usePolling(callback, options = {}) {
     useEffect(() => {
         let cancelled = false;
         let timer = null;
+        let running = false;
+        let runImmediatelyAfterCurrent = false;
+
+        const isVisible = () =>
+            typeof document === 'undefined' ||
+            document.visibilityState !== 'hidden';
 
         const nextDelay = () => {
             if (minInterval != null && maxInterval != null) {
@@ -30,20 +36,53 @@ export default function usePolling(callback, options = {}) {
         };
 
         const run = async () => {
+            if (cancelled || !isVisible() || running) return;
+
+            running = true;
             try {
                 await cbRef.current();
             } catch (e) {
                 // swallow - callers handle their own errors
+            } finally {
+                running = false;
             }
-            if (cancelled) return;
+
+            if (cancelled || !isVisible()) return;
+
+            if (runImmediatelyAfterCurrent) {
+                runImmediatelyAfterCurrent = false;
+                run();
+                return;
+            }
+
             timer = setTimeout(run, nextDelay());
         };
+
+        const onVisibilityChange = () => {
+            if (!isVisible()) {
+                if (timer) clearTimeout(timer);
+                timer = null;
+                runImmediatelyAfterCurrent = false;
+                return;
+            }
+
+            if (running) {
+                runImmediatelyAfterCurrent = true;
+                return;
+            }
+
+            runImmediatelyAfterCurrent = false;
+            run();
+        };
+
+        document.addEventListener('visibilitychange', onVisibilityChange);
 
         if (immediate) run(); else timer = setTimeout(run, nextDelay());
 
         return () => {
             cancelled = true;
             if (timer) clearTimeout(timer);
+            document.removeEventListener('visibilitychange', onVisibilityChange);
         };
         // only recreate when options change
     }, [interval, minInterval, maxInterval, immediate]);

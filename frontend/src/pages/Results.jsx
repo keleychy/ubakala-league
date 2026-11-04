@@ -1,7 +1,6 @@
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../api/api';
-import usePolling from '../utils/usePolling';
 import {
   formatMatchSchedule,
   getMatchPeriodLabel,
@@ -121,6 +120,28 @@ const styles = `
   .results-filter select:focus {
     border-color: #5276a7;
     box-shadow: 0 0 0 3px rgba(82, 118, 167, .12);
+  }
+
+  .results-refresh {
+    min-height: 44px;
+    padding: 0 16px;
+    border: 1px solid var(--rs-primary);
+    border-radius: 8px;
+    background: var(--rs-primary);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background .2s, opacity .2s;
+  }
+
+  .results-refresh:hover:not(:disabled) {
+    background: var(--rs-primary-dark);
+  }
+
+  .results-refresh:disabled {
+    cursor: not-allowed;
+    opacity: .65;
   }
 
   .results-section-top {
@@ -720,6 +741,7 @@ const Results = () => {
   const [seasons, setSeasons] = useState([]);
   const [selectedSeason, setSelectedSeason] = useState('');
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
   const [flashMap, setFlashMap] = useState({});
 
@@ -769,7 +791,7 @@ const Results = () => {
   }, []);
 
   /* Fetch matches and detect score/team changes. */
-  const fetchScores = async () => {
+  const fetchScores = useCallback(async () => {
     try {
       const data = await api.getMatches();
       const incoming = extractList(data);
@@ -843,19 +865,18 @@ const Results = () => {
 
       setMatches(incoming);
       setError(null);
-      setLoading(false);
     } catch (err) {
       console.error('Failed to fetch match results:', err);
       setError(err?.message || 'Unable to load match results');
+    } finally {
       setLoading(false);
+      setRefreshing(false);
     }
-  };
+  }, []);
 
-  usePolling(fetchScores, {
-    minInterval: 5000,
-    maxInterval: 10000,
-    immediate: true
-  });
+  useEffect(() => {
+    fetchScores();
+  }, [fetchScores]);
 
   /* Clear pending timers when the page unmounts. */
   useEffect(() => {
@@ -1225,6 +1246,18 @@ const Results = () => {
               })}
             </select>
           </div>
+
+          <button
+            className="results-refresh"
+            type="button"
+            onClick={() => {
+              setRefreshing(true);
+              fetchScores();
+            }}
+            disabled={loading || refreshing}
+          >
+            {refreshing ? 'Refreshing…' : 'Refresh results'}
+          </button>
         </section>
 
         {error && (

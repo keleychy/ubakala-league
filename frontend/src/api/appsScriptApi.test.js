@@ -31,6 +31,24 @@ describe('Apps Script read API', () => {
     expect(new URL(fetchImpl.mock.calls[0][0]).searchParams.get('action')).toBe('teams');
   });
 
+  test('deduplicates concurrent identical requests but does not cache completed responses', async () => {
+    const fetchImpl = jest.fn().mockResolvedValue(response([
+      { id: 'TEAM-1', name: 'Avodim', archived: false }
+    ]));
+    const client = createAppsScriptApi(endpoint, fetchImpl);
+
+    const [first, second] = await Promise.all([
+      client.getTeams(),
+      client.getTeams()
+    ]);
+
+    expect(first).toEqual(second);
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+
+    await client.getTeams();
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
+
   test('passes category and season filters using the sheet API query names', async () => {
     const fetchImpl = jest.fn()
       .mockResolvedValueOnce(response([]))

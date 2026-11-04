@@ -44,6 +44,27 @@ describe('API provider selection', () => {
     );
   });
 
+  test('deduplicates concurrent identical Django read requests only', async () => {
+    process.env.REACT_APP_API_PROVIDER = '';
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => [{ id: 'TEAM-1', name: 'Avodim' }]
+    });
+    jest.resetModules();
+    const { api } = require('./api');
+
+    const [first, second] = await Promise.all([
+      api.getTeams(),
+      api.getTeams()
+    ]);
+
+    expect(first).toEqual(second);
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+
+    await api.getTeams();
+    expect(global.fetch).toHaveBeenCalledTimes(2);
+  });
+
   test('uses Apps Script only when explicitly selected', async () => {
     process.env.REACT_APP_API_PROVIDER = 'apps-script';
     process.env.REACT_APP_API_URL = '';
