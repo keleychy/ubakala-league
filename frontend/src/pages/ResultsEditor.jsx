@@ -11,377 +11,508 @@ const MATCH_STATUS_OPTIONS = [
     { value: 'AWARDED', label: 'Awarded' },
     { value: 'CANCELLED', label: 'Cancelled' },
     { value: 'ABANDONED', label: 'Abandoned' },
-    { value: 'VOID', label: 'Void' }
+    { value: 'VOID', label: 'Void' },
 ];
 
 const MATCH_PERIOD_OPTIONS = [
-    { value: 'NOT_STARTED', label: 'Not started' },
-    { value: 'FIRST_HALF', label: '1st Half' },
+    { value: 'NOT_STARTED', label: 'Not Started' },
+    { value: 'FIRST_HALF', label: 'First Half' },
     { value: 'HALFTIME', label: 'Half Time' },
-    { value: 'SECOND_HALF', label: '2nd Half' },
-    { value: 'ENDED', label: 'Ended' }
+    { value: 'SECOND_HALF', label: 'Second Half' },
+    { value: 'FULL_TIME ', label: 'Full Time' },
 ];
 
 function normalizePeriod(value) {
-    const normalized = String(value || 'NOT_STARTED')
+    return String(value || '')
         .trim()
         .toUpperCase()
         .replace(/[\s-]+/g, '_');
-    if (normalized === '1ST_HALF') return 'FIRST_HALF';
-    if (normalized === '2ND_HALF') return 'SECOND_HALF';
-    if (normalized === 'HALF_TIME') return 'HALFTIME';
-    return normalized;
+}
+
+function formatCategory(match) {
+    const category = match?.category || match?.competition_category || match?.stage || '';
+
+    if (!category) return 'Match';
+
+    return String(category)
+        .replace(/_/g, ' ')
+        .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function MatchRow({ match, onUpdated }) {
+    const [homeScore, setHomeScore] = useState(match.home_score ?? '');
+    const [awayScore, setAwayScore] = useState(match.away_score ?? '');
+    const [homePenalties, setHomePenalties] = useState(match.home_penalties ?? '');
+    const [awayPenalties, setAwayPenalties] = useState(match.away_penalties ?? '');
+    const [status, setStatus] = useState(match.status || 'SCHEDULED');
+    const [period, setPeriod] = useState(normalizePeriod(match.current_period || 'NOT_STARTED'));
+    const [saving, setSaving] = useState(false);
+    const [savingPeriod, setSavingPeriod] = useState(false);
+    const [savingStatus, setSavingStatus] = useState(false);
+    const [finishing, setFinishing] = useState(false);
+    const [message, setMessage] = useState('');
+
+    useEffect(() => {
+        setHomeScore(match.home_score ?? '');
+        setAwayScore(match.away_score ?? '');
+        setHomePenalties(match.home_penalties ?? '');
+        setAwayPenalties(match.away_penalties ?? '');
+        setStatus(match.status || 'SCHEDULED');
+        setPeriod(normalizePeriod(match.current_period || 'NOT_STARTED'));
+    }, [match]);
+
+    const isKnockout = Boolean(
+        match.stage &&
+        String(match.stage).toLowerCase().includes('knockout')
+    );
+
+    const isLaguruMgbarakumaSeniorBoys =
+        String(match.home_team_name || '').toUpperCase().includes('LAGURU') &&
+        String(match.away_team_name || '').toUpperCase().includes('MGBARAKUMA') &&
+        String(match.category || match.competition_category || '').toUpperCase().includes('SENIOR BOYS');
+
+    const showPenalties =
+        isKnockout &&
+        homeScore !== '' &&
+        awayScore !== '' &&
+        Number(homeScore) === Number(awayScore);
+
+    const handleSaveResult = async () => {
+        setMessage('');
+
+        if (homeScore === '' || awayScore === '') {
+            setMessage('Enter both team scores before saving.');
+            return;
+        }
+
+        if (
+            showPenalties &&
+            (homePenalties === '' || awayPenalties === '')
+        ) {
+            setMessage('Enter both penalty scores before saving.');
+            return;
+        }
+
+        const payload = {
+            match_id: match.id,
+            home_score: Number(homeScore),
+            away_score: Number(awayScore),
+        };
+
+        if (showPenalties) {
+            payload.home_penalties = Number(homePenalties);
+            payload.away_penalties = Number(awayPenalties);
+        }
+
+        try {
+            setSaving(true);
+
+            await callAdminApi('admin.matches.setResult', payload);
+
+            setMessage('Result saved successfully.');
+
+            window.dispatchEvent(new CustomEvent('match-scores-saved'));
+            window.dispatchEvent(new CustomEvent('match-updated'));
+
+            if (onUpdated) onUpdated();
+        } catch (error) {
+            setMessage(error?.message || 'Unable to save result.');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleSavePeriod = async () => {
+        setMessage('');
+
+        try {
+            setSavingPeriod(true);
+
+            await callAdminApi('admin.matches.setPeriod', {
+                match_id: match.id,
+                current_period: period,
+            });
+
+            setMessage('Match period updated.');
+
+            window.dispatchEvent(new CustomEvent('match-updated'));
+
+            if (onUpdated) onUpdated();
+        } catch (error) {
+            setMessage(error?.message || 'Unable to update match period.');
+        } finally {
+            setSavingPeriod(false);
+        }
+    };
+
+    const handleSaveStatus = async () => {
+        setMessage('');
+
+        try {
+            setSavingStatus(true);
+
+            await callAdminApi('admin.matches.setStatus', {
+                match_id: match.id,
+                status,
+            });
+
+            setMessage('Match status updated.');
+
+            window.dispatchEvent(new CustomEvent('match-updated'));
+
+            if (onUpdated) onUpdated();
+        } catch (error) {
+            setMessage(error?.message || 'Unable to update match status.');
+        } finally {
+            setSavingStatus(false);
+        }
+    };
+
+    const handleMarkFinished = async () => {
+        setMessage('');
+
+        try {
+            setFinishing(true);
+
+            await callAdminApi('admin.matches.markFinished', {
+                match_id: match.id,
+            });
+
+            setStatus('FINISHED');
+            setPeriod('FULL_TIME');
+
+            setMessage('Match marked as finished.');
+
+            window.dispatchEvent(new CustomEvent('match-updated'));
+
+            if (onUpdated) onUpdated();
+        } catch (error) {
+            setMessage(error?.message || 'Unable to finish match.');
+        } finally {
+            setFinishing(false);
+        }
+    };
+
+    return (
+        <div className="results-match-card">
+            <div className="results-match-top">
+                <div className="results-match-identity">
+                    <div className="results-match-category">
+                        {formatCategory(match)}
+                    </div>
+
+                    <div className="results-match-teams">
+                        <span className="results-team-name">
+                            {match.home_team_name || 'Home Team'}
+                        </span>
+
+                        <span className="results-vs">VS</span>
+
+                        <span className="results-team-name">
+                            {match.away_team_name || 'Away Team'}
+                        </span>
+                    </div>
+
+                    <div className="results-match-meta">
+                        {match.match_date && (
+                            <span>{match.match_date}</span>
+                        )}
+
+                        {match.kickoff_time && (
+                            <span>{match.kickoff_time}</span>
+                        )}
+
+                        {match.venue && (
+                            <span>{match.venue}</span>
+                        )}
+                    </div>
+                </div>
+
+                <div className="results-match-controls">
+                    <div className="results-control-group">
+                        <label htmlFor={`status-${match.id}`}>
+                            Match Status
+                        </label>
+
+                        <select
+                            id={`status-${match.id}`}
+                            value={status}
+                            onChange={(event) => setStatus(event.target.value)}
+                        >
+                            {MATCH_STATUS_OPTIONS.map((option) => (
+                                <option
+                                    key={option.value}
+                                    value={option.value}
+                                >
+                                    {option.label}
+                                </option>
+                            ))}
+                        </select>
+
+                        <button
+                            type="button"
+                            className="results-small-button"
+                            onClick={handleSaveStatus}
+                            disabled={savingStatus}
+                        >
+                            {savingStatus ? 'Saving...' : 'Update Status'}
+                        </button>
+                    </div>
+
+                    <div className="results-control-group">
+                        <label htmlFor={`period-${match.id}`}>
+                            Current Period
+                        </label>
+
+                        <select
+                            id={`period-${match.id}`}
+                            value={period}
+                            onChange={(event) => setPeriod(event.target.value)}
+                        >
+                            {MATCH_PERIOD_OPTIONS.map((option) => (
+                                <option
+                                    key={normalizePeriod(option.value)}
+                                    value={normalizePeriod(option.value)}
+                                >
+                                    {option.label}
+                                </option>
+                            ))}
+                        </select>
+
+                        <button
+                            type="button"
+                            className="results-small-button"
+                            onClick={handleSavePeriod}
+                            disabled={savingPeriod}
+                        >
+                            {savingPeriod ? 'Saving...' : 'Update Period'}
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div className="results-score-section">
+                <div className="results-score-heading">
+                    <span>Enter Match Result</span>
+                    <small>Input the official scores for both teams.</small>
+                </div>
+
+                <div className="results-score-inputs">
+                    <div className="results-score-team">
+                        <label>{match.home_team_name || 'Home Team'}</label>
+
+                        <input
+                            type="number"
+                            min="0"
+                            value={homeScore}
+                            onChange={(event) => setHomeScore(event.target.value)}
+                            placeholder="0"
+                        />
+                    </div>
+
+                    <div className="results-score-separator">:</div>
+
+                    <div className="results-score-team">
+                        <label>{match.away_team_name || 'Away Team'}</label>
+
+                        <input
+                            type="number"
+                            min="0"
+                            value={awayScore}
+                            onChange={(event) => setAwayScore(event.target.value)}
+                            placeholder="0"
+                        />
+                    </div>
+                </div>
+
+                {showPenalties && (
+                    <div className="results-penalty-section">
+                        <div className="results-penalty-heading">
+                            Penalty Shootout
+                        </div>
+
+                        <div className="results-score-inputs">
+                            <div className="results-score-team">
+                                <label>
+                                    {match.home_team_name || 'Home Team'} Penalties
+                                </label>
+
+                                <input
+                                    type="number"
+                                    min="0"
+                                    value={homePenalties}
+                                    onChange={(event) => setHomePenalties(event.target.value)}
+                                    placeholder="0"
+                                />
+                            </div>
+
+                            <div className="results-score-separator">:</div>
+
+                            <div className="results-score-team">
+                                <label>
+                                    {match.away_team_name || 'Away Team'} Penalties
+                                </label>
+
+                                <input
+                                    type="number"
+                                    min="0"
+                                    value={awayPenalties}
+                                    onChange={(event) => setAwayPenalties(event.target.value)}
+                                    placeholder="0"
+                                />
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {message && (
+                    <div className="results-feedback">
+                        {message}
+                    </div>
+                )}
+
+                <div className="results-action-buttons">
+                    <button
+                        type="button"
+                        className="results-save-button"
+                        onClick={handleSaveResult}
+                        disabled={saving}
+                    >
+                        {saving ? 'Saving Result...' : 'Save Result'}
+                    </button>
+
+                    <button
+                        type="button"
+                        className="results-finish-button"
+                        onClick={handleMarkFinished}
+                        disabled={finishing}
+                    >
+                        {finishing ? 'Updating...' : 'Mark Match Finished'}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
 }
 
 export default function ResultsEditor() {
     const [matches, setMatches] = useState([]);
-    const [loading, setLoading] = useState(false);
-    const [message, setMessage] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
+    const [refreshing, setRefreshing] = useState(false);
+
+    const loadMatches = async () => {
+        try {
+            setError('');
+
+            const response = await callAdminApi('admin.matches.list', {});
+
+            const matchList = Array.isArray(response)
+                ? response
+                : response?.matches || response?.data || [];
+
+            const activeMatches = matchList.filter((match) => {
+                const currentStatus = String(match.status || '').toUpperCase();
+
+                return ![
+                    'FINISHED',
+                    'AWARDED',
+                    'CANCELLED',
+                    'VOID',
+                ].includes(currentStatus);
+            });
+
+            setMatches(activeMatches);
+        } catch (err) {
+            setError(err?.message || 'Unable to load matches.');
+        } finally {
+            setLoading(false);
+            setRefreshing(false);
+        }
+    };
 
     useEffect(() => {
         loadMatches();
+
+        const handleMatchUpdate = () => {
+            loadMatches();
+        };
+
+        window.addEventListener('match-updated', handleMatchUpdate);
+        window.addEventListener('match-scores-saved', handleMatchUpdate);
+
+        return () => {
+            window.removeEventListener('match-updated', handleMatchUpdate);
+            window.removeEventListener('match-scores-saved', handleMatchUpdate);
+        };
     }, []);
 
-    async function loadMatches() {
-        setLoading(true);
-        try {
-            const data = await callAdminApi('admin.matches.list');
-            const editable = (data || []).filter(match =>
-                !['FINISHED', 'AWARDED', 'CANCELLED', 'VOID'].includes(
-                    String(match.status || '').toUpperCase()
-                )
-            );
-            setMatches(editable);
-        } catch (err) {
-            setMessage({ type: 'error', text: err.message || 'Failed to load matches' });
-        } finally {
-            setLoading(false);
-        }
-    }
+    const handleRefresh = () => {
+        setRefreshing(true);
+        loadMatches();
+    };
 
-    async function setResult(matchId, home_score, away_score, penalty_home = null, penalty_away = null) {
-        setMessage(null);
-        try {
-            const payload = { id: matchId, home_score, away_score };
-            if (penalty_home !== null && penalty_away !== null) {
-                payload.penalty_home = penalty_home;
-                payload.penalty_away = penalty_away;
-            }
-            const updated = await callAdminApi('admin.matches.setResult', payload);
-            setMessage({ type: 'success', text: 'Result updated' });
-            setMatches(prev => prev.map(match =>
-                match.id === updated.id ? { ...match, ...updated } : match
-            ));
-            window.dispatchEvent(new CustomEvent('match-scores-saved', { detail: updated }));
-            return updated;
-        } catch (err) {
-            setMessage({ type: 'error', text: err.message || 'Failed to set result' });
-            throw err;
-        }
-    }
-
-    async function setMatchPeriod(matchId, current_period) {
-        const updated = await callAdminApi('admin.matches.setPeriod', {
-            id: matchId,
-            current_period
-        });
-        setMatches(prev => prev.map(match =>
-            match.id === updated.id ? { ...match, ...updated } : match
-        ));
-        window.dispatchEvent(new CustomEvent('match-updated', { detail: updated }));
-        return updated;
-    }
-
-    async function setMatchStatus(matchId, status) {
-        const updated = await callAdminApi('admin.matches.setStatus', {
-            id: matchId,
-            status
-        });
-        const terminalStatuses = ['FINISHED', 'AWARDED', 'CANCELLED', 'VOID'];
-        setMatches(prev => terminalStatuses.includes(updated.status)
-            ? prev.filter(match => match.id !== updated.id)
-            : prev.map(match => match.id === updated.id ? { ...match, ...updated } : match)
+    if (loading) {
+        return (
+            <div className="results-editor-page">
+                <div className="results-editor-loading">
+                    Loading matches...
+                </div>
+            </div>
         );
-        window.dispatchEvent(new CustomEvent('match-updated', { detail: updated }));
-        return updated;
-    }
-
-    async function markFinished(matchId, extra_time_minutes = null) {
-        setMessage(null);
-        try {
-            const updated = await callAdminApi('admin.matches.markFinished', {
-                id: matchId,
-                extra_time_minutes
-            });
-            setMessage({ type: 'success', text: 'Match marked finished' });
-            setMatches(prev => prev.filter(match => match.id !== updated.id));
-            window.dispatchEvent(new CustomEvent('match-updated', { detail: updated }));
-            return updated;
-        } catch (err) {
-            setMessage({ type: 'error', text: err.message || 'Failed to mark finished' });
-            return null;
-        }
     }
 
     return (
-        <div className="league-polish-page">
-          <main className="league-polish-content">
-            <header className="league-page-header">
-                <div className="league-page-header__copy">
-                    <div className="league-page-eyebrow">Match administration</div>
-                    <h1 className="league-page-title">Results Editor</h1>
-                    <p className="league-page-subtitle">Update scores, match periods and final results.</p>
+        <div className="results-editor-page">
+            <div className="results-editor-header">
+                <div>
+                    <h2>Results Editor</h2>
+                    <p>
+                        Manage match scores, match status and current playing period.
+                    </p>
                 </div>
-            </header>
-            {message && <div className={`league-page-status${message.type === 'error' ? ' league-page-status--error' : ''}`}>{message.text}</div>}
-            {loading ? <p>Loading matches...</p> : (
-                <div className="league-page-grid">
-                    {matches.map(m => (
+
+                <button
+                    type="button"
+                    className="results-refresh-button"
+                    onClick={handleRefresh}
+                    disabled={refreshing}
+                >
+                    {refreshing ? 'Refreshing...' : 'Refresh Matches'}
+                </button>
+            </div>
+
+            {error && (
+                <div className="results-editor-error">
+                    {error}
+                </div>
+            )}
+
+            <div className="results-editor-summary">
+                <div>
+                    <strong>{matches.length}</strong>
+                    <span>Active Matches</span>
+                </div>
+            </div>
+
+            {matches.length === 0 ? (
+                <div className="results-editor-empty">
+                    <h3>No Active Matches</h3>
+                    <p>
+                        There are currently no matches available for result entry.
+                    </p>
+                </div>
+            ) : (
+                <div className="results-match-list">
+                    {matches.map((match) => (
                         <MatchRow
-                            key={m.id}
-                            match={m}
-                            onSetResult={setResult}
-                            onSetMatchPeriod={setMatchPeriod}
-                            onSetMatchStatus={setMatchStatus}
-                            onMarkFinished={markFinished}
+                            key={match.id}
+                            match={match}
+                            onUpdated={loadMatches}
                         />
                     ))}
                 </div>
             )}
-          </main>
         </div>
     );
-}
-
-function MatchRow({
-    match,
-    onSetResult,
-    onSetMatchPeriod,
-    onSetMatchStatus,
-    onMarkFinished
-}) {
-    const [home, setHome] = useState(match.home_score ?? '');
-    const [away, setAway] = useState(match.away_score ?? '');
-    const [penHome, setPenHome] = useState('');
-    const [penAway, setPenAway] = useState('');
-    const [period, setPeriod] = useState(normalizePeriod(match.current_period));
-    const [status, setStatus] = useState(
-        String(match.status || 'PENDING').trim().toUpperCase()
-    );
-    const [saving, setSaving] = useState(false);
-    const [savingPeriod, setSavingPeriod] = useState(false);
-    const [savingStatus, setSavingStatus] = useState(false);
-    const [localMsg, setLocalMsg] = useState(null);
-    const [finishing, setFinishing] = useState(false);
-
-    const rawCategory = match?.season?.category || match.category || '';
-    const category = formatCategory(rawCategory);
-    const matchDate = match.match_date ? new Date(match.match_date).toLocaleString() : '';
-
-    const isKnockout = Boolean(match.is_knockout) || (match.match_stage && String(match.match_stage).toLowerCase().includes('knock')) || (match.matchday && match.matchday >= 22);
-
-    // Special-case override: force no-penalties for LAGURU vs MGBARAKUMA Senior Boys on 12/20/2025 4:00:00 PM
-    const forceNoPen = (match.home_team?.name === 'LAGURU' && match.away_team?.name === 'MGBARAKUMA' && category === 'Senior Boys' && matchDate === '12/20/2025, 4:00:00 PM');
-    const showPen = isKnockout && !forceNoPen;
-
-    function onlyDigits(v) {
-        return v === '' ? '' : String(v).replace(/[^0-9]/g, '');
-    }
-
-    function validateInputs() {
-        if (home === '' || away === '') {
-            setLocalMsg({ type: 'error', text: 'Enter both scores' });
-            return false;
-        }
-        const h = parseInt(home, 10);
-        const a = parseInt(away, 10);
-        if (Number.isNaN(h) || Number.isNaN(a) || h < 0 || a < 0) {
-            setLocalMsg({ type: 'error', text: 'Scores must be non-negative integers' });
-            return false;
-        }
-        // Do not require penalty scores when saving interim/ongoing knockout matches.
-        // Penalties are only required when marking a knockout match finished.
-        setLocalMsg(null);
-        return true;
-    }
-
-    async function save() {
-        if (!validateInputs()) return;
-        setSaving(true);
-        try {
-            const h = parseInt(home, 10);
-            const a = parseInt(away, 10);
-            let ph = null;
-            let pa = null;
-            if (showPen) {
-                if (penHome !== '' && penAway !== '') {
-                    ph = parseInt(penHome, 10);
-                    pa = parseInt(penAway, 10);
-                }
-            }
-            await onSetResult(match.id, h, a, ph, pa);
-            setLocalMsg({ type: 'success', text: 'Saved' });
-        } catch (err) {
-            setLocalMsg({ type: 'error', text: 'Save failed' });
-        } finally {
-            setSaving(false);
-        }
-    }
-
-    async function markFinished() {
-        setFinishing(true);
-        setLocalMsg(null);
-        try {
-            if (typeof onMarkFinished !== 'function') {
-                setLocalMsg({ type: 'error', text: 'No handler to mark finished' });
-                return;
-            }
-            const h = parseInt(home === '' ? '0' : home, 10);
-            const a = parseInt(away === '' ? '0' : away, 10);
-            // If knockout and match is tied, require penalty scores before finishing
-            if (showPen && h === a) {
-                if (penHome === '' || penAway === '') {
-                    setLocalMsg({ type: 'error', text: 'Provide penalty scores before marking finished' });
-                    return;
-                }
-                const ph = parseInt(penHome, 10);
-                const pa = parseInt(penAway, 10);
-                if (Number.isNaN(ph) || Number.isNaN(pa) || ph < 0 || pa < 0) {
-                    setLocalMsg({ type: 'error', text: 'Penalty scores must be non-negative integers' });
-                    return;
-                }
-                // Save penalty scores first so backend records them, then mark finished
-                await onSetResult(match.id, h, a, ph, pa);
-            } else {
-                // Save the current scores (ensure latest) before finishing
-                await onSetResult(match.id, parseInt(home || '0', 10), parseInt(away || '0', 10));
-            }
-
-            await onMarkFinished(match.id);
-            setLocalMsg({ type: 'success', text: 'Marked finished' });
-        } catch (err) {
-            setLocalMsg({ type: 'error', text: 'Failed to mark finished' });
-        } finally {
-            setFinishing(false);
-        }
-    }
-
-    return (
-        <div className="league-match-editor-card" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
-                <div style={{ fontWeight: 700, color: '#0f172a' }}>{match.home_team.name} vs {match.away_team.name}</div>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                    {category && (
-                        <div style={{ background: '#eef2ff', color: '#3730a3', padding: '6px 8px', borderRadius: 6, fontWeight: 700, fontSize: 12 }}>
-                            {category}
-                        </div>
-                    )}
-                    <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12 }}>
-                        Status
-                        <select
-                            aria-label={`Status for ${match.home_team.name} vs ${match.away_team.name}`}
-                            value={status}
-                            disabled={savingStatus}
-                            onChange={async e => {
-                                const nextStatus = e.target.value.toUpperCase();
-                                const previousStatus = status;
-                                setStatus(nextStatus);
-                                setSavingStatus(true);
-                                setLocalMsg(null);
-                                try {
-                                    await onSetMatchStatus(match.id, nextStatus);
-                                    setLocalMsg({ type: 'success', text: 'Status saved' });
-                                } catch (err) {
-                                    setStatus(previousStatus);
-                                    setLocalMsg({ type: 'error', text: err.message || 'Failed to save status' });
-                                } finally {
-                                    setSavingStatus(false);
-                                }
-                            }}
-                            style={{ padding: '6px 8px', borderRadius: 6, border: '1px solid #d1d5db', fontSize: 12 }}
-                        >
-                            {!MATCH_STATUS_OPTIONS.some(option => option.value === status) && (
-                                <option value={status}>{status}</option>
-                            )}
-                            {MATCH_STATUS_OPTIONS.map(option => (
-                                <option key={option.value} value={option.value}>{option.label}</option>
-                            ))}
-                        </select>
-                    </label>
-
-                    <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12 }}>
-                        Period
-                        <select
-                            aria-label={`Current period for ${match.home_team.name} vs ${match.away_team.name}`}
-                            value={period}
-                            disabled={savingPeriod}
-                            onChange={async e => {
-                                const nextPeriod = normalizePeriod(e.target.value);
-                                const previousPeriod = period;
-                                setPeriod(nextPeriod);
-                                setSavingPeriod(true);
-                                setLocalMsg(null);
-                                try {
-                                    await onSetMatchPeriod(match.id, nextPeriod);
-                                    setLocalMsg({ type: 'success', text: 'Period saved' });
-                                } catch (err) {
-                                    setPeriod(previousPeriod);
-                                    setLocalMsg({ type: 'error', text: err.message || 'Failed to save period' });
-                                } finally {
-                                    setSavingPeriod(false);
-                                }
-                            }}
-                            style={{ padding: '6px 8px', borderRadius: 6, border: '1px solid #d1d5db', fontSize: 12 }}
-                        >
-                            {!MATCH_PERIOD_OPTIONS.some(option => option.value === period) && (
-                                <option value={period}>{period}</option>
-                            )}
-                            {MATCH_PERIOD_OPTIONS.map(option => (
-                                <option key={option.value} value={option.value}>{option.label}</option>
-                            ))}
-                        </select>
-                    </label>
-                </div>
-            </div>
-
-            {matchDate && <div style={{ color: '#6b7280', fontSize: 13 }}>{matchDate}</div>}
-
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                <input value={home} onChange={e => setHome(onlyDigits(e.target.value))} style={{ width: '3.5rem', textAlign: 'center', fontWeight: 700, padding: '6px 8px', border: '1px solid #d1d5db', borderRadius: 6 }} />
-                <span style={{ fontWeight: 700, color: '#0f172a' }}>-</span>
-                <input value={away} onChange={e => setAway(onlyDigits(e.target.value))} style={{ width: '3.5rem', textAlign: 'center', fontWeight: 700, padding: '6px 8px', border: '1px solid #d1d5db', borderRadius: 6 }} />
-
-                {showPen && (
-                    <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginLeft: 8 }}>
-                        <div style={{ fontSize: 12, color: '#374151' }}>Pen:</div>
-                        <input placeholder='H' value={penHome} onChange={e => setPenHome(onlyDigits(e.target.value))} style={{ width: '2.6rem', textAlign: 'center', padding: '4px 6px', border: '1px solid #e5e7eb', borderRadius: 6 }} />
-                        <span style={{ fontWeight: 700, color: '#0f172a' }}>/</span>
-                        <input placeholder='A' value={penAway} onChange={e => setPenAway(onlyDigits(e.target.value))} style={{ width: '2.6rem', textAlign: 'center', padding: '4px 6px', border: '1px solid #e5e7eb', borderRadius: 6 }} />
-                    </div>
-                )}
-
-                <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center' }}>
-                    <button disabled={saving} onClick={save} style={{ background: 'linear-gradient(90deg,#2563eb,#7c3aed)', color: 'white', border: 'none', padding: '8px 12px', borderRadius: 8, cursor: saving ? 'default' : 'pointer', fontWeight: 700 }}>{saving ? 'Saving...' : 'Save'}</button>
-                    <button disabled={finishing} onClick={markFinished} title="Mark this match as finished" style={{ background: '#0ea5a4', color: 'white', border: 'none', padding: '6px 10px', borderRadius: 6, cursor: finishing ? 'default' : 'pointer', fontWeight: 700, fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}>
-                        {finishing ? 'Processing...' : 'Mark Finished'}
-                    </button>
-                </div>
-            </div>
-
-            {localMsg && <div style={{ fontSize: 13, color: localMsg.type === 'error' ? '#b91c1c' : '#065f46' }}>{localMsg.text}</div>}
-        </div>
-    );
-}
-
-function formatCategory(cat) {
-    if (!cat) return '';
-    const map = {
-        junior_boys: 'Junior Boys',
-        junior_girls: 'Junior Girls',
-        senior_men: 'Senior Men',
-        senior_women: 'Senior Women',
-        u12_boys: 'U12 Boys'
-    };
-    if (map[cat]) return map[cat];
-    return String(cat).split('_').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(' ');
 }
