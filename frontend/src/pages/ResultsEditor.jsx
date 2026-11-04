@@ -19,7 +19,7 @@ const MATCH_PERIOD_OPTIONS = [
     { value: 'FIRST_HALF', label: 'First Half' },
     { value: 'HALFTIME', label: 'Half Time' },
     { value: 'SECOND_HALF', label: 'Second Half' },
-    { value: 'FULL_TIME ', label: 'Full Time' },
+    { value: 'FULL_TIME', label: 'Full Time' },
 ];
 
 function normalizePeriod(value) {
@@ -43,12 +43,18 @@ function formatCategory(match) {
         .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
+function getMatchStatus(match) {
+    return String(match.status || 'SCHEDULED').trim().toUpperCase();
+}
+
 function MatchRow({ match, onUpdated }) {
     const [homeScore, setHomeScore] = useState(match.home_score ?? '');
     const [awayScore, setAwayScore] = useState(match.away_score ?? '');
     const [homePenalties, setHomePenalties] = useState(match.home_penalties ?? '');
     const [awayPenalties, setAwayPenalties] = useState(match.away_penalties ?? '');
-    const [status, setStatus] = useState(match.status || 'SCHEDULED');
+    const [status, setStatus] = useState(
+        String(match.status || 'SCHEDULED').trim().toUpperCase()
+    );
     const [period, setPeriod] = useState(
         normalizePeriod(match.current_period || 'NOT_STARTED')
     );
@@ -64,7 +70,7 @@ function MatchRow({ match, onUpdated }) {
         setAwayScore(match.away_score ?? '');
         setHomePenalties(match.home_penalties ?? '');
         setAwayPenalties(match.away_penalties ?? '');
-        setStatus(match.status || 'SCHEDULED');
+        setStatus(String(match.status || 'SCHEDULED').trim().toUpperCase());
         setPeriod(normalizePeriod(match.current_period || 'NOT_STARTED'));
     }, [match]);
 
@@ -78,6 +84,9 @@ function MatchRow({ match, onUpdated }) {
         homeScore !== '' &&
         awayScore !== '' &&
         Number(homeScore) === Number(awayScore);
+    const statusLabel =
+        MATCH_STATUS_OPTIONS.find((option) => option.value === status)?.label ||
+        status;
 
     const handleSaveResult = async () => {
         setMessage('');
@@ -196,73 +205,97 @@ function MatchRow({ match, onUpdated }) {
         <div className="results-match-card">
             <div className="results-match-top">
                 <div className="results-match-identity">
-                    <div className="results-match-category">
-                        {formatCategory(match)}
+                    <div className="results-match-tags">
+                        <span className="results-match-category">
+                            {formatCategory(match)}
+                        </span>
+                        <span className={`results-status-badge results-status-${status.toLowerCase()}`}>
+                            {statusLabel}
+                        </span>
                     </div>
 
                     <div className="results-match-teams">
-                        <span className="results-team-name">
-                            {match.home_team_name || 'Home Team'}
-                        </span>
-
+                        <div className="results-team results-team-home">
+                            <span className="results-team-side">HOME</span>
+                            <span className="results-team-name">
+                                {match.home_team_name || 'Home Team'}
+                            </span>
+                        </div>
                         <span className="results-vs">VS</span>
-
-                        <span className="results-team-name">
-                            {match.away_team_name || 'Away Team'}
-                        </span>
+                        <div className="results-team results-team-away">
+                            <span className="results-team-side">AWAY</span>
+                            <span className="results-team-name">
+                                {match.away_team_name || 'Away Team'}
+                            </span>
+                        </div>
                     </div>
 
                     <div className="results-match-meta">
                         {match.match_date && (
-                            <span>{match.match_date}</span>
+                            <span>
+                                <strong>Date</strong>
+                                {match.match_date}
+                            </span>
                         )}
 
                         {match.kickoff_time && (
-                            <span>{match.kickoff_time}</span>
+                            <span>
+                                <strong>Kickoff</strong>
+                                {match.kickoff_time}
+                            </span>
                         )}
 
                         {match.venue && (
-                            <span>{match.venue}</span>
+                            <span>
+                                <strong>Venue</strong>
+                                {match.venue}
+                            </span>
                         )}
                     </div>
                 </div>
 
                 <div className="results-match-controls">
                     <div className="results-control-group">
-                        <label htmlFor={`status-${match.id}`}>
-                            Match Status
-                        </label>
-
+                        <div className="results-control-title">
+                            <label htmlFor={`status-${match.id}`}>
+                                Match status
+                            </label>
+                            <button
+                                type="button"
+                                className="results-small-button"
+                                onClick={handleSaveStatus}
+                                disabled={savingStatus}
+                            >
+                                {savingStatus ? 'Saving...' : 'Update'}
+                            </button>
+                        </div>
                         <select
                             id={`status-${match.id}`}
                             value={status}
                             onChange={(event) => setStatus(event.target.value)}
                         >
                             {MATCH_STATUS_OPTIONS.map((option) => (
-                                <option
-                                    key={option.value}
-                                    value={option.value}
-                                >
+                                <option key={option.value} value={option.value}>
                                     {option.label}
                                 </option>
                             ))}
                         </select>
-
-                        <button
-                            type="button"
-                            className="results-small-button"
-                            onClick={handleSaveStatus}
-                            disabled={savingStatus}
-                        >
-                            {savingStatus ? 'Saving...' : 'Update Status'}
-                        </button>
                     </div>
 
                     <div className="results-control-group">
-                        <label htmlFor={`period-${match.id}`}>
-                            Current Period
-                        </label>
-
+                        <div className="results-control-title">
+                            <label htmlFor={`period-${match.id}`}>
+                                Playing period
+                            </label>
+                            <button
+                                type="button"
+                                className="results-small-button"
+                                onClick={handleSavePeriod}
+                                disabled={savingPeriod}
+                            >
+                                {savingPeriod ? 'Saving...' : 'Update'}
+                            </button>
+                        </div>
                         <select
                             id={`period-${match.id}`}
                             value={period}
@@ -277,25 +310,17 @@ function MatchRow({ match, onUpdated }) {
                                 </option>
                             ))}
                         </select>
-
-                        <button
-                            type="button"
-                            className="results-small-button"
-                            onClick={handleSavePeriod}
-                            disabled={savingPeriod}
-                        >
-                            {savingPeriod ? 'Saving...' : 'Update Period'}
-                        </button>
                     </div>
                 </div>
             </div>
 
             <div className="results-score-section">
                 <div className="results-score-heading">
-                    <span>Enter Match Result</span>
-                    <small>
-                        Input the official scores for both teams.
-                    </small>
+                    <div>
+                        <span>Match result</span>
+                        <small>Enter the official score for each team.</small>
+                    </div>
+                    <span className="results-score-heading-note">FULL TIME SCORE</span>
                 </div>
 
                 <div className="results-score-inputs">
@@ -375,7 +400,7 @@ function MatchRow({ match, onUpdated }) {
                 )}
 
                 {message && (
-                    <div className="results-feedback">
+                    <div className="results-feedback" role="status" aria-live="polite">
                         {message}
                     </div>
                 )}
@@ -409,6 +434,8 @@ export default function ResultsEditor() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [refreshing, setRefreshing] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [categoryFilter, setCategoryFilter] = useState('all');
 
     const loadMatches = async () => {
         try {
@@ -461,11 +488,34 @@ export default function ResultsEditor() {
         loadMatches();
     };
 
+    const categories = [...new Set(matches.map(formatCategory))].sort();
+    const normalizedSearch = searchTerm.trim().toLowerCase();
+    const filteredMatches = matches.filter((match) => {
+        const matchesCategory =
+            categoryFilter === 'all' || formatCategory(match) === categoryFilter;
+        const searchableText = [
+            match.home_team_name,
+            match.away_team_name,
+            formatCategory(match),
+            match.venue,
+        ]
+            .filter(Boolean)
+            .join(' ')
+            .toLowerCase();
+
+        return matchesCategory && searchableText.includes(normalizedSearch);
+    });
+    const liveCount = matches.filter((match) => getMatchStatus(match) === 'LIVE').length;
+    const scheduledCount = matches.filter((match) =>
+        ['PENDING', 'SCHEDULED'].includes(getMatchStatus(match))
+    ).length;
+
     if (loading) {
         return (
             <div className="results-editor-page">
                 <div className="results-editor-loading">
-                    Loading matches...
+                    <span className="results-loading-spinner" aria-hidden="true" />
+                    <span>Loading your matches...</span>
                 </div>
             </div>
         );
@@ -474,10 +524,11 @@ export default function ResultsEditor() {
     return (
         <div className="results-editor-page">
             <div className="results-editor-header">
-                <div>
-                    <h2>Results Editor</h2>
+                <div className="results-editor-heading">
+                    <span className="results-editor-eyebrow">Matchday operations</span>
+                    <h1>Results Editor</h1>
                     <p>
-                        Manage match scores, match status and current playing period.
+                        Update scores, match status and playing period from one place.
                     </p>
                 </div>
 
@@ -492,28 +543,84 @@ export default function ResultsEditor() {
             </div>
 
             {error && (
-                <div className="results-editor-error">
+                <div className="results-editor-error" role="alert">
+                    <span aria-hidden="true">!</span>
                     {error}
                 </div>
             )}
 
             <div className="results-editor-summary">
-                <div>
-                    <strong>{matches.length}</strong>
-                    <span>Active Matches</span>
+                <div className="results-summary-card">
+                    <span className="results-summary-mark" aria-hidden="true">01</span>
+                    <div>
+                        <strong>{matches.length}</strong>
+                        <span>Active matches</span>
+                    </div>
+                </div>
+                <div className="results-summary-card">
+                    <span className="results-summary-mark results-summary-mark-live" aria-hidden="true">02</span>
+                    <div>
+                        <strong>{liveCount}</strong>
+                        <span>Live now</span>
+                    </div>
+                </div>
+                <div className="results-summary-card">
+                    <span className="results-summary-mark" aria-hidden="true">03</span>
+                    <div>
+                        <strong>{scheduledCount}</strong>
+                        <span>Upcoming</span>
+                    </div>
                 </div>
             </div>
 
+            {matches.length > 0 && (
+                <div className="results-editor-toolbar">
+                    <label className="results-search-field">
+                        <span className="results-visually-hidden">Search matches</span>
+                        <span className="results-search-icon" aria-hidden="true" />
+                        <input
+                            type="search"
+                            value={searchTerm}
+                            onChange={(event) => setSearchTerm(event.target.value)}
+                            placeholder="Search teams or venues"
+                        />
+                    </label>
+                    <label className="results-category-filter">
+                        <span>Category</span>
+                        <select
+                            value={categoryFilter}
+                            onChange={(event) => setCategoryFilter(event.target.value)}
+                        >
+                            <option value="all">All categories</option>
+                            {categories.map((category) => (
+                                <option key={category} value={category}>
+                                    {category}
+                                </option>
+                            ))}
+                        </select>
+                    </label>
+                    <span className="results-match-count">
+                        Showing {filteredMatches.length} of {matches.length}
+                    </span>
+                </div>
+            )}
+
             {matches.length === 0 ? (
                 <div className="results-editor-empty">
+                    <span className="results-empty-mark" aria-hidden="true">✓</span>
                     <h3>No Active Matches</h3>
                     <p>
                         There are currently no matches available for result entry.
                     </p>
                 </div>
+            ) : filteredMatches.length === 0 ? (
+                <div className="results-editor-empty">
+                    <h3>No matches found</h3>
+                    <p>Try a different team name, venue or category.</p>
+                </div>
             ) : (
                 <div className="results-match-list">
-                    {matches.map((match) => (
+                    {filteredMatches.map((match) => (
                         <MatchRow
                             key={match.id}
                             match={match}
