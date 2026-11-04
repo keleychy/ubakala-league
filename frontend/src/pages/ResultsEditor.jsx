@@ -30,7 +30,11 @@ function normalizePeriod(value) {
 }
 
 function formatCategory(match) {
-    const category = match?.category || match?.competition_category || match?.stage || '';
+    const category =
+        match?.category ||
+        match?.competition_category ||
+        match?.stage ||
+        '';
 
     if (!category) return 'Match';
 
@@ -45,7 +49,10 @@ function MatchRow({ match, onUpdated }) {
     const [homePenalties, setHomePenalties] = useState(match.home_penalties ?? '');
     const [awayPenalties, setAwayPenalties] = useState(match.away_penalties ?? '');
     const [status, setStatus] = useState(match.status || 'SCHEDULED');
-    const [period, setPeriod] = useState(normalizePeriod(match.current_period || 'NOT_STARTED'));
+    const [period, setPeriod] = useState(
+        normalizePeriod(match.current_period || 'NOT_STARTED')
+    );
+
     const [saving, setSaving] = useState(false);
     const [savingPeriod, setSavingPeriod] = useState(false);
     const [savingStatus, setSavingStatus] = useState(false);
@@ -66,11 +73,6 @@ function MatchRow({ match, onUpdated }) {
         String(match.stage).toLowerCase().includes('knockout')
     );
 
-    const isLaguruMgbarakumaSeniorBoys =
-        String(match.home_team_name || '').toUpperCase().includes('LAGURU') &&
-        String(match.away_team_name || '').toUpperCase().includes('MGBARAKUMA') &&
-        String(match.category || match.competition_category || '').toUpperCase().includes('SENIOR BOYS');
-
     const showPenalties =
         isKnockout &&
         homeScore !== '' &&
@@ -85,14 +87,6 @@ function MatchRow({ match, onUpdated }) {
             return;
         }
 
-        if (
-            showPenalties &&
-            (homePenalties === '' || awayPenalties === '')
-        ) {
-            setMessage('Enter both penalty scores before saving.');
-            return;
-        }
-
         const payload = {
             match_id: match.id,
             home_score: Number(homeScore),
@@ -100,6 +94,11 @@ function MatchRow({ match, onUpdated }) {
         };
 
         if (showPenalties) {
+            if (homePenalties === '' || awayPenalties === '') {
+                setMessage('Enter both penalty scores before saving.');
+                return;
+            }
+
             payload.home_penalties = Number(homePenalties);
             payload.away_penalties = Number(awayPenalties);
         }
@@ -294,12 +293,16 @@ function MatchRow({ match, onUpdated }) {
             <div className="results-score-section">
                 <div className="results-score-heading">
                     <span>Enter Match Result</span>
-                    <small>Input the official scores for both teams.</small>
+                    <small>
+                        Input the official scores for both teams.
+                    </small>
                 </div>
 
                 <div className="results-score-inputs">
                     <div className="results-score-team">
-                        <label>{match.home_team_name || 'Home Team'}</label>
+                        <label>
+                            {match.home_team_name || 'Home Team'}
+                        </label>
 
                         <input
                             type="number"
@@ -313,7 +316,9 @@ function MatchRow({ match, onUpdated }) {
                     <div className="results-score-separator">:</div>
 
                     <div className="results-score-team">
-                        <label>{match.away_team_name || 'Away Team'}</label>
+                        <label>
+                            {match.away_team_name || 'Away Team'}
+                        </label>
 
                         <input
                             type="number"
@@ -341,7 +346,9 @@ function MatchRow({ match, onUpdated }) {
                                     type="number"
                                     min="0"
                                     value={homePenalties}
-                                    onChange={(event) => setHomePenalties(event.target.value)}
+                                    onChange={(event) =>
+                                        setHomePenalties(event.target.value)
+                                    }
                                     placeholder="0"
                                 />
                             </div>
@@ -357,7 +364,9 @@ function MatchRow({ match, onUpdated }) {
                                     type="number"
                                     min="0"
                                     value={awayPenalties}
-                                    onChange={(event) => setAwayPenalties(event.target.value)}
+                                    onChange={(event) =>
+                                        setAwayPenalties(event.target.value)
+                                    }
                                     placeholder="0"
                                 />
                             </div>
