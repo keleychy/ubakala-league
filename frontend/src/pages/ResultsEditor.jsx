@@ -2,6 +2,37 @@ import React, { useEffect, useState } from 'react';
 import { callAdminApi } from '../api/adminApi';
 import './LeaguePolish.css';
 
+const MATCH_STATUS_OPTIONS = [
+    { value: 'PENDING', label: 'Pending' },
+    { value: 'SCHEDULED', label: 'Scheduled' },
+    { value: 'LIVE', label: 'Live' },
+    { value: 'POSTPONED', label: 'Postponed' },
+    { value: 'FINISHED', label: 'Finished' },
+    { value: 'AWARDED', label: 'Awarded' },
+    { value: 'CANCELLED', label: 'Cancelled' },
+    { value: 'ABANDONED', label: 'Abandoned' },
+    { value: 'VOID', label: 'Void' }
+];
+
+const MATCH_PERIOD_OPTIONS = [
+    { value: 'NOT_STARTED', label: 'Not started' },
+    { value: 'FIRST_HALF', label: '1st Half' },
+    { value: 'HALFTIME', label: 'Half Time' },
+    { value: 'SECOND_HALF', label: '2nd Half' },
+    { value: 'ENDED', label: 'Ended' }
+];
+
+function normalizePeriod(value) {
+    const normalized = String(value || 'NOT_STARTED')
+        .trim()
+        .toUpperCase()
+        .replace(/[\s-]+/g, '_');
+    if (normalized === '1ST_HALF') return 'FIRST_HALF';
+    if (normalized === '2ND_HALF') return 'SECOND_HALF';
+    if (normalized === 'HALF_TIME') return 'HALFTIME';
+    return normalized;
+}
+
 export default function ResultsEditor() {
     const [matches, setMatches] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -9,14 +40,6 @@ export default function ResultsEditor() {
 
     useEffect(() => {
         loadMatches();
-        // Listen for period changes from MatchRow and update local matches state
-        function onPeriodChanged(e) {
-            const d = e && e.detail;
-            if (!d || !d.id) return;
-            setMatches(prev => (prev || []).map(m => (m.id === d.id ? { ...m, display_period: d.period } : m)));
-        }
-        window.addEventListener('match-period-changed', onPeriodChanged);
-        return () => window.removeEventListener('match-period-changed', onPeriodChanged);
     }, []);
 
     async function loadMatches() {
@@ -57,6 +80,32 @@ export default function ResultsEditor() {
         }
     }
 
+    async function setMatchPeriod(matchId, current_period) {
+        const updated = await callAdminApi('admin.matches.setPeriod', {
+            id: matchId,
+            current_period
+        });
+        setMatches(prev => prev.map(match =>
+            match.id === updated.id ? { ...match, ...updated } : match
+        ));
+        window.dispatchEvent(new CustomEvent('match-updated', { detail: updated }));
+        return updated;
+    }
+
+    async function setMatchStatus(matchId, status) {
+        const updated = await callAdminApi('admin.matches.setStatus', {
+            id: matchId,
+            status
+        });
+        const terminalStatuses = ['FINISHED', 'AWARDED', 'CANCELLED', 'VOID'];
+        setMatches(prev => terminalStatuses.includes(updated.status)
+            ? prev.filter(match => match.id !== updated.id)
+            : prev.map(match => match.id === updated.id ? { ...match, ...updated } : match)
+        );
+        window.dispatchEvent(new CustomEvent('match-updated', { detail: updated }));
+        return updated;
+    }
+
     async function markFinished(matchId, extra_time_minutes = null) {
         setMessage(null);
         try {
@@ -88,7 +137,14 @@ export default function ResultsEditor() {
             {loading ? <p>Loading matches...</p> : (
                 <div className="league-page-grid">
                     {matches.map(m => (
-                        <MatchRow key={m.id} match={m} onSetResult={setResult} onMarkFinished={markFinished} />
+                        <MatchRow
+                            key={m.id}
+                            match={m}
+                            onSetResult={setResult}
+                            onSetMatchPeriod={setMatchPeriod}
+                            onSetMatchStatus={setMatchStatus}
+                            onMarkFinished={markFinished}
+                        />
                     ))}
                 </div>
             )}
@@ -97,13 +153,24 @@ export default function ResultsEditor() {
     );
 }
 
-function MatchRow({ match, onSetResult, onMarkFinished }) {
+function MatchRow({
+    match,
+    onSetResult,
+    onSetMatchPeriod,
+    onSetMatchStatus,
+    onMarkFinished
+}) {
     const [home, setHome] = useState(match.home_score ?? '');
     const [away, setAway] = useState(match.away_score ?? '');
     const [penHome, setPenHome] = useState('');
     const [penAway, setPenAway] = useState('');
-    const [period, setPeriod] = useState(match.display_period || 'not_started');
+    const [period, setPeriod] = useState(normalizePeriod(match.current_period));
+    const [status, setStatus] = useState(
+        String(match.status || 'PENDING').trim().toUpperCase()
+    );
     const [saving, setSaving] = useState(false);
+    const [savingPeriod, setSavingPeriod] = useState(false);
+    const [savingStatus, setSavingStatus] = useState(false);
     const [localMsg, setLocalMsg] = useState(null);
     const [finishing, setFinishing] = useState(false);
 
@@ -209,32 +276,71 @@ function MatchRow({ match, onSetResult, onMarkFinished }) {
                             {category}
                         </div>
                     )}
-                    {/* Period selector */}
-                    <select value={period} onChange={async e => {
-                        const val = e.target.value;
-                        setPeriod(val);
-                        // optimistically notify parent UI
-                        try {
-                            window.dispatchEvent(new CustomEvent('match-period-changed', { detail: { id: match.id, period: val } }));
-                        } catch (err) { }
-                        // Persist the period through the authenticated Apps Script API.
-                        try {
-                            const updated = await callAdminApi('admin.matches.setPeriod', {
-                                id: match.id,
-                                current_period: val
-                            });
-                            window.dispatchEvent(new CustomEvent('match-updated', { detail: updated }));
-                        } catch (err) {
-                            setPeriod(match.current_period || 'not_started');
-                            setLocalMsg({ type: 'error', text: err.message || 'Failed to save period' });
-                        }
-                    }} style={{ marginLeft: 8, padding: '6px 8px', borderRadius: 6, border: '1px solid #d1d5db', fontSize: 12 }}>
-                        <option value="not_started">Not started</option>
-                        <option value="1st_half">1st Half</option>
-                        <option value="halftime">Half Time</option>
-                        <option value="2nd_half">2nd Half</option>
-                        <option value="ended">Ended</option>
-                    </select>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12 }}>
+                        Status
+                        <select
+                            aria-label={`Status for ${match.home_team.name} vs ${match.away_team.name}`}
+                            value={status}
+                            disabled={savingStatus}
+                            onChange={async e => {
+                                const nextStatus = e.target.value.toUpperCase();
+                                const previousStatus = status;
+                                setStatus(nextStatus);
+                                setSavingStatus(true);
+                                setLocalMsg(null);
+                                try {
+                                    await onSetMatchStatus(match.id, nextStatus);
+                                    setLocalMsg({ type: 'success', text: 'Status saved' });
+                                } catch (err) {
+                                    setStatus(previousStatus);
+                                    setLocalMsg({ type: 'error', text: err.message || 'Failed to save status' });
+                                } finally {
+                                    setSavingStatus(false);
+                                }
+                            }}
+                            style={{ padding: '6px 8px', borderRadius: 6, border: '1px solid #d1d5db', fontSize: 12 }}
+                        >
+                            {!MATCH_STATUS_OPTIONS.some(option => option.value === status) && (
+                                <option value={status}>{status}</option>
+                            )}
+                            {MATCH_STATUS_OPTIONS.map(option => (
+                                <option key={option.value} value={option.value}>{option.label}</option>
+                            ))}
+                        </select>
+                    </label>
+
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12 }}>
+                        Period
+                        <select
+                            aria-label={`Current period for ${match.home_team.name} vs ${match.away_team.name}`}
+                            value={period}
+                            disabled={savingPeriod}
+                            onChange={async e => {
+                                const nextPeriod = normalizePeriod(e.target.value);
+                                const previousPeriod = period;
+                                setPeriod(nextPeriod);
+                                setSavingPeriod(true);
+                                setLocalMsg(null);
+                                try {
+                                    await onSetMatchPeriod(match.id, nextPeriod);
+                                    setLocalMsg({ type: 'success', text: 'Period saved' });
+                                } catch (err) {
+                                    setPeriod(previousPeriod);
+                                    setLocalMsg({ type: 'error', text: err.message || 'Failed to save period' });
+                                } finally {
+                                    setSavingPeriod(false);
+                                }
+                            }}
+                            style={{ padding: '6px 8px', borderRadius: 6, border: '1px solid #d1d5db', fontSize: 12 }}
+                        >
+                            {!MATCH_PERIOD_OPTIONS.some(option => option.value === period) && (
+                                <option value={period}>{period}</option>
+                            )}
+                            {MATCH_PERIOD_OPTIONS.map(option => (
+                                <option key={option.value} value={option.value}>{option.label}</option>
+                            ))}
+                        </select>
+                    </label>
                 </div>
             </div>
 

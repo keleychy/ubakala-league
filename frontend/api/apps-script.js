@@ -18,6 +18,7 @@ const ADMIN_ACTIONS = new Set([
   'admin.seasons.list',
   'admin.matches.setResult',
   'admin.matches.setPeriod',
+  'admin.matches.setStatus',
   'admin.matches.markFinished',
   'admin.news.create',
   'admin.news.update',

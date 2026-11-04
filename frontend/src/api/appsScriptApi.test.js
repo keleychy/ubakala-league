@@ -112,8 +112,8 @@ describe('Apps Script read API', () => {
       away_score: '',
       home_penalties: '5',
       away_penalties: '',
-      status: 'PENDING',
-      current_period: '',
+      status: 'pending',
+      current_period: 'first_half',
       is_played: true
     }]));
     const client = createAppsScriptApi(endpoint, fetchImpl);
@@ -133,7 +133,7 @@ describe('Apps Script read API', () => {
     expect(match.home_team.id).toBe('TEAM-1');
     expect(match.away_team).toEqual({ id: null, name: 'Winner 27' });
     expect(match.status).toBe('PENDING');
-    expect(match.current_period).toBeNull();
+    expect(match.current_period).toBe('FIRST_HALF');
     expect(match).not.toHaveProperty('is_played');
   });
 

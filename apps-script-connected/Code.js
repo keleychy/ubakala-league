@@ -444,6 +444,10 @@ function handleAdminPost_(body, user) {
     requireAdminPermission_(user, 'matches');
     return setMatchPeriod_(body, user);
   }
+  if (action === 'admin.matches.setStatus') {
+    requireAdminPermission_(user, 'matches');
+    return setMatchStatus_(body, user);
+  }
   if (action === 'admin.matches.markFinished') {
     requireAdminPermission_(user, 'matches');
     return markMatchFinished_(body, user);
@@ -745,17 +749,41 @@ function setMatchResult_(body, user) {
 
 function setMatchPeriod_(body, user) {
   const id = requireRecordId_(body, 'match id');
-  const period = requiredText_(body.current_period, 'current_period');
+  let period = requiredText_(body.current_period, 'current_period')
+    .toUpperCase()
+    .replace(/[\s-]+/g, '_');
+  const periodAliases = {
+    '1ST_HALF': 'FIRST_HALF',
+    HALF_TIME: 'HALFTIME',
+    '2ND_HALF': 'SECOND_HALF',
+    SHOOTOUT: 'PENALTIES'
+  };
+  period = periodAliases[period] || period;
   const allowedPeriods = [
-    'not_started', 'first_half', '1st_half', 'halftime', 'half_time',
-    'second_half', '2nd_half', 'extra_time', 'extra_time_first_half',
-    'extra_time_second_half', 'penalties', 'shootout', 'ended'
+    'NOT_STARTED', 'FIRST_HALF', 'HALFTIME', 'SECOND_HALF',
+    'EXTRA_TIME', 'EXTRA_TIME_FIRST_HALF', 'EXTRA_TIME_SECOND_HALF',
+    'PENALTIES', 'ENDED'
   ];
-  if (!allowedPeriods.includes(period.toLowerCase().replace(/[\s-]+/g, '_'))) {
+  if (!allowedPeriods.includes(period)) {
     throw apiError_('current_period is not supported');
   }
   return updateRecordFieldsAndAudit_(
     'Matches', id, { current_period: period }, user, 'match.period.updated', body.reason
+  );
+}
+
+function setMatchStatus_(body, user) {
+  const id = requireRecordId_(body, 'match id');
+  const status = requiredText_(body.status, 'status').toUpperCase();
+  const allowedStatuses = [
+    'PENDING', 'SCHEDULED', 'LIVE', 'FINISHED', 'AWARDED',
+    'POSTPONED', 'CANCELLED', 'ABANDONED', 'VOID'
+  ];
+  if (!allowedStatuses.includes(status)) {
+    throw apiError_('status is not supported');
+  }
+  return updateRecordFieldsAndAudit_(
+    'Matches', id, { status: status }, user, 'match.status.updated', body.reason
   );
 }
 
@@ -1187,7 +1215,7 @@ function normalizeMatch_(record, references) {
     away_penalties: optionalNumber_(record.away_penalties, 'Matches.away_penalties'),
     penalty_home: optionalNumber_(record.home_penalties, 'Matches.home_penalties'),
     penalty_away: optionalNumber_(record.away_penalties, 'Matches.away_penalties'),
-    status: optionalText_(record.status),
+    status: optionalText_(record.status)?.toUpperCase() || null,
     result_type: optionalText_(record.result_type),
     awarded_winner_team_id: optionalId_(record.awarded_winner_team_id),
     award_reason: optionalText_(record.award_reason),
@@ -1198,7 +1226,7 @@ function normalizeMatch_(record, references) {
     home_red_cards: optionalNumber_(record.home_red_cards, 'Matches.home_red_cards'),
     away_yellow_cards: optionalNumber_(record.away_yellow_cards, 'Matches.away_yellow_cards'),
     away_red_cards: optionalNumber_(record.away_red_cards, 'Matches.away_red_cards'),
-    current_period: optionalText_(record.current_period),
+    current_period: optionalText_(record.current_period)?.toUpperCase() || null,
     notes: optionalText_(record.notes)
   };
 }

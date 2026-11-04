@@ -123,8 +123,8 @@ function normalizeMatch(match) {
     away_penalties: normalizeNumber(match.away_penalties ?? match.penalty_away, 'Matches.away_penalties'),
     penalty_home: normalizeNumber(match.penalty_home ?? match.home_penalties, 'Matches.home_penalties'),
     penalty_away: normalizeNumber(match.penalty_away ?? match.away_penalties, 'Matches.away_penalties'),
-    status: normalizeText(match.status),
-    current_period: normalizeText(match.current_period)
+    status: normalizeText(match.status)?.toUpperCase() || null,
+    current_period: normalizeText(match.current_period)?.toUpperCase() || null
   };
   delete normalized.is_played;
   return normalized;
