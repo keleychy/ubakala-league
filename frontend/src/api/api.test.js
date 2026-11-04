@@ -1,7 +1,7 @@
 describe('API provider selection', () => {
   const originalProvider = process.env.REACT_APP_API_PROVIDER;
   const originalApiUrl = process.env.REACT_APP_API_URL;
-  const originalAppsScriptUrl = process.env.REACT_APP_APPS_SCRIPT_API_URL;
+  const originalAppsScriptProxyUrl = process.env.REACT_APP_APPS_SCRIPT_PROXY_URL;
   const originalNodeEnv = process.env.NODE_ENV;
   const originalFetch = global.fetch;
 
@@ -16,10 +16,10 @@ describe('API provider selection', () => {
     } else {
       process.env.REACT_APP_API_URL = originalApiUrl;
     }
-    if (originalAppsScriptUrl === undefined) {
-      delete process.env.REACT_APP_APPS_SCRIPT_API_URL;
+    if (originalAppsScriptProxyUrl === undefined) {
+      delete process.env.REACT_APP_APPS_SCRIPT_PROXY_URL;
     } else {
-      process.env.REACT_APP_APPS_SCRIPT_API_URL = originalAppsScriptUrl;
+      process.env.REACT_APP_APPS_SCRIPT_PROXY_URL = originalAppsScriptProxyUrl;
     }
     process.env.NODE_ENV = originalNodeEnv;
     global.fetch = originalFetch;
@@ -47,8 +47,7 @@ describe('API provider selection', () => {
   test('uses Apps Script only when explicitly selected', async () => {
     process.env.REACT_APP_API_PROVIDER = 'apps-script';
     process.env.REACT_APP_API_URL = '';
-    process.env.REACT_APP_APPS_SCRIPT_API_URL =
-      'https://script.google.com/macros/s/test/exec';
+    delete process.env.REACT_APP_APPS_SCRIPT_PROXY_URL;
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
@@ -67,9 +66,9 @@ describe('API provider selection', () => {
     expect(new URL(global.fetch.mock.calls[0][0]).searchParams.get('action')).toBe('teams');
   });
 
-  test('uses the public Apps Script API by default in production builds', async () => {
+  test('routes production Apps Script reads through the same-origin Vercel function', async () => {
     delete process.env.REACT_APP_API_PROVIDER;
-    delete process.env.REACT_APP_APPS_SCRIPT_API_URL;
+    delete process.env.REACT_APP_APPS_SCRIPT_PROXY_URL;
     process.env.NODE_ENV = 'production';
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
@@ -86,7 +85,8 @@ describe('API provider selection', () => {
       { id: 'TEAM-1', name: 'Avodim' }
     ]);
     const requestUrl = new URL(global.fetch.mock.calls[0][0]);
-    expect(requestUrl.origin).toBe('https://script.google.com');
+    expect(requestUrl.origin).toBe('http://localhost');
+    expect(requestUrl.pathname).toBe('/api/apps-script');
     expect(requestUrl.searchParams.get('action')).toBe('teams');
   });
 });

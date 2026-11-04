@@ -1,7 +1,5 @@
 import { getFirebaseAuth } from './firebaseClient';
-
-const DEFAULT_APPS_SCRIPT_URL =
-  'https://script.google.com/macros/s/AKfycbxk8WnuSRTR40Av-IYppBzgZjAgQL75D4DkIeotwuxTFdEYzWYln5KBU2gfY0lybunv/exec';
+import { APPS_SCRIPT_PROXY_URL } from './api';
 
 export class AdminApiError extends Error {
   constructor(message) {
@@ -18,9 +16,7 @@ export async function callAdminApi(action, payload = {}) {
   }
 
   const idToken = await user.getIdToken();
-  const apiUrl =
-    process.env.REACT_APP_APPS_SCRIPT_API_URL || DEFAULT_APPS_SCRIPT_URL;
-  const response = await fetch(apiUrl, {
+  const response = await fetch(APPS_SCRIPT_PROXY_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
     body: JSON.stringify({ ...payload, action, idToken })

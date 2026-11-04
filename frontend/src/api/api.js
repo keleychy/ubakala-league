@@ -3,10 +3,10 @@
 import { createAppsScriptApi } from './appsScriptApi';
 
 const defaultRemote = 'https://ubakalaunitycup.onrender.com/api';
-const defaultAppsScriptUrl =
-  'https://script.google.com/macros/s/AKfycbxk8WnuSRTR40Av-IYppBzgZjAgQL75D4DkIeotwuxTFdEYzWYln5KBU2gfY0lybunv/exec';
 const API_URL = process.env.REACT_APP_API_URL || defaultRemote;
 export { API_URL };
+export const APPS_SCRIPT_PROXY_URL =
+  process.env.REACT_APP_APPS_SCRIPT_PROXY_URL || '/api/apps-script';
 
 export const isAppsScriptReadApiEnabled = () =>
   process.env.REACT_APP_API_PROVIDER
@@ -19,7 +19,7 @@ function getAppsScriptApi() {
   if (!isAppsScriptReadApiEnabled()) return null;
   if (!appsScriptApiInstance) {
     appsScriptApiInstance = createAppsScriptApi(
-      process.env.REACT_APP_APPS_SCRIPT_API_URL || defaultAppsScriptUrl
+      APPS_SCRIPT_PROXY_URL
     );
   }
   return appsScriptApiInstance;

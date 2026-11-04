@@ -155,12 +155,16 @@ function requireArray(data, resource) {
 export function createAppsScriptApi(baseUrl, fetchImpl = fetch) {
   const endpoint = normalizeText(baseUrl);
   if (!endpoint) {
-    throw new Error('REACT_APP_APPS_SCRIPT_API_URL is required for the Apps Script provider');
+    throw new Error('An Apps Script API proxy URL is required');
   }
+  const endpointUrl = new URL(
+    endpoint,
+    typeof window === 'undefined' ? 'http://localhost' : window.location.origin
+  );
   const groupsWithTeamsCache = new Map();
 
   async function getAction(action, parameters = {}) {
-    const url = new URL(endpoint);
+    const url = new URL(endpointUrl);
     url.searchParams.set('action', action);
     Object.entries(parameters).forEach(([key, value]) => {
       if (value !== null && value !== undefined && value !== '') {
