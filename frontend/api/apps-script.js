@@ -106,6 +106,13 @@ module.exports = async function handler(request, response) {
     try {
       data = JSON.parse(responseText);
     } catch {
+      if (responseText.includes('Script function not found: doPost')) {
+        return response.status(502).json({
+          success: false,
+          error: 'The deployed Apps Script version is missing doPost. Deploy a new web app version that includes the admin POST handler.'
+        });
+      }
+
       return response.status(502).json({
         success: false,
         error: 'Apps Script returned an invalid response'
