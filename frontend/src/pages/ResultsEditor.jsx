@@ -19,7 +19,7 @@ const MATCH_PERIOD_OPTIONS = [
     { value: 'FIRST_HALF', label: 'First Half' },
     { value: 'HALFTIME', label: 'Half Time' },
     { value: 'SECOND_HALF', label: 'Second Half' },
-    { value: 'FULL_TIME', label: 'Full Time' },
+    { value: 'ENDED', label: 'Full Time' },
 ];
 
 function normalizePeriod(value) {
@@ -187,7 +187,7 @@ function MatchRow({ match, onUpdated }) {
             });
 
             setStatus('FINISHED');
-            setPeriod('FULL_TIME');
+            setPeriod('ENDED');
 
             setMessage('Match marked as finished.');
 

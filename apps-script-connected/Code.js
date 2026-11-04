@@ -66,6 +66,18 @@ function getAdminErrorMessage_(error) {
   if (/Unknown database sheet: UserRoles|UserRoles sheet not found/i.test(message)) {
     return 'The UserRoles sheet is missing. Add the required UserRoles sheet and retry.';
   }
+  if (/AuditLog sheet not found/i.test(message)) {
+    return 'The AuditLog sheet could not be created. Check that the Apps Script deployment owner can edit the spreadsheet, then retry.';
+  }
+  if (/AuditLog sheet must have one/i.test(message)) {
+    return 'The AuditLog sheet has an invalid header row. Keep its existing audit data and ensure row 1 contains: id, timestamp, user_email, action, entity_type, entity_id, old_value, new_value, reason.';
+  }
+  if (/Matches sheet must have one/i.test(message)) {
+    return 'The Matches sheet is missing a required column or has duplicate column headers. Check its header row and run testDatabaseStructure() in Apps Script.';
+  }
+  if (/Record not found/i.test(message)) {
+    return 'This match could not be found in the spreadsheet. Refresh the Results Editor and try again.';
+  }
   if (/spreadsheet|permission denied|access denied|openById/i.test(message)) {
     return 'Apps Script cannot access the spreadsheet. Check the spreadsheet ID and the account that owns the web app deployment.';
   }
@@ -613,15 +625,19 @@ function getRecordRow_(sheet, id) {
 }
 
 function appendAuditLog_(user, action, entityType, entityId, oldValue, newValue, reason) {
-  const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName('AuditLog');
-  if (!sheet) {
-    throw new Error('AuditLog sheet not found');
-  }
-  const headers = getSheetHeaders_(sheet);
+  const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
   const required = [
     'id', 'timestamp', 'user_email', 'action', 'entity_type',
     'entity_id', 'old_value', 'new_value', 'reason'
   ];
+  let sheet = spreadsheet.getSheetByName('AuditLog');
+  if (!sheet) {
+    sheet = spreadsheet.insertSheet('AuditLog');
+  }
+  if (sheet.getLastRow() === 0) {
+    sheet.getRange(1, 1, 1, required.length).setValues([required]);
+  }
+  const headers = getSheetHeaders_(sheet);
   required.forEach(header => {
     if (headers.indexOf(header) < 0 || headers.lastIndexOf(header) !== headers.indexOf(header)) {
       throw new Error('AuditLog sheet must have one ' + header + ' column');
