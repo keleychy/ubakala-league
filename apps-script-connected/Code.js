@@ -725,7 +725,10 @@ function appendRecordAndAudit_(sheetName, record, user, action, entityId, reason
 }
 
 function requireRecordId_(body, fieldName) {
-  return requiredId_(body.id, fieldName || 'id');
+  const id = fieldName === 'match id'
+    ? body.match_id || body.id
+    : body.id;
+  return requiredId_(id, fieldName || 'id');
 }
 
 function requiredNonNegativeInteger_(value, fieldName) {
