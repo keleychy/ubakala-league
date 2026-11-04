@@ -43,11 +43,71 @@ function doPost(e) {
     console.error('Admin API POST error:', error);
     return jsonResponse({
       success: false,
-      error: error && error.safeMessage
-        ? error.safeMessage
-        : 'The administrator request could not be completed'
+      error: getAdminErrorMessage_(error)
     });
   }
+}
+
+function getAdminErrorMessage_(error) {
+  if (error && error.safeMessage) {
+    return error.safeMessage;
+  }
+
+  const message = String(error && error.message || '');
+  if (/Firebase ID token is required/i.test(message)) {
+    return 'No Firebase ID token was provided. Test admin login from the website; doPost requires a POST request body.';
+  }
+  if (/Unexpected end of JSON input|JSON\.parse/i.test(message)) {
+    return 'Apps Script received an invalid admin request body.';
+  }
+  if (/authorization is required|permission to call UrlFetchApp|script\.external_request/i.test(message)) {
+    return 'Apps Script needs authorization to contact Firebase. Run authorizeAdminApi() from the Apps Script editor and approve the requested permissions.';
+  }
+  if (/Unknown database sheet: UserRoles|UserRoles sheet not found/i.test(message)) {
+    return 'The UserRoles sheet is missing. Add the required UserRoles sheet and retry.';
+  }
+  if (/spreadsheet|permission denied|access denied|openById/i.test(message)) {
+    return 'Apps Script cannot access the spreadsheet. Check the spreadsheet ID and the account that owns the web app deployment.';
+  }
+
+  return 'The administrator request failed inside Apps Script. Check the latest failed execution in Apps Script for the detailed error.';
+}
+
+/**
+ * Run this once from the Apps Script editor as the deployment owner.
+ * The deliberately invalid token only checks that Firebase can be contacted;
+ * it does not sign in or modify any data.
+ */
+function authorizeAdminApi() {
+  const apiKey = PropertiesService.getScriptProperties()
+    .getProperty('FIREBASE_WEB_API_KEY');
+  if (!apiKey) {
+    throw apiError_(
+      'Set the FIREBASE_WEB_API_KEY script property before authorizing admin login'
+    );
+  }
+
+  const userRolesSheet = SpreadsheetApp.openById(SPREADSHEET_ID)
+    .getSheetByName('UserRoles');
+  if (!userRolesSheet) {
+    throw apiError_('The UserRoles sheet is missing from the configured spreadsheet');
+  }
+
+  const response = UrlFetchApp.fetch(
+    'https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=' +
+      encodeURIComponent(apiKey),
+    {
+      method: 'post',
+      contentType: 'application/json',
+      payload: JSON.stringify({ idToken: 'authorization-check' }),
+      muteHttpExceptions: true
+    }
+  );
+
+  Logger.log(
+    'Firebase authorization check completed with HTTP ' +
+      response.getResponseCode()
+  );
 }
 
 /**
@@ -435,13 +495,27 @@ function authenticateAdmin_(idToken) {
 
   const url = 'https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=' +
     encodeURIComponent(apiKey);
-  const response = UrlFetchApp.fetch(url, {
-    method: 'post',
-    contentType: 'application/json',
-    payload: JSON.stringify({ idToken: token }),
-    muteHttpExceptions: true
-  });
+  let response;
+  try {
+    response = UrlFetchApp.fetch(url, {
+      method: 'post',
+      contentType: 'application/json',
+      payload: JSON.stringify({ idToken: token }),
+      muteHttpExceptions: true
+    });
+  } catch (error) {
+    console.error('Firebase account lookup failed:', error);
+    throw apiError_(
+      'Apps Script could not contact Firebase. Run authorizeAdminApi() in the Apps Script editor and approve UrlFetch access.'
+    );
+  }
   if (response.getResponseCode() !== 200) {
+    const responseText = response.getContentText();
+    if (/API_KEY_INVALID|API_KEY_SERVICE_BLOCKED/.test(responseText)) {
+      throw apiError_(
+        'The FIREBASE_WEB_API_KEY script property is invalid or blocked. Set it to the Firebase web API key used by the frontend.'
+      );
+    }
     throw apiError_('Sign-in is invalid or has expired');
   }
 
