@@ -1,5 +1,7 @@
 
 const SPREADSHEET_ID = '1ZV770n5Y6xT-6Ch87Mf8MsKG_XpEXABFX2vfSyt-dhA';
+const SHEET_RECORD_CACHE_TTL_SECONDS = 30;
+const SHEET_RECORD_CACHE_MAX_BYTES = 90 * 1024;
 
 /**
  * Web API entry point.
@@ -204,6 +206,24 @@ function checkDatabaseStructure() {
  * Reads a sheet and returns its non-empty rows as objects.
  */
 function getSheetRecords(sheetName) {
+  const cache = CacheService.getScriptCache();
+  const cacheVersion = getSheetRecordsCacheVersion_(sheetName);
+  const cacheKey = getSheetRecordsCacheKey_(sheetName, cacheVersion);
+
+  try {
+    const cachedRecords = cache.get(cacheKey);
+    if (cachedRecords !== null) {
+      try {
+        return JSON.parse(cachedRecords);
+      } catch (error) {
+        console.warn('Ignoring invalid cached records for ' + sheetName, error);
+        cache.remove(cacheKey);
+      }
+    }
+  } catch (error) {
+    console.warn('Could not read cached records for ' + sheetName, error);
+  }
+
   const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
   const sheet = spreadsheet.getSheetByName(sheetName);
 
@@ -213,25 +233,65 @@ function getSheetRecords(sheetName) {
 
   const values = sheet.getDataRange().getDisplayValues();
 
-  if (values.length < 2) {
-    return [];
+  let records = [];
+  if (values.length >= 2) {
+    const headers = values[0].map(header => header.trim());
+
+    records = values.slice(1)
+      .filter(row => row.some(value => value !== ''))
+      .map(row => {
+        const record = {};
+
+        headers.forEach((header, index) => {
+          if (header) {
+            record[header] = row[index] === undefined ? '' : row[index];
+          }
+        });
+
+        return record;
+      });
   }
 
-  const headers = values[0].map(header => header.trim());
+  const serializedRecords = JSON.stringify(records);
+  const serializedSize = Utilities.newBlob(serializedRecords).getBytes().length;
+  if (
+    serializedSize <= SHEET_RECORD_CACHE_MAX_BYTES &&
+    cacheVersion === getSheetRecordsCacheVersion_(sheetName)
+  ) {
+    try {
+      cache.put(cacheKey, serializedRecords, SHEET_RECORD_CACHE_TTL_SECONDS);
+    } catch (error) {
+      console.warn('Could not cache records for ' + sheetName, error);
+    }
+  }
 
-  return values.slice(1)
-    .filter(row => row.some(value => value !== ''))
-    .map(row => {
-      const record = {};
+  return records;
+}
 
-      headers.forEach((header, index) => {
-        if (header) {
-          record[header] = row[index] === undefined ? '' : row[index];
-        }
-      });
+function getSheetRecordsCacheVersion_(sheetName) {
+  const key = 'sheet_records_cache_version_' + sheetName;
+  return PropertiesService.getScriptProperties().getProperty(key) || '0';
+}
 
-      return record;
-    });
+function getSheetRecordsCacheKey_(sheetName, version) {
+  return 'sheet_records_' + sheetName + '_' + version;
+}
+
+function invalidateSheetRecordsCache_(sheetName) {
+  const properties = PropertiesService.getScriptProperties();
+  const currentVersion = getSheetRecordsCacheVersion_(sheetName);
+  const numericVersion = Number(currentVersion);
+  const nextVersion = Number.isSafeInteger(numericVersion)
+    ? String(numericVersion + 1)
+    : '1';
+
+  properties.setProperty(
+    'sheet_records_cache_version_' + sheetName,
+    nextVersion
+  );
+  CacheService.getScriptCache().remove(
+    getSheetRecordsCacheKey_(sheetName, currentVersion)
+  );
 }
 
 /**
@@ -286,9 +346,15 @@ function updateScheduledMatchStatuses() {
       }
     });
 
-    rowsToStart.forEach(rowNumber => {
-      sheet.getRange(rowNumber, columnIndexes.status + 1).setValue('LIVE');
-    });
+    try {
+      rowsToStart.forEach(rowNumber => {
+        sheet.getRange(rowNumber, columnIndexes.status + 1).setValue('LIVE');
+      });
+    } finally {
+      if (rowsToStart.length > 0) {
+        invalidateSheetRecordsCache_('Matches');
+      }
+    }
 
     Logger.log('Marked ' + rowsToStart.length + ' scheduled match(es) as LIVE');
   } finally {
@@ -681,20 +747,28 @@ function updateRecordFieldsAndAudit_(sheetName, id, updates, user, action, reaso
       }
     });
 
-    Object.keys(updates).forEach(field => {
-      const index = location.headers.indexOf(field);
-      sheet.getRange(location.rowNumber, index + 1).setValue(updates[field]);
-    });
+    let writeAttempted = false;
     try {
-      appendAuditLog_(user, action, sheetName, id, oldRecord, nextRecord, reason);
-    } catch (error) {
       Object.keys(updates).forEach(field => {
         const index = location.headers.indexOf(field);
-        sheet.getRange(location.rowNumber, index + 1).setValue(oldRecord[field]);
+        writeAttempted = true;
+        sheet.getRange(location.rowNumber, index + 1).setValue(updates[field]);
       });
-      throw error;
+      try {
+        appendAuditLog_(user, action, sheetName, id, oldRecord, nextRecord, reason);
+      } catch (error) {
+        Object.keys(updates).forEach(field => {
+          const index = location.headers.indexOf(field);
+          sheet.getRange(location.rowNumber, index + 1).setValue(oldRecord[field]);
+        });
+        throw error;
+      }
+      return nextRecord;
+    } finally {
+      if (writeAttempted) {
+        invalidateSheetRecordsCache_(sheetName);
+      }
     }
-    return nextRecord;
   });
 }
 
@@ -709,18 +783,26 @@ function appendRecordAndAudit_(sheetName, record, user, action, entityId, reason
       }
     });
     const rowNumber = sheet.getLastRow() + 1;
-    sheet.getRange(rowNumber, 1, 1, headers.length).setValues([
-      headers.map(header =>
-        Object.prototype.hasOwnProperty.call(record, header) ? record[header] : ''
-      )
-    ]);
+    let writeAttempted = false;
     try {
-      appendAuditLog_(user, action, sheetName, entityId, null, record, reason);
-    } catch (error) {
-      sheet.deleteRow(rowNumber);
-      throw error;
+      writeAttempted = true;
+      sheet.getRange(rowNumber, 1, 1, headers.length).setValues([
+        headers.map(header =>
+          Object.prototype.hasOwnProperty.call(record, header) ? record[header] : ''
+        )
+      ]);
+      try {
+        appendAuditLog_(user, action, sheetName, entityId, null, record, reason);
+      } catch (error) {
+        sheet.deleteRow(rowNumber);
+        throw error;
+      }
+      return record;
+    } finally {
+      if (writeAttempted) {
+        invalidateSheetRecordsCache_(sheetName);
+      }
     }
-    return record;
   });
 }
 
@@ -896,6 +978,8 @@ function deleteNews_(body, user) {
       sheet.getRange(location.rowNumber, 1, 1, location.headers.length)
         .setValues([location.headers.map(header => oldRecord[header] || '')]);
       throw error;
+    } finally {
+      invalidateSheetRecordsCache_('News');
     }
     return { id: id, deleted: true };
   });
