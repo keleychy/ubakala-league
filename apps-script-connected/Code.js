@@ -916,17 +916,52 @@ function validateNewsInput_(body, partial) {
     }
   });
   if (updates.image_url) {
-    let imageUrl;
-    try {
-      imageUrl = new URL(updates.image_url);
-    } catch (error) {
+    if (!isValidHttpImageUrl_(updates.image_url)) {
       throw apiError_('image_url must be a valid URL');
-    }
-    if (imageUrl.protocol !== 'https:' && imageUrl.protocol !== 'http:') {
-      throw apiError_('image_url must use HTTP or HTTPS');
     }
   }
   return updates;
+}
+
+function isValidHttpImageUrl_(value) {
+  const candidate = optionalText_(value);
+  if (!candidate || /[\u0000-\u0020\u007f]/.test(candidate)) {
+    return false;
+  }
+
+  if (typeof URL === 'function') {
+    try {
+      const parsedUrl = new URL(candidate);
+      return (
+        (parsedUrl.protocol === 'https:' || parsedUrl.protocol === 'http:') &&
+        Boolean(parsedUrl.hostname) &&
+        !parsedUrl.username &&
+        !parsedUrl.password
+      );
+    } catch (error) {
+      // Use the strict fallback for Apps Script deployments without URL parsing support.
+    }
+  }
+
+  const match = /^(https?):\/\/([a-z0-9.-]+)(?::([0-9]{1,5}))?(?:[/?#]|$)/i.exec(candidate);
+  if (!match) {
+    return false;
+  }
+
+  const hostname = match[2].replace(/\.$/, '');
+  const labels = hostname.split('.');
+  if (
+    !hostname ||
+    hostname.length > 253 ||
+    labels.some(label =>
+      label.length > 63 ||
+      !/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/i.test(label)
+    )
+  ) {
+    return false;
+  }
+
+  return match[3] === undefined || Number(match[3]) <= 65535;
 }
 
 function createNews_(body, user) {
