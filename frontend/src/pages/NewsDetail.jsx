@@ -65,6 +65,7 @@ export default function NewsDetail() {
     }
 
     const date = formatDate(item.published_at || item.created_at);
+    const paragraphs = String(item.content || '').split(/\r?\n(?:[ \t]*\r?\n)+/);
 
     return (
         <div className="league-polish-page">
@@ -101,8 +102,11 @@ export default function NewsDetail() {
                     <div className="news-article-content">
                         <div
                             className="news-article-body"
-                            dangerouslySetInnerHTML={{ __html: item.content || '' }}
-                        />
+                        >
+                            {paragraphs.map((paragraph, index) => (
+                                <p key={index}>{paragraph}</p>
+                            ))}
+                        </div>
                     </div>
                 </article>
             </main>
