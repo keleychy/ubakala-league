@@ -174,6 +174,7 @@ describe('Apps Script read API', () => {
         title: 'Published',
         content: '<p>Update</p>',
         image_url: '',
+        inline_images: '[{"url":"https://example.com/photo.jpg","caption":"Match action","after_paragraph":1}]',
         published: 'TRUE',
         created_at: '2026-10-20 10:00',
         updated_at: ''
@@ -197,6 +198,11 @@ describe('Apps Script read API', () => {
         content: '<p>Update</p>',
         author: null,
         image_url: null,
+        inline_images: [{
+          url: 'https://example.com/photo.jpg',
+          caption: 'Match action',
+          after_paragraph: 1
+        }],
         published: true,
         views: 0,
         created_at: '2026-10-20 10:00',

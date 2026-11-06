@@ -5,6 +5,18 @@ import { api } from '../api/api';
 import { getNewsViewerId } from '../utils/newsViewer';
 import './LeaguePolish.css';
 
+function NewsImage({ src, alt, caption, className }) {
+    const [failed, setFailed] = useState(false);
+    if (!src || failed) return null;
+
+    return (
+        <figure className={className}>
+            <img src={src} alt={alt || ''} onError={() => setFailed(true)} />
+            {caption && <figcaption>{caption}</figcaption>}
+        </figure>
+    );
+}
+
 function formatDate(value) {
     if (!value) return '';
     const date = new Date(value);
@@ -79,7 +91,10 @@ export default function NewsDetail() {
     }
 
     const date = formatDate(item.published_at || item.created_at);
-    const paragraphs = String(item.content || '').split(/\r?\n(?:[ \t]*\r?\n)+/);
+    const paragraphs = String(item.content || '')
+        .split(/\r?\n(?:[ \t]*\r?\n)+/)
+        .filter(paragraph => paragraph.trim());
+    const inlineImages = Array.isArray(item.inline_images) ? item.inline_images : [];
 
     return (
         <div className="league-polish-page">
@@ -106,25 +121,31 @@ export default function NewsDetail() {
                         </div>
                     </header>
 
-                    {item.image_url && (
-                        <figure className="news-article-figure">
-                            <img
-                                src={item.image_url}
-                                alt={item.title || ''}
-                                onError={(event) => {
-                                    event.currentTarget.onerror = null;
-                                    event.currentTarget.src = '/favicon.ico';
-                                }}
-                            />
-                        </figure>
-                    )}
+                    <NewsImage
+                        src={item.image_url}
+                        alt={item.title || ''}
+                        className="news-article-figure"
+                    />
 
                     <div className="news-article-content">
                         <div
                             className="news-article-body"
                         >
                             {paragraphs.map((paragraph, index) => (
-                                <p key={index}>{paragraph}</p>
+                                <React.Fragment key={index}>
+                                    <p>{paragraph}</p>
+                                    {inlineImages
+                                        .filter(image => Number(image.after_paragraph) === index + 1)
+                                        .map((image, imageIndex) => (
+                                            <NewsImage
+                                                key={`${index}-${image.url}-${imageIndex}`}
+                                                src={image.url}
+                                                alt={image.caption || item.title || ''}
+                                                caption={image.caption}
+                                                className="news-inline-figure"
+                                            />
+                                        ))}
+                                </React.Fragment>
                             ))}
                         </div>
                     </div>

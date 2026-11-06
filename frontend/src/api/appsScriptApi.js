@@ -131,6 +131,18 @@ function normalizeMatch(match) {
 }
 
 function normalizeNews(item) {
+  let inlineImages = item.inline_images ?? [];
+  if (typeof inlineImages === 'string') {
+    try {
+      inlineImages = inlineImages ? JSON.parse(inlineImages) : [];
+    } catch {
+      throw new Error('News.inline_images must contain valid JSON');
+    }
+  }
+  if (!Array.isArray(inlineImages)) {
+    throw new Error('News.inline_images must be an array');
+  }
+
   return {
     id: requiredId(item.id, 'News.id'),
     title: normalizeText(item.title) || '',
@@ -138,6 +150,19 @@ function normalizeNews(item) {
     content: normalizeText(item.content) || '',
     author: normalizeText(item.author),
     image_url: normalizeText(item.image_url),
+    inline_images: inlineImages.map((image, index) => {
+      if (!image || typeof image !== 'object' || Array.isArray(image)) {
+        throw new Error(`News.inline_images[${index}] must be an object`);
+      }
+      return {
+        url: requiredId(image.url, `News.inline_images[${index}].url`),
+        caption: normalizeText(image.caption),
+        after_paragraph: normalizeNumber(
+          image.after_paragraph,
+          `News.inline_images[${index}].after_paragraph`
+        )
+      };
+    }),
     published: normalizeBoolean(item.published, 'News.published'),
     views: normalizeNumber(item.views, 'News.views') ?? 0,
     created_at: normalizeText(item.created_at),

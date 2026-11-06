@@ -31,6 +31,7 @@ test('news cards show views and paginate nine stories at a time', async () => {
 
   expect(await screen.findByRole('link', { name: 'Read Story 1' })).toBeInTheDocument();
   expect(screen.getByText('0 views')).toBeInTheDocument();
+  expect(screen.queryAllByRole('img')).toHaveLength(0);
   expect(screen.getByText('Page 1 of 2')).toBeInTheDocument();
   expect(screen.queryByRole('link', { name: 'Read Story 10' })).not.toBeInTheDocument();
 

@@ -174,7 +174,7 @@ function checkDatabaseStructure() {
       'away_fair_play_direct_red', 'away_fair_play_yellow_direct_red'
     ],
     News: [
-      'id', 'title', 'content', 'image_url',
+      'id', 'title', 'content', 'image_url', 'inline_images',
       'published', 'created_at', 'updated_at'
     ],
     UserRoles: [
@@ -1297,7 +1297,49 @@ function validateNewsInput_(body, partial) {
       throw apiError_('image_url must be a valid URL');
     }
   }
+  if (!partial || body.inline_images !== undefined) {
+    const inlineImages = body.inline_images === undefined ? [] : body.inline_images;
+    if (!Array.isArray(inlineImages) || inlineImages.length > 10) {
+      throw apiError_('inline_images must be an array with no more than 10 images');
+    }
+    const paragraphs = String(
+      updates.content !== undefined ? updates.content : body.content || ''
+    ).split(/\r?\n(?:[ \t]*\r?\n)+/).filter(paragraph => paragraph.trim());
+    updates.inline_images = JSON.stringify(inlineImages.map((image, index) => {
+      if (!image || typeof image !== 'object' || Array.isArray(image)) {
+        throw apiError_('Inline image ' + (index + 1) + ' is invalid');
+      }
+      const url = requiredText_(image.url, 'inline_images[' + index + '].url');
+      if (!isValidHttpImageUrl_(url)) {
+        throw apiError_('Inline image ' + (index + 1) + ' must have a valid HTTP or HTTPS URL');
+      }
+      const afterParagraph = Number(image.after_paragraph);
+      if (
+        !Number.isInteger(afterParagraph) ||
+        afterParagraph < 1 ||
+        afterParagraph > paragraphs.length
+      ) {
+        throw apiError_(
+          'Inline image ' + (index + 1) + ' must be placed after an existing paragraph'
+        );
+      }
+      return {
+        url: url,
+        caption: optionalText_(image.caption) || '',
+        after_paragraph: afterParagraph
+      };
+    }));
+  }
   return updates;
+}
+
+function ensureNewsInlineImagesColumn_() {
+  const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName('News');
+  if (!sheet) throw new Error('News sheet not found');
+  const headers = getSheetHeaders_(sheet);
+  if (headers.indexOf('inline_images') >= 0) return;
+  sheet.getRange(1, sheet.getLastColumn() + 1).setValue('inline_images');
+  invalidateSheetRecordsCache_('News');
 }
 
 function isValidHttpImageUrl_(value) {
@@ -1342,6 +1384,7 @@ function isValidHttpImageUrl_(value) {
 }
 
 function createNews_(body, user) {
+  ensureNewsInlineImagesColumn_();
   const timestamp = new Date().toISOString();
   const id = Utilities.getUuid();
   const record = Object.assign(validateNewsInput_(body, false), {
@@ -1357,6 +1400,7 @@ function createNews_(body, user) {
 }
 
 function updateNews_(body, user) {
+  ensureNewsInlineImagesColumn_();
   const id = requireRecordId_(body, 'news id');
   const updates = validateNewsInput_(body, true);
   if (body.published !== undefined) {
@@ -1850,6 +1894,19 @@ function normalizeMatch_(record, references) {
 }
 
 function normalizeNews_(record) {
+  let inlineImages = [];
+  const rawInlineImages = optionalText_(record.inline_images);
+  if (rawInlineImages) {
+    try {
+      const parsed = JSON.parse(rawInlineImages);
+      if (!Array.isArray(parsed)) {
+        throw new Error('News.inline_images must contain a JSON array');
+      }
+      inlineImages = parsed;
+    } catch (error) {
+      throw new Error('News.inline_images contains invalid JSON');
+    }
+  }
   return {
     id: requiredId_(record.id, 'News.id'),
     title: requiredText_(record.title, 'News.title'),
@@ -1857,6 +1914,7 @@ function normalizeNews_(record) {
     content: optionalText_(record.content),
     author: optionalText_(record.author),
     image_url: optionalText_(record.image_url),
+    inline_images: inlineImages,
     published: optionalBoolean_(record.published, 'News.published'),
     views: optionalNumber_(record.views, 'News.views') || 0,
     created_at: optionalText_(record.created_at),

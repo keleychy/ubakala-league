@@ -22,12 +22,20 @@ function getExcerpt(content, length = 140) {
         : plainText;
 }
 
+function getArticleParagraphs(content) {
+    return String(content || '')
+        .split(/\r?\n(?:[ \t]*\r?\n)+/)
+        .map(paragraph => paragraph.trim())
+        .filter(Boolean);
+}
+
 export default function NewsUploader() {
     const nav = useNavigate();
     const [title, setTitle] = useState('');
     const [subtitle, setSubtitle] = useState('');
     const [content, setContent] = useState('');
     const [image, setImage] = useState('');
+    const [inlineImages, setInlineImages] = useState([]);
     const [author, setAuthor] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [loadingPosts, setLoadingPosts] = useState(true);
@@ -42,6 +50,7 @@ export default function NewsUploader() {
         setSubtitle('');
         setContent('');
         setImage('');
+        setInlineImages([]);
         setAuthor('');
         setErrors({});
         setImgValid(null);
@@ -83,6 +92,25 @@ export default function NewsUploader() {
                 validationErrors.image = 'Image must be a valid URL';
             }
         }
+        inlineImages.forEach((inlineImage, index) => {
+            if (!inlineImage.url.trim()) {
+                validationErrors[`inlineImage${index}`] = 'Enter an image URL or remove this image.';
+                return;
+            }
+            try {
+                const imageUrl = new URL(inlineImage.url);
+                if (!['http:', 'https:'].includes(imageUrl.protocol)) {
+                    validationErrors[`inlineImage${index}`] = 'Image URL must use HTTP or HTTPS';
+                }
+            } catch {
+                validationErrors[`inlineImage${index}`] = 'Image must be a valid URL';
+            }
+            if (!Number.isInteger(Number(inlineImage.after_paragraph)) ||
+                Number(inlineImage.after_paragraph) < 1 ||
+                Number(inlineImage.after_paragraph) > getArticleParagraphs(content).length) {
+                validationErrors[`inlineImage${index}`] = 'Choose a paragraph for this image.';
+            }
+        });
 
         if (Object.keys(validationErrors).length) {
             setErrors(validationErrors);
@@ -99,6 +127,10 @@ export default function NewsUploader() {
                 subtitle,
                 content,
                 image_url: image,
+                inline_images: inlineImages.map(inlineImage => ({
+                    ...inlineImage,
+                    after_paragraph: Number(inlineImage.after_paragraph),
+                })),
                 author,
             });
             clearForm();
@@ -141,6 +173,7 @@ export default function NewsUploader() {
         setSubtitle(item.subtitle || '');
         setContent(item.content || '');
         setImage(item.image_url || '');
+        setInlineImages(Array.isArray(item.inline_images) ? item.inline_images : []);
         setAuthor(item.author || '');
         handleImageValidation(item.image_url || '');
         setErrors({});
@@ -293,6 +326,91 @@ export default function NewsUploader() {
                             {errors.content && <small className="news-uploader-field-error">{errors.content}</small>}
                         </label>
 
+                        <div className="news-uploader-inline-images news-uploader-field--wide">
+                            <div className="news-uploader-inline-images-heading">
+                                <span>In-article images <small>Optional</small></span>
+                                <button
+                                    type="button"
+                                    onClick={() => setInlineImages(current => [
+                                        ...current,
+                                        { url: '', caption: '', after_paragraph: 1 },
+                                    ])}
+                                    disabled={isLoading || inlineImages.length >= 10}
+                                >
+                                    Add image
+                                </button>
+                            </div>
+                            <small className="news-uploader-help">
+                                Add images to appear between paragraphs. Skip this if you do not need any.
+                            </small>
+                            {inlineImages.map((inlineImage, index) => (
+                                <div className="news-uploader-inline-image" key={index}>
+                                    <label className="news-uploader-field">
+                                        <span>Image URL</span>
+                                        <input
+                                            type="url"
+                                            value={inlineImage.url}
+                                            placeholder="https://example.com/image.jpg"
+                                            onChange={event => setInlineImages(current =>
+                                                current.map((item, itemIndex) => itemIndex === index
+                                                    ? { ...item, url: event.target.value }
+                                                    : item)
+                                            )}
+                                            disabled={isLoading}
+                                            aria-invalid={Boolean(errors[`inlineImage${index}`])}
+                                        />
+                                        {errors[`inlineImage${index}`] && (
+                                            <small className="news-uploader-field-error">
+                                                {errors[`inlineImage${index}`]}
+                                            </small>
+                                        )}
+                                    </label>
+                                    <label className="news-uploader-field">
+                                        <span>Place after</span>
+                                        <select
+                                            value={inlineImage.after_paragraph}
+                                            onChange={event => setInlineImages(current =>
+                                                current.map((item, itemIndex) => itemIndex === index
+                                                    ? { ...item, after_paragraph: Number(event.target.value) }
+                                                    : item)
+                                            )}
+                                            disabled={isLoading || getArticleParagraphs(content).length === 0}
+                                        >
+                                            {getArticleParagraphs(content).map((_, paragraphIndex) => (
+                                                <option key={paragraphIndex + 1} value={paragraphIndex + 1}>
+                                                    Paragraph {paragraphIndex + 1}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </label>
+                                    <label className="news-uploader-field news-uploader-inline-image-caption">
+                                        <span>Caption <small>Optional</small></span>
+                                        <input
+                                            type="text"
+                                            value={inlineImage.caption || ''}
+                                            onChange={event => setInlineImages(current =>
+                                                current.map((item, itemIndex) => itemIndex === index
+                                                    ? { ...item, caption: event.target.value }
+                                                    : item)
+                                            )}
+                                            disabled={isLoading}
+                                        />
+                                    </label>
+                                    <button
+                                        type="button"
+                                        className="news-uploader-inline-image-remove"
+                                        onClick={() => setInlineImages(current =>
+                                            current.filter((_, itemIndex) => itemIndex !== index)
+                                        )}
+                                        disabled={isLoading}
+                                        aria-label={`Remove in-article image ${index + 1}`}
+                                    >
+                                        Remove
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+
                         <div className="news-uploader-form-actions">
                             <button type="submit" disabled={isLoading}>
                                 {isLoading
@@ -334,18 +452,25 @@ export default function NewsUploader() {
                             {newsList.map((item) => {
                                 const date = formatDate(item.published_at || item.created_at);
                                 return (
-                                    <article className="news-uploader-post" key={item.id}>
+                                    <article
+                                        className={`news-uploader-post${item.image_url ? '' : ' news-uploader-post--no-image'}`}
+                                        key={item.id}
+                                    >
+                                        {item.image_url && (
                                         <div className="news-uploader-post-image">
                                             <img
-                                                src={item.image_url || '/favicon.ico'}
+                                                src={item.image_url}
                                                 alt=""
                                                 loading="lazy"
                                                 onError={(event) => {
                                                     event.currentTarget.onerror = null;
-                                                    event.currentTarget.src = '/favicon.ico';
+                                                    event.currentTarget.closest('.news-uploader-post')
+                                                        ?.classList.add('news-uploader-post--no-image');
+                                                    event.currentTarget.parentElement.hidden = true;
                                                 }}
                                             />
                                         </div>
+                                        )}
                                         <div className="news-uploader-post-copy">
                                             <div className="news-uploader-post-meta">
                                                 <span>{item.author || 'Ubakala Football League'}</span>

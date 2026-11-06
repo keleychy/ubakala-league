@@ -84,17 +84,19 @@ const News = () => {
                   className="league-page-card league-news-card news-story-card"
                   aria-label={`Read ${item.title || 'news article'}`}
                 >
-                  <div className="news-story-image">
-                    <img
-                      src={item.image_url || '/favicon.ico'}
-                      alt=""
-                      loading="lazy"
-                      onError={(event) => {
-                        event.currentTarget.onerror = null;
-                        event.currentTarget.src = '/favicon.ico';
-                      }}
-                    />
-                  </div>
+                  {item.image_url && (
+                    <div className="news-story-image">
+                      <img
+                        src={item.image_url}
+                        alt=""
+                        loading="lazy"
+                        onError={(event) => {
+                          event.currentTarget.onerror = null;
+                          event.currentTarget.parentElement.hidden = true;
+                        }}
+                      />
+                    </div>
+                  )}
                   <div className="news-story-copy">
                     <div className="news-story-meta">
                       <span>{item.author || 'Ubakala Football League'}</span>
