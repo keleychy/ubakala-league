@@ -31,27 +31,28 @@ beforeEach(() => {
 test('finished matches remain available with their category separate from stage', async () => {
   render(<ResultsEditor />);
 
-  const teamName = await screen.findByText('Eagle FC');
+  const teamName = await screen.findByText('Eagle FC', { selector: '.results-team-name' });
   const matchCard = teamName.closest('.results-match-card');
 
   expect(within(matchCard).getByText('Junior Boys', { selector: '.results-match-category' }))
     .toBeInTheDocument();
   expect(within(matchCard).getByText('Semifinals', { selector: '.results-match-stage' }))
     .toBeInTheDocument();
-  expect(within(matchCard).getByText('Finished')).toBeInTheDocument();
+  expect(within(matchCard).getByText('Full Time')).toBeInTheDocument();
 
-  fireEvent.change(screen.getByLabelText('Match status'), {
+  fireEvent.change(matchCard.querySelector('select[id^="status-"]'), {
     target: { value: 'finished' }
   });
-  expect(screen.getByText('Eagle FC')).toBeInTheDocument();
+  expect(screen.getByText('Eagle FC', { selector: '.results-team-name' })).toBeInTheDocument();
 });
 
 test('score corrections on finished matches require a reason and preserve finished status', async () => {
   const confirm = jest.spyOn(window, 'confirm').mockReturnValue(true);
   render(<ResultsEditor />);
 
-  await screen.findByText('Eagle FC');
-  fireEvent.change(screen.getByLabelText('Eagle FC'), { target: { value: '3' } });
+  await screen.findByText('Eagle FC', { selector: '.results-team-name' });
+  const scoreInputs = screen.getAllByRole('spinbutton');
+  fireEvent.change(scoreInputs[0], { target: { value: '3' } });
   fireEvent.change(screen.getByLabelText('Reason for score correction'), {
     target: { value: 'Official score sheet correction' }
   });
@@ -72,7 +73,7 @@ test('score corrections on finished matches require a reason and preserve finish
 test('reopening a finished match records a reason and resets its status and period', async () => {
   render(<ResultsEditor />);
 
-  await screen.findByText('Eagle FC');
+  await screen.findByText('Eagle FC', { selector: '.results-team-name' });
   fireEvent.click(screen.getByRole('button', { name: 'Reopen Match' }));
   fireEvent.change(screen.getByLabelText('Reason for reopening'), {
     target: { value: 'Match was marked finished by mistake' }

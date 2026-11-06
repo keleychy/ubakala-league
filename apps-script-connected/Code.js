@@ -38,6 +38,12 @@ function doGet(e) {
 function doPost(e) {
   try {
     const body = JSON.parse(e && e.postData ? e.postData.contents || '{}' : '{}');
+    if (body.action === 'news.recordView') {
+      return jsonResponse({
+        success: true,
+        data: recordNewsView_(body)
+      });
+    }
     const user = authenticateAdmin_(body.idToken);
     const data = handleAdminPost_(body, user);
     return jsonResponse({ success: true, data: data });
@@ -1037,6 +1043,101 @@ function deleteNews_(body, user) {
   });
 }
 
+function recordNewsView_(body) {
+  const newsId = requiredId_(body.news_id, 'news_id');
+  const visitorId = requiredText_(body.visitor_id, 'visitor_id');
+  if (!/^[A-Za-z0-9_-]{20,128}$/.test(visitorId)) {
+    throw apiError_('A valid visitor_id is required');
+  }
+
+  const visitorHash = Utilities.computeDigest(
+    Utilities.DigestAlgorithm.SHA_256,
+    visitorId,
+    Utilities.Charset.UTF_8
+  ).map(byte => ('0' + ((byte + 256) % 256).toString(16)).slice(-2)).join('');
+
+  return withAdminWriteLock_(() => {
+    const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const newsSheet = spreadsheet.getSheetByName('News');
+    if (!newsSheet) throw new Error('News sheet not found');
+    const newsLocation = getRecordRow_(newsSheet, newsId);
+    const newsRecord = readRowObject_(
+      newsSheet,
+      newsLocation.headers,
+      newsLocation.rowNumber
+    );
+    if (!optionalBoolean_(newsRecord.published, 'News.published')) {
+      throw apiError_('Published news article not found');
+    }
+
+    let viewsIndex = newsLocation.headers.indexOf('views');
+    if (viewsIndex < 0) {
+      viewsIndex = newsLocation.headers.length;
+      newsSheet.getRange(1, viewsIndex + 1).setValue('views');
+      newsLocation.headers.push('views');
+    } else if (newsLocation.headers.lastIndexOf('views') !== viewsIndex) {
+      throw new Error('News sheet must have one views column');
+    }
+
+    const viewerHeaders = ['news_id', 'viewer_hash', 'last_viewed_at'];
+    let viewersSheet = spreadsheet.getSheetByName('NewsViewers');
+    if (!viewersSheet) {
+      viewersSheet = spreadsheet.insertSheet('NewsViewers');
+      viewersSheet.getRange(1, 1, 1, viewerHeaders.length).setValues([viewerHeaders]);
+    } else if (viewersSheet.getLastRow() === 0) {
+      viewersSheet.getRange(1, 1, 1, viewerHeaders.length).setValues([viewerHeaders]);
+    }
+
+    const actualViewerHeaders = getSheetHeaders_(viewersSheet);
+    viewerHeaders.forEach(header => {
+      if (
+        actualViewerHeaders.indexOf(header) < 0 ||
+        actualViewerHeaders.lastIndexOf(header) !== actualViewerHeaders.indexOf(header)
+      ) {
+        throw new Error('NewsViewers sheet must have one ' + header + ' column');
+      }
+    });
+
+    const newsIdIndex = actualViewerHeaders.indexOf('news_id');
+    const viewerHashIndex = actualViewerHeaders.indexOf('viewer_hash');
+    const lastViewedIndex = actualViewerHeaders.indexOf('last_viewed_at');
+    const lastViewerRow = viewersSheet.getLastRow();
+    const viewerRows = lastViewerRow > 1
+      ? viewersSheet.getRange(2, 1, lastViewerRow - 1, actualViewerHeaders.length)
+          .getValues()
+      : [];
+    const existingIndex = viewerRows.findIndex(row =>
+      String(row[newsIdIndex]) === newsId &&
+      String(row[viewerHashIndex]) === visitorHash
+    );
+    const now = Date.now();
+    const existingTimestamp = existingIndex < 0
+      ? null
+      : Number(viewerRows[existingIndex][lastViewedIndex]);
+    const viewsCell = newsSheet.getRange(newsLocation.rowNumber, viewsIndex + 1);
+    const currentViews = Number(viewsCell.getValue()) || 0;
+
+    if (existingTimestamp !== null && now - existingTimestamp < 24 * 60 * 60 * 1000) {
+      return { views: currentViews };
+    }
+
+    if (existingIndex < 0) {
+      viewersSheet.appendRow(actualViewerHeaders.map(header => ({
+        news_id: newsId,
+        viewer_hash: visitorHash,
+        last_viewed_at: now
+      })[header] || ''));
+    } else {
+      viewersSheet.getRange(existingIndex + 2, lastViewedIndex + 1).setValue(now);
+    }
+
+    const nextViews = currentViews + 1;
+    viewsCell.setValue(nextViews);
+    invalidateSheetRecordsCache_('News');
+    return { views: nextViews };
+  });
+}
+
 function findSeasonForTeam_(category, seasonId) {
   const normalizedCategory = requiredText_(category, 'category').toLowerCase();
   const season = getSheetRecords('Seasons')
@@ -1395,6 +1496,7 @@ function normalizeNews_(record) {
     author: optionalText_(record.author),
     image_url: optionalText_(record.image_url),
     published: optionalBoolean_(record.published, 'News.published'),
+    views: optionalNumber_(record.views, 'News.views') || 0,
     created_at: optionalText_(record.created_at),
     published_at: optionalText_(record.published_at) || optionalText_(record.created_at),
     updated_at: optionalText_(record.updated_at)

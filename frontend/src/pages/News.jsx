@@ -3,7 +3,9 @@ import { Link } from 'react-router-dom';
 import { api } from '../api/api';
 import './LeaguePolish.css';
 
-function excerpt(text, length = 165) {
+const NEWS_PER_PAGE = 9;
+
+function excerpt(text, length = 100) {
   if (!text) return '';
   const plainText = String(text).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
   return plainText.length > length
@@ -26,6 +28,7 @@ const News = () => {
   const [newsItems, setNewsItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
     let mounted = true;
@@ -40,6 +43,12 @@ const News = () => {
     });
     return () => { mounted = false; };
   }, []);
+
+  const pageCount = Math.ceil(newsItems.length / NEWS_PER_PAGE);
+  const visibleNews = newsItems.slice(
+    (currentPage - 1) * NEWS_PER_PAGE,
+    currentPage * NEWS_PER_PAGE
+  );
 
   return (
     <div className="league-polish-page">
@@ -64,8 +73,9 @@ const News = () => {
         )}
 
         {!loading && !error && newsItems.length > 0 && (
-          <div className="news-card-grid">
-            {newsItems.map((item) => {
+          <>
+            <div className="news-card-grid">
+            {visibleNews.map((item) => {
               const date = formatDate(item.published_at || item.created_at);
               return (
                 <Link
@@ -95,12 +105,41 @@ const News = () => {
                     <p className="news-story-excerpt">
                       {excerpt(item.content || item.subtitle)}
                     </p>
-                    <span className="news-story-link">Read story <span aria-hidden="true">→</span></span>
+                    <div className="news-story-footer">
+                      <span className="news-story-views" aria-label={`${item.views || 0} views`}>
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                          <path d="M2.5 12s3.4-6.2 9.5-6.2 9.5 6.2 9.5 6.2-3.4 6.2-9.5 6.2S2.5 12 2.5 12Z" />
+                          <circle cx="12" cy="12" r="2.7" />
+                        </svg>
+                        {item.views || 0} views
+                      </span>
+                      <span className="news-story-link">Read story <span aria-hidden="true">→</span></span>
+                    </div>
                   </div>
                 </Link>
               );
             })}
-          </div>
+            </div>
+            {pageCount > 1 && (
+              <nav className="news-pagination" aria-label="News pages">
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage(page => Math.max(1, page - 1))}
+                  disabled={currentPage === 1}
+                >
+                  Previous
+                </button>
+                <span>Page {currentPage} of {pageCount}</span>
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage(page => Math.min(pageCount, page + 1))}
+                  disabled={currentPage === pageCount}
+                >
+                  Next
+                </button>
+              </nav>
+            )}
+          </>
         )}
 
         {!loading && !error && newsItems.length === 0 && (

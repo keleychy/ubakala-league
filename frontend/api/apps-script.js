@@ -30,6 +30,8 @@ const ADMIN_ACTIONS = new Set([
   'admin.teams.import'
 ]);
 
+const PUBLIC_POST_ACTIONS = new Set(['news.recordView']);
+
 const appsScriptApiUrl =
   process.env.APPS_SCRIPT_API_URL || DEFAULT_APPS_SCRIPT_API_URL;
 
@@ -77,16 +79,26 @@ module.exports = async function handler(request, response) {
         error: 'Request body must be a JSON object'
       });
     }
-    if (!ADMIN_ACTIONS.has(payload.action)) {
+    const isPublicAction = PUBLIC_POST_ACTIONS.has(payload.action);
+    if (!isPublicAction && !ADMIN_ACTIONS.has(payload.action)) {
       return response.status(400).json({
         success: false,
         error: 'Unsupported Apps Script admin action'
       });
     }
-    if (typeof payload.idToken !== 'string' || !payload.idToken) {
+    if (!isPublicAction && (typeof payload.idToken !== 'string' || !payload.idToken)) {
       return response.status(400).json({
         success: false,
         error: 'Firebase ID token is required'
+      });
+    }
+    if (isPublicAction && (
+      typeof payload.news_id !== 'string' ||
+      typeof payload.visitor_id !== 'string'
+    )) {
+      return response.status(400).json({
+        success: false,
+        error: 'news_id and visitor_id are required'
       });
     }
 

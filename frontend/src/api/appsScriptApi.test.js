@@ -196,6 +196,7 @@ describe('Apps Script read API', () => {
         content: '<p>Update</p>',
         image_url: null,
         published: true,
+        views: 0,
         created_at: '2026-10-20 10:00',
         updated_at: null
       }
@@ -220,6 +221,24 @@ describe('Apps Script read API', () => {
     const url = new URL(fetchImpl.mock.calls[0][0]);
     expect(url.searchParams.get('action')).toBe('news');
     expect(url.searchParams.get('id')).toBe('news-01');
+  });
+
+  test('records an article view through the public POST action', async () => {
+    const fetchImpl = jest.fn().mockResolvedValue(response({ views: 7 }));
+    const client = createAppsScriptApi(endpoint, fetchImpl);
+
+    await expect(client.recordNewsView('news-01', 'viewer-key-123456789012'))
+      .resolves.toEqual({ views: 7 });
+
+    expect(fetchImpl).toHaveBeenCalledWith(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({
+        news_id: 'news-01',
+        visitor_id: 'viewer-key-123456789012',
+        action: 'news.recordView'
+      })
+    });
   });
 
   test('surfaces failed API envelopes', async () => {

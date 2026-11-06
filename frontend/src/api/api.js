@@ -90,6 +90,13 @@ export const api = {
       ? appsScriptApi.getNewsById(id)
       : fetchJSON(`/news/${id}/`);
   },
+  recordNewsView: (id, visitorId) => {
+    const appsScriptApi = getAppsScriptApi();
+    if (!appsScriptApi) {
+      throw new Error('Article view tracking requires the Apps Script API provider.');
+    }
+    return appsScriptApi.recordNewsView(id, visitorId);
+  },
   getStandings: (seasonId) => {
     if (isAppsScriptReadApiEnabled()) {
       throw new Error('Standings are not available from the Apps Script read API');

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import ShareBar from '../components/ShareBar';
 import { api } from '../api/api';
+import { getNewsViewerId } from '../utils/newsViewer';
 import './LeaguePolish.css';
 
 function formatDate(value) {
@@ -20,15 +21,28 @@ export default function NewsDetail() {
     const [item, setItem] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [viewError, setViewError] = useState('');
 
     useEffect(() => {
         let mounted = true;
         setLoading(true);
         setError(null);
+        setViewError('');
         api.getNewsById(id).then((data) => {
             if (!mounted) return;
             setItem(data);
             setLoading(false);
+            if (data) {
+                Promise.resolve().then(() => api.recordNewsView(id, getNewsViewerId())).then((result) => {
+                    if (mounted) {
+                        setItem(current => current ? { ...current, views: result.views } : current);
+                    }
+                }).catch((viewRequestError) => {
+                    if (mounted) {
+                        setViewError(viewRequestError.message || 'Unable to update article views.');
+                    }
+                });
+            }
         }).catch((err) => {
             if (!mounted) return;
             setError(err.message || 'Failed to load news');
@@ -80,7 +94,13 @@ export default function NewsDetail() {
                         <div className="news-article-byline">
                             <span>{item.author || 'Ubakala Football League'}</span>
                             {date && <time dateTime={item.published_at || item.created_at}>{date}</time>}
+                            <span className="news-article-views" aria-label={`${item.views || 0} views`}>
+                                {item.views || 0} views
+                            </span>
                         </div>
+                        {viewError && (
+                            <p className="news-view-error" role="status">{viewError}</p>
+                        )}
                         <div className="news-article-share">
                             <ShareBar url={window.location.href} title={item.title} />
                         </div>

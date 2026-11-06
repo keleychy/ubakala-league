@@ -139,6 +139,7 @@ function normalizeNews(item) {
     author: normalizeText(item.author),
     image_url: normalizeText(item.image_url),
     published: normalizeBoolean(item.published, 'News.published'),
+    views: normalizeNumber(item.views, 'News.views') ?? 0,
     created_at: normalizeText(item.created_at),
     published_at: normalizeText(item.published_at) || normalizeText(item.created_at),
     updated_at: normalizeText(item.updated_at)
@@ -200,6 +201,24 @@ export function createAppsScriptApi(baseUrl, fetchImpl = fetch) {
         inFlightRequests.delete(requestUrl);
       }
     }
+  }
+
+  async function postAction(action, payload) {
+    const response = await fetchImpl(endpointUrl.toString(), {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ ...payload, action })
+    });
+    if (!response.ok) {
+      const body = await response.text();
+      throw new Error(body || `Apps Script request failed (${response.status})`);
+    }
+
+    const result = await response.json();
+    if (!result || result.success !== true) {
+      throw new Error(result?.error || 'Apps Script request failed');
+    }
+    return result.data;
   }
 
   return {
@@ -311,6 +330,15 @@ export function createAppsScriptApi(baseUrl, fetchImpl = fetch) {
       if (item === null) return null;
       const news = normalizeNews(item);
       return news.published === true ? news : null;
+    },
+    async recordNewsView(id, visitorId) {
+      const result = await postAction('news.recordView', {
+        news_id: String(id),
+        visitor_id: visitorId
+      });
+      return {
+        views: normalizeNumber(result?.views, 'News.views') ?? 0
+      };
     }
   };
 }

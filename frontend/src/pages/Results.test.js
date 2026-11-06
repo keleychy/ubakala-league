@@ -45,14 +45,14 @@ beforeEach(() => {
 test('public results identify competitions by category and filter by category', async () => {
   render(<Results />);
 
-  expect(await screen.findByText('Senior Eagles')).toBeInTheDocument();
+  expect(await screen.findByText('Senior Eagles', { selector: '.results-team.home' })).toBeInTheDocument();
   expect(screen.queryByText('Girls United')).not.toBeInTheDocument();
 
   fireEvent.change(screen.getByLabelText('Competition category'), {
     target: { value: 'girls' }
   });
 
-  expect(await screen.findByText('Girls United')).toBeInTheDocument();
+  expect(await screen.findByText('Girls United', { selector: '.results-team.home' })).toBeInTheDocument();
   await waitFor(() => {
     expect(screen.queryByText('Senior Eagles')).not.toBeInTheDocument();
   });
