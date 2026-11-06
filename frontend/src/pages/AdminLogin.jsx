@@ -1,12 +1,22 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { onAuthStateChanged } from 'firebase/auth';
 import './LeaguePolish.css';
 import { callAdminApi } from '../api/adminApi';
+import { getFirebaseAuth } from '../api/firebaseClient';
 import {
   sendAdminPasswordReset,
   signInAdmin,
   signOutAdmin
 } from '../api/firebaseAuth';
+
+function getAdminDestination(profile) {
+  const role = String(profile?.role || '').toLowerCase().replace(/[\s_-]+/g, '');
+  if (role === 'admin') return '/admin-dashboard';
+  if (role === 'resultseditor') return '/results-editor';
+  if (role === 'newsuser') return '/news-uploader';
+  return null;
+}
 
 export default function AdminLogin() {
   const [email, setEmail] = useState('');
@@ -14,7 +24,62 @@ export default function AdminLogin() {
   const [error, setError] = useState('');
   const [resetSent, setResetSent] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isCheckingSession, setIsCheckingSession] = useState(true);
   const nav = useNavigate();
+
+  useEffect(() => {
+    let active = true;
+    let unsubscribe;
+
+    const handleAuthState = async user => {
+      if (!active) return;
+      if (!user) {
+        setIsCheckingSession(false);
+        return;
+      }
+
+      try {
+        const profile = await callAdminApi('admin.me');
+        if (!active) return;
+        const destination = getAdminDestination(profile);
+        if (destination) {
+          nav(destination, { replace: true });
+          return;
+        }
+
+        await signOutAdmin();
+        if (active) {
+          setError('This account is not authorized for administrator access.');
+          setIsCheckingSession(false);
+        }
+      } catch (sessionError) {
+        if (active) {
+          setError(sessionError.message || 'Unable to verify your existing administrator session.');
+          setIsCheckingSession(false);
+        }
+      }
+    };
+
+    try {
+      unsubscribe = onAuthStateChanged(
+        getFirebaseAuth(),
+        handleAuthState,
+        authError => {
+          if (!active) return;
+          setError(authError.message || 'Unable to initialize administrator access.');
+          setIsCheckingSession(false);
+        }
+      );
+    } catch (authError) {
+      setError(authError.message || 'Firebase authentication is not configured.');
+      setIsCheckingSession(false);
+    }
+
+    return () => {
+      active = false;
+      if (unsubscribe) unsubscribe();
+    };
+  }, [nav]);
 
   async function handleLogin(event) {
     event.preventDefault();
@@ -25,13 +90,9 @@ export default function AdminLogin() {
     try {
       await signInAdmin(email, password);
       const profile = await callAdminApi('admin.me');
-      const role = String(profile?.role || '').toLowerCase().replace(/[\s_-]+/g, '');
-      if (role === 'admin') {
-        nav('/admin-dashboard');
-      } else if (role === 'resultseditor') {
-        nav('/results-editor');
-      } else if (role === 'newsuser') {
-        nav('/news-uploader');
+      const destination = getAdminDestination(profile);
+      if (destination) {
+        nav(destination);
       } else {
         await signOutAdmin();
         setError('This account is not authorized for administrator access.');
@@ -60,6 +121,14 @@ export default function AdminLogin() {
     } finally {
       setIsLoading(false);
     }
+  }
+
+  if (isCheckingSession) {
+    return (
+      <div className="league-page-empty" role="status">
+        Checking administrator session...
+      </div>
+    );
   }
 
   return (

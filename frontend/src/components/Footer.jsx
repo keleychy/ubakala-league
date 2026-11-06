@@ -1,4 +1,5 @@
 
+import { Link } from 'react-router-dom';
 import './Footer.css';
 
 const Footer = () => {
@@ -63,10 +64,11 @@ const Footer = () => {
             <div className="ubakala-footer-title-line"></div>
 
             <div className="ubakala-footer-links">
-              <a href="/">Home</a>
-              <a href="/standings">Standings</a>
-              <a href="/results">Results</a>
-              <a href="/admin-login">Admin</a>
+              <Link to="/">Home</Link>
+              <Link to="/results">Results</Link>
+              <Link to="/standings">Standings</Link>
+              <Link to="/admin">Admin</Link>
+              <Link to="/rules-regulations">Rules &amp; Regulations</Link>
             </div>
           </div>
 

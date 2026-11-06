@@ -129,6 +129,10 @@ export default function Header() {
                 {username}
               </span>
 
+              <Link to="/admin-dashboard" className="admin-button">
+                Dashboard
+              </Link>
+
               <button
                 type="button"
                 className="admin-button"
@@ -209,6 +213,14 @@ export default function Header() {
                 Signed in as {username}
               </span>
 
+              <Link
+                to="/admin-dashboard"
+                className="admin-button"
+                onClick={closeMenu}
+              >
+                Dashboard
+              </Link>
+
               <button
                 type="button"
                 className="admin-button"
@@ -231,5 +243,4 @@ export default function Header() {
     </header>
   );
 }
-
 
