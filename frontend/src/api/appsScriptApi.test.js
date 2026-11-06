@@ -193,11 +193,14 @@ describe('Apps Script read API', () => {
       {
         id: '12',
         title: 'Published',
+        subtitle: null,
         content: '<p>Update</p>',
+        author: null,
         image_url: null,
         published: true,
         views: 0,
         created_at: '2026-10-20 10:00',
+        published_at: '2026-10-20 10:00',
         updated_at: null
       }
     ]);
