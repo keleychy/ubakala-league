@@ -853,7 +853,7 @@ function setMatchResult_(body, user) {
     updates.home_penalties = requiredNonNegativeInteger_(homePenalties, 'home_penalties');
     updates.away_penalties = requiredNonNegativeInteger_(awayPenalties, 'away_penalties');
   }
-  return updateRecordFieldsAndAudit_(
+  return updateMatchFieldsAndRecalculateQualifications_(
     'Matches', id, updates, user, 'match.result.updated', body.reason
   );
 }
@@ -893,14 +893,14 @@ function setMatchStatus_(body, user) {
   if (!allowedStatuses.includes(status)) {
     throw apiError_('status is not supported');
   }
-  return updateRecordFieldsAndAudit_(
+  return updateMatchFieldsAndRecalculateQualifications_(
     'Matches', id, { status: status }, user, 'match.status.updated', body.reason
   );
 }
 
 function markMatchFinished_(body, user) {
   const id = requireRecordId_(body, 'match id');
-  return updateRecordFieldsAndAudit_(
+  return updateMatchFieldsAndRecalculateQualifications_(
     'Matches',
     id,
     { status: 'FINISHED', current_period: 'ENDED' },
@@ -913,7 +913,7 @@ function markMatchFinished_(body, user) {
 function reopenMatch_(body, user) {
   const id = requireRecordId_(body, 'match id');
   const reason = requiredText_(body.reason, 'reason');
-  return updateRecordFieldsAndAudit_(
+  return updateMatchFieldsAndRecalculateQualifications_(
     'Matches',
     id,
     { status: 'SCHEDULED', current_period: 'NOT_STARTED' },
@@ -921,6 +921,189 @@ function reopenMatch_(body, user) {
     'match.reopened',
     reason
   );
+}
+
+function updateMatchFieldsAndRecalculateQualifications_(
+  sheetName, id, updates, user, action, reason
+) {
+  const updated = updateRecordFieldsAndAudit_(
+    sheetName, id, updates, user, action, reason
+  );
+  const match = getSheetRecords('Matches')
+    .find(record => String(record.id) === String(id));
+  if (!match || !isGroupStageRecord_(match)) {
+    return updated;
+  }
+
+  try {
+    recalculateGroupQualifications_(String(match.season_id), user);
+  } catch (error) {
+    console.error('Group qualification synchronization failed:', error);
+    throw apiError_(
+      'The match update was saved, but group qualification could not be synchronized. ' +
+      'Refresh and retry the match update.'
+    );
+  }
+  return updated;
+}
+
+function isGroupStageRecord_(match) {
+  const stage = String(match.stage || '').trim().toUpperCase().replace(/[\s-]+/g, '_');
+  return stage === 'GROUP' || stage === 'GROUP_STAGE';
+}
+
+function recalculateGroupQualifications_(seasonId, user) {
+  const groups = getSheetRecords('Groups')
+    .map(normalizeGroup_)
+    .filter(group => group.season_id === seasonId);
+  const assignments = getSheetRecords('TeamGroups')
+    .map(normalizeTeamGroup_)
+    .filter(assignment => assignment.season_id === seasonId);
+  const teamsById = Object.create(null);
+  getSheetRecords('Teams').map(normalizeTeam_).forEach(team => {
+    teamsById[team.id] = team;
+  });
+  const seasonMatches = getSheetRecords('Matches')
+    .filter(match => String(match.season_id) === seasonId);
+  const qualifiersByGroup = Object.create(null);
+
+  groups.forEach(group => {
+    const teamIds = assignments
+      .filter(assignment => assignment.group_id === group.id)
+      .map(assignment => assignment.team_id)
+      .filter(teamId => teamsById[teamId]);
+    if (teamIds.length < 2) return;
+
+    const teamIdSet = new Set(teamIds);
+    const groupMatches = seasonMatches.filter(match =>
+      String(match.group_id || '') === group.id && isGroupStageRecord_(match) &&
+      teamIdSet.has(String(match.home_team_id || '')) &&
+      teamIdSet.has(String(match.away_team_id || ''))
+    );
+    const scheduledMatches = Object.create(null);
+    const playedMatches = Object.create(null);
+    const standings = Object.create(null);
+
+    teamIds.forEach(teamId => {
+      scheduledMatches[teamId] = 0;
+      playedMatches[teamId] = 0;
+      standings[teamId] = {
+        team_id: teamId,
+        team_name: teamsById[teamId].name,
+        points: 0,
+        goals_for: 0,
+        goals_against: 0
+      };
+    });
+
+    groupMatches.forEach(match => {
+      const homeId = String(match.home_team_id);
+      const awayId = String(match.away_team_id);
+      scheduledMatches[homeId] += 1;
+      scheduledMatches[awayId] += 1;
+
+      const status = String(match.status || '').trim().toUpperCase();
+      if (status !== 'FINISHED' && status !== 'AWARDED') return;
+
+      const homeScore = Number(match.home_score || 0);
+      const awayScore = Number(match.away_score || 0);
+      if (!Number.isFinite(homeScore) || !Number.isFinite(awayScore)) return;
+
+      playedMatches[homeId] += 1;
+      playedMatches[awayId] += 1;
+      standings[homeId].goals_for += homeScore;
+      standings[homeId].goals_against += awayScore;
+      standings[awayId].goals_for += awayScore;
+      standings[awayId].goals_against += homeScore;
+      if (homeScore > awayScore) {
+        standings[homeId].points += 3;
+      } else if (awayScore > homeScore) {
+        standings[awayId].points += 3;
+      } else {
+        standings[homeId].points += 1;
+        standings[awayId].points += 1;
+      }
+    });
+
+    const groupIsComplete = teamIds.every(teamId =>
+      scheduledMatches[teamId] > 0 &&
+      playedMatches[teamId] >= scheduledMatches[teamId]
+    );
+    if (!groupIsComplete) return;
+
+    const rankedTeams = Object.keys(standings).map(teamId => {
+      const team = standings[teamId];
+      return Object.assign({}, team, {
+        goal_difference: team.goals_for - team.goals_against
+      });
+    }).sort((left, right) =>
+      right.points - left.points ||
+      right.goal_difference - left.goal_difference ||
+      right.goals_for - left.goals_for ||
+      (left.team_name < right.team_name ? -1 : left.team_name > right.team_name ? 1 : 0) ||
+      left.team_id.localeCompare(right.team_id)
+    );
+
+    qualifiersByGroup[group.name.toUpperCase()] = {
+      first: rankedTeams[0],
+      second: rankedTeams[1]
+    };
+  });
+
+  const quarterfinalSlots = {
+    22: { home: ['first', 'A'], away: ['second', 'B'] },
+    23: { home: ['first', 'B'], away: ['second', 'A'] },
+    24: { home: ['first', 'C'], away: ['second', 'D'] },
+    25: { home: ['first', 'D'], away: ['second', 'C'] }
+  };
+  let updatedCount = 0;
+
+  seasonMatches.forEach(match => {
+    const matchNumber = Number(match.match_number);
+    const slots = quarterfinalSlots[matchNumber];
+    const stage = String(match.stage || '').trim().toUpperCase().replace(/[\s-]+/g, '_');
+    if (!slots || !['QF', 'QUARTERFINAL', 'QUARTERFINALS'].includes(stage)) return;
+
+    const resolveSlot = slot => {
+      const [place, groupName] = slot;
+      const qualifier = qualifiersByGroup[groupName];
+      const team = qualifier && qualifier[place];
+      return {
+        id: team ? team.team_id : '',
+        name: team ? team.team_name : place === 'first'
+          ? '1st ' + groupName
+          : '2nd ' + groupName
+      };
+    };
+    const home = resolveSlot(slots.home);
+    const away = resolveSlot(slots.away);
+    const updates = {};
+    if (String(match.home_team_id || '') !== home.id) {
+      updates.home_team_id = home.id;
+    }
+    if (String(match.away_team_id || '') !== away.id) {
+      updates.away_team_id = away.id;
+    }
+    if (String(match.home_team_name || '') !== home.name) {
+      updates.home_team_name = home.name;
+    }
+    if (String(match.away_team_name || '') !== away.name) {
+      updates.away_team_name = away.name;
+    }
+    if (Object.keys(updates).length === 0) return;
+
+    updateRecordFieldsAndAudit_(
+      'Matches',
+      String(match.id),
+      updates,
+      user,
+      'match.qualification.updated',
+      'Automatically synchronized after a group-stage result or status change'
+    );
+    updatedCount += 1;
+  });
+
+  return updatedCount;
 }
 
 function validateNewsInput_(body, partial) {
