@@ -223,6 +223,322 @@
   border-left: 4px solid var(--league-gold);
 }
 
+.history-season-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.history-season-card--link {
+  transition: transform 0.16s ease, box-shadow 0.16s ease;
+}
+
+.history-season-card--link:hover,
+.history-season-card--link:focus-visible {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px rgba(20, 43, 75, 0.12);
+}
+
+.history-season-card--link:focus-visible,
+.history-category-tab:focus-visible,
+.history-back-button:focus-visible,
+.history-archive-error button:focus-visible {
+  outline: 3px solid var(--league-blue);
+  outline-offset: 3px;
+}
+
+.history-season-year {
+  min-width: 82px;
+  color: #8290a1;
+  font-size: clamp(30px, 5vw, 44px);
+  font-weight: 800;
+  text-align: center;
+}
+
+.history-season-year.is-current {
+  color: var(--league-blue);
+}
+
+.history-season-copy {
+  display: grid;
+  flex: 1;
+  gap: 8px;
+}
+
+.history-season-title-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  color: var(--league-navy);
+}
+
+.history-season-title-row strong {
+  font-size: 20px;
+}
+
+.history-season-status {
+  padding: 4px 11px;
+  border: 1px solid #cee6d4;
+  border-radius: 999px;
+  background: #eef7f0;
+  color: #317347;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.history-season-status.is-ongoing {
+  border-color: #dce7f3;
+  background: #edf3fa;
+  color: var(--league-blue);
+}
+
+.history-season-description {
+  color: var(--league-muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.history-season-action {
+  color: var(--league-blue);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.history-season-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.history-milestones {
+  margin-top: 32px;
+  padding: 24px;
+  border: 1px solid var(--league-border);
+  border-radius: 14px;
+  background: #fff;
+  text-align: center;
+  box-shadow: 0 5px 18px rgba(20, 43, 75, 0.055);
+}
+
+.history-milestones h2 {
+  margin: 0 0 10px;
+  color: var(--league-navy);
+  font-size: 20px;
+}
+
+.history-milestones p {
+  max-width: 720px;
+  margin: 0 auto;
+  color: var(--league-muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.history-archive-header {
+  align-items: center;
+}
+
+.history-back-button,
+.history-archive-error button {
+  border: 1px solid var(--league-border);
+  border-radius: 9px;
+  background: #fff;
+  color: var(--league-navy);
+  padding: 10px 14px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.history-archive {
+  display: grid;
+  gap: 24px;
+}
+
+.history-archive-summary,
+.history-category-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.history-archive-kicker {
+  color: var(--league-muted);
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.history-archive-summary h2 {
+  margin: 5px 0 0;
+  color: var(--league-navy);
+  font-size: 24px;
+}
+
+.history-match-count,
+.history-category-heading > span {
+  color: var(--league-muted);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.history-category-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--league-border);
+}
+
+.history-category-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  border: 1px solid var(--league-border);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--league-muted);
+  padding: 9px 13px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.history-category-tab span {
+  display: inline-grid;
+  min-width: 22px;
+  min-height: 22px;
+  place-items: center;
+  border-radius: 50%;
+  background: #f0f3f7;
+  font-size: 11px;
+}
+
+.history-category-tab.is-active {
+  border-color: var(--league-navy);
+  background: var(--league-navy);
+  color: #fff;
+}
+
+.history-category-tab.is-active span {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.history-category-heading {
+  margin-bottom: -14px;
+}
+
+.history-category-heading h3 {
+  margin: 0;
+  color: var(--league-navy);
+  font-size: 20px;
+}
+
+.history-archive-note {
+  margin: 0;
+  color: var(--league-muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.history-matchday {
+  display: grid;
+  gap: 12px;
+}
+
+.history-matchday h4 {
+  margin: 0;
+  color: var(--league-navy);
+  font-size: 15px;
+}
+
+.history-match-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
+  gap: 12px;
+}
+
+.history-match-card {
+  padding: 16px;
+}
+
+.history-match-meta {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  color: var(--league-muted);
+  font-size: 11px;
+}
+
+.history-match-scoreline {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  margin-top: 17px;
+}
+
+.history-match-team {
+  color: var(--league-navy);
+  font-size: 14px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.history-match-team--away {
+  text-align: right;
+}
+
+.history-match-score {
+  white-space: nowrap;
+  color: var(--league-navy);
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+}
+
+.history-match-score span {
+  color: var(--league-muted);
+}
+
+.history-match-penalties,
+.history-match-flags {
+  margin-top: 10px;
+  color: var(--league-muted);
+  font-size: 11px;
+}
+
+.history-match-flags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.history-match-flags span {
+  border-radius: 999px;
+  background: #f3f5f8;
+  padding: 4px 8px;
+}
+
+.history-archive-error {
+  padding: 18px;
+  border: 1px solid #efc7c7;
+  border-radius: 12px;
+  background: #fff7f7;
+  color: #8d2929;
+}
+
+.history-archive-error p {
+  margin: 0 0 12px;
+}
+
 .league-match-editor-card {
   padding: 16px;
   border-top: 3px solid var(--league-gold);
@@ -442,6 +758,23 @@
   .league-page-panel,
   .league-history-card {
     padding: 18px;
+  }
+
+  .history-season-card {
+    gap: 12px;
+  }
+
+  .history-season-year {
+    min-width: 62px;
+    font-size: 30px;
+  }
+
+  .history-archive-summary h2 {
+    font-size: 20px;
+  }
+
+  .history-match-card {
+    padding: 14px;
   }
 
   .league-login-page {

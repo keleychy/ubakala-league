@@ -71,6 +71,7 @@ export default function App() {
                 <Route path="/news" element={<News />} />
                 <Route path="/news/:id" element={<NewsDetail />} />
                 <Route path="/history" element={<History />} />
+                <Route path="/history/:year" element={<History />} />
                 <Route path="/rules-regulations" element={<RulesRegulations />} />
                 <Route path="/admin" element={<AdminLogin />} />
                 <Route path="/admin-dashboard" element={
