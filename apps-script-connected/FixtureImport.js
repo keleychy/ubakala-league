@@ -298,6 +298,10 @@ function buildFixtureImportPlan_() {
         status: 'PENDING', result_type: '', awarded_winner_team_id: '', award_reason: '',
         official_home_score: '', official_away_score: '', venue: '',
         home_yellow_cards: '0', home_red_cards: '0', away_yellow_cards: '0', away_red_cards: '0',
+        home_fair_play_yellow_only: '0', home_fair_play_second_yellow_red: '0',
+        home_fair_play_direct_red: '0', home_fair_play_yellow_direct_red: '0',
+        away_fair_play_yellow_only: '0', away_fair_play_second_yellow_red: '0',
+        away_fair_play_direct_red: '0', away_fair_play_yellow_direct_red: '0',
         current_period: '', notes: 'Imported from user-supplied 2026 fixture list; source weekday: ' + sourceDay
       });
     });
@@ -361,6 +365,7 @@ function importFixtureData() {
     if (count) throw new Error('Import stopped: ' + name + ' already contains ' + count + ' data row(s). No data was written.');
   });
 
+  ensureFixtureFairPlayColumns_(matchSheet);
   writeFixtureObjects_(ss.getSheetByName('Teams'), plan.teams);
   writeFixtureObjects_(ss.getSheetByName('Seasons'), plan.seasons);
   writeFixtureObjects_(ss.getSheetByName('Groups'), plan.groups);
@@ -376,6 +381,23 @@ function importFixtureData() {
     team_group_entries: plan.teamGroups.length,
     note: 'Dates and kickoff times stored as local text; no timezone conversion applied.'
   }, null, 2));
+}
+
+function ensureFixtureFairPlayColumns_(sheet) {
+  const fields = [
+    'home_fair_play_yellow_only', 'home_fair_play_second_yellow_red',
+    'home_fair_play_direct_red', 'home_fair_play_yellow_direct_red',
+    'away_fair_play_yellow_only', 'away_fair_play_second_yellow_red',
+    'away_fair_play_direct_red', 'away_fair_play_yellow_direct_red'
+  ];
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn())
+    .getDisplayValues()[0]
+    .map(header => String(header).trim());
+  const missing = fields.filter(field => headers.indexOf(field) < 0);
+  if (missing.length) {
+    sheet.getRange(1, sheet.getLastColumn() + 1, 1, missing.length)
+      .setValues([missing]);
+  }
 }
 
 function getFixtureRecords_(sheet) {
@@ -484,4 +506,3 @@ function repairMissingMatchIds() {
     message: 'Only previously blank match IDs were filled.'
   }, null, 2));
 }
-

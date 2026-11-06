@@ -10,6 +10,17 @@ import './LeaguePolish.css';
 
 const MATCHES_PER_PAGE = 10;
 
+const FAIR_PLAY_CARD_CATEGORIES = [
+    { key: 'yellow_only', label: 'Yellow card only (1 point)' },
+    { key: 'second_yellow_red', label: 'Second-yellow dismissal (3 points)' },
+    { key: 'direct_red', label: 'Direct red card (4 points)' },
+    { key: 'yellow_direct_red', label: 'Yellow plus direct red (5 points)' },
+];
+
+const FAIR_PLAY_FIELDS = ['home', 'away'].flatMap((side) =>
+    FAIR_PLAY_CARD_CATEGORIES.map(({ key }) => `_${side}_fair_play_${key}`)
+);
+
 const MATCH_STATUS_OPTIONS = [
     { value: 'PENDING', label: 'Pending' },
     { value: 'SCHEDULED', label: 'Scheduled' },
@@ -49,11 +60,20 @@ function getMatchStatus(match) {
     return String(match.status || 'SCHEDULED').trim().toUpperCase();
 }
 
+function getFairPlayCardCounts(match) {
+    return FAIR_PLAY_FIELDS.reduce((counts, field) => {
+        const key = field.slice(1);
+        counts[key] = match[key] ?? '';
+        return counts;
+    }, {});
+}
+
 function MatchRow({ match, onUpdated }) {
     const [homeScore, setHomeScore] = useState(match.home_score ?? '');
     const [awayScore, setAwayScore] = useState(match.away_score ?? '');
     const [homePenalties, setHomePenalties] = useState(match.home_penalties ?? '');
     const [awayPenalties, setAwayPenalties] = useState(match.away_penalties ?? '');
+    const [fairPlayCards, setFairPlayCards] = useState(() => getFairPlayCardCounts(match));
     const [status, setStatus] = useState(
         String(match.status || 'SCHEDULED').trim().toUpperCase()
     );
@@ -76,6 +96,7 @@ function MatchRow({ match, onUpdated }) {
         setAwayScore(match.away_score ?? '');
         setHomePenalties(match.home_penalties ?? '');
         setAwayPenalties(match.away_penalties ?? '');
+        setFairPlayCards(getFairPlayCardCounts(match));
         setStatus(String(match.status || 'SCHEDULED').trim().toUpperCase());
         setPeriod(normalizePeriod(match.current_period || 'NOT_STARTED'));
     }, [match]);
@@ -104,11 +125,22 @@ function MatchRow({ match, onUpdated }) {
             return;
         }
 
+        const fairPlayFieldsEntered = FAIR_PLAY_FIELDS.filter((field) =>
+            fairPlayCards[field.slice(1)] !== ''
+        );
+        if (fairPlayFieldsEntered.length > 0 && fairPlayFieldsEntered.length !== FAIR_PLAY_FIELDS.length) {
+            setMessage('Enter fair-play card counts for both teams, or leave all card counts blank.');
+            return;
+        }
+
         const scoreChanged =
             String(homeScore) !== String(match.home_score ?? '') ||
             String(awayScore) !== String(match.away_score ?? '') ||
             String(homePenalties) !== String(match.home_penalties ?? '') ||
-            String(awayPenalties) !== String(match.away_penalties ?? '');
+            String(awayPenalties) !== String(match.away_penalties ?? '') ||
+            FAIR_PLAY_FIELDS.some((field) =>
+                String(fairPlayCards[field.slice(1)]) !== String(match[field.slice(1)] ?? '')
+            );
 
         if (isFinished && scoreChanged && !correctionReason.trim()) {
             setMessage('Enter a reason for correcting this finished match.');
@@ -139,6 +171,12 @@ function MatchRow({ match, onUpdated }) {
 
             payload.home_penalties = Number(homePenalties);
             payload.away_penalties = Number(awayPenalties);
+        }
+
+        if (fairPlayFieldsEntered.length === FAIR_PLAY_FIELDS.length) {
+            FAIR_PLAY_FIELDS.forEach((field) => {
+                payload[field.slice(1)] = Number(fairPlayCards[field.slice(1)]);
+            });
         }
 
         try {
@@ -462,9 +500,48 @@ function MatchRow({ match, onUpdated }) {
                     </div>
                 )}
 
+                <section className="results-fair-play-section" aria-label="FIFA fair-play cards">
+                    <div className="results-fair-play-heading">
+                        <strong>Fair-play cards</strong>
+                        <small>
+                            Enter each sanction category for both teams. Leave all blank if not recorded.
+                        </small>
+                    </div>
+                    <div className="results-fair-play-teams">
+                        {['home', 'away'].map((side) => (
+                            <fieldset className="results-fair-play-team" key={side}>
+                                <legend>
+                                    {side === 'home'
+                                        ? match.home_team_name || 'Home Team'
+                                        : match.away_team_name || 'Away Team'}
+                                </legend>
+                                {FAIR_PLAY_CARD_CATEGORIES.map(({ key, label }) => {
+                                    const field = `${side}_fair_play_${key}`;
+                                    return (
+                                        <label key={field}>
+                                            <span>{label}</span>
+                                            <input
+                                                aria-label={`${side === 'home' ? match.home_team_name || 'Home Team' : match.away_team_name || 'Away Team'} ${label}`}
+                                                type="number"
+                                                min="0"
+                                                step="1"
+                                                value={fairPlayCards[field]}
+                                                onChange={(event) => setFairPlayCards((current) => ({
+                                                    ...current,
+                                                    [field]: event.target.value,
+                                                }))}
+                                            />
+                                        </label>
+                                    );
+                                })}
+                            </fieldset>
+                        ))}
+                    </div>
+                </section>
+
                 {isFinished && (
                     <label className="results-correction-reason">
-                        Reason for score correction
+                        Reason for result correction
                         <input
                             type="text"
                             value={correctionReason}

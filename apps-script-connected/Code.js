@@ -2,6 +2,16 @@
 const SPREADSHEET_ID = '1ZV770n5Y6xT-6Ch87Mf8MsKG_XpEXABFX2vfSyt-dhA';
 const SHEET_RECORD_CACHE_TTL_SECONDS = 30;
 const SHEET_RECORD_CACHE_MAX_BYTES = 90 * 1024;
+const FAIR_PLAY_CARD_FIELDS = [
+  { field: 'home_fair_play_yellow_only', points: 1 },
+  { field: 'home_fair_play_second_yellow_red', points: 3 },
+  { field: 'home_fair_play_direct_red', points: 4 },
+  { field: 'home_fair_play_yellow_direct_red', points: 5 },
+  { field: 'away_fair_play_yellow_only', points: 1 },
+  { field: 'away_fair_play_second_yellow_red', points: 3 },
+  { field: 'away_fair_play_direct_red', points: 4 },
+  { field: 'away_fair_play_yellow_direct_red', points: 5 }
+];
 
 /**
  * Web API entry point.
@@ -18,7 +28,6 @@ function doGet(e) {
         message: 'Ubakala Football League API is available'
       });
     }
-
     return jsonResponse(handleApiGet(parameters));
 
   } catch (error) {
@@ -158,7 +167,11 @@ function checkDatabaseStructure() {
       'awarded_winner_team_id', 'award_reason', 'official_home_score',
       'official_away_score', 'venue', 'home_yellow_cards',
       'home_red_cards', 'away_yellow_cards', 'away_red_cards',
-      'current_period', 'notes'
+      'current_period', 'notes',
+      'home_fair_play_yellow_only', 'home_fair_play_second_yellow_red',
+      'home_fair_play_direct_red', 'home_fair_play_yellow_direct_red',
+      'away_fair_play_yellow_only', 'away_fair_play_second_yellow_red',
+      'away_fair_play_direct_red', 'away_fair_play_yellow_direct_red'
     ],
     News: [
       'id', 'title', 'content', 'image_url',
@@ -853,9 +866,56 @@ function setMatchResult_(body, user) {
     updates.home_penalties = requiredNonNegativeInteger_(homePenalties, 'home_penalties');
     updates.away_penalties = requiredNonNegativeInteger_(awayPenalties, 'away_penalties');
   }
+  const fairPlayFields = FAIR_PLAY_CARD_FIELDS.map(item => item.field);
+  const fairPlayFieldsProvided = fairPlayFields.filter(field =>
+    body[field] !== undefined
+  );
+  if (fairPlayFieldsProvided.length > 0 && fairPlayFieldsProvided.length !== fairPlayFields.length) {
+    throw apiError_('Enter fair-play card counts for both teams, or leave all card counts blank');
+  }
+  if (fairPlayFieldsProvided.length === fairPlayFields.length) {
+    ensureMatchFairPlayColumns_();
+    fairPlayFields.forEach(field => {
+      updates[field] = requiredNonNegativeInteger_(body[field], field);
+    });
+    updates.home_yellow_cards =
+      updates.home_fair_play_yellow_only +
+      updates.home_fair_play_second_yellow_red * 2 +
+      updates.home_fair_play_yellow_direct_red;
+    updates.home_red_cards =
+      updates.home_fair_play_second_yellow_red +
+      updates.home_fair_play_direct_red +
+      updates.home_fair_play_yellow_direct_red;
+    updates.away_yellow_cards =
+      updates.away_fair_play_yellow_only +
+      updates.away_fair_play_second_yellow_red * 2 +
+      updates.away_fair_play_yellow_direct_red;
+    updates.away_red_cards =
+      updates.away_fair_play_second_yellow_red +
+      updates.away_fair_play_direct_red +
+      updates.away_fair_play_yellow_direct_red;
+  }
   return updateMatchFieldsAndRecalculateQualifications_(
     'Matches', id, updates, user, 'match.result.updated', body.reason
   );
+}
+
+function ensureMatchFairPlayColumns_() {
+  const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName('Matches');
+  if (!sheet) throw new Error('Matches sheet not found');
+  const fields = FAIR_PLAY_CARD_FIELDS.map(item => item.field);
+  const headers = getSheetHeaders_(sheet);
+  const missing = fields.filter(field => headers.indexOf(field) < 0);
+  if (missing.length === 0) return;
+
+  const startColumn = sheet.getLastColumn() + 1;
+  sheet.getRange(1, startColumn, 1, missing.length).setValues([missing]);
+  invalidateSheetRecordsCache_('Matches');
+}
+
+function migrateFairPlayMatchColumns() {
+  ensureMatchFairPlayColumns_();
+  Logger.log('Fair-play match columns are ready.');
 }
 
 function setMatchPeriod_(body, user) {
@@ -983,6 +1043,7 @@ function recalculateGroupQualifications_(seasonId, user) {
     const scheduledMatches = Object.create(null);
     const playedMatches = Object.create(null);
     const standings = Object.create(null);
+    const completedGroupMatches = [];
 
     teamIds.forEach(teamId => {
       scheduledMatches[teamId] = 0;
@@ -992,7 +1053,9 @@ function recalculateGroupQualifications_(seasonId, user) {
         team_name: teamsById[teamId].name,
         points: 0,
         goals_for: 0,
-        goals_against: 0
+        goals_against: 0,
+        fair_play_points: 0,
+        fair_play_complete: true
       };
     });
 
@@ -1011,10 +1074,34 @@ function recalculateGroupQualifications_(seasonId, user) {
 
       playedMatches[homeId] += 1;
       playedMatches[awayId] += 1;
+      completedGroupMatches.push({
+        home_id: homeId,
+        away_id: awayId,
+        home_score: homeScore,
+        away_score: awayScore
+      });
       standings[homeId].goals_for += homeScore;
       standings[homeId].goals_against += awayScore;
       standings[awayId].goals_for += awayScore;
       standings[awayId].goals_against += homeScore;
+      const cardFields = FAIR_PLAY_CARD_FIELDS.map(item => [
+        item.field, item.points
+      ]);
+      const cardValues = cardFields.map(([field]) =>
+        match[field] === '' || match[field] === null || match[field] === undefined
+          ? NaN
+          : Number(match[field])
+      );
+      if (cardValues.some(value => !Number.isInteger(value) || value < 0)) {
+        standings[homeId].fair_play_complete = false;
+        standings[awayId].fair_play_complete = false;
+      } else {
+        cardFields.forEach(([field, penalty]) => {
+          const value = Number(match[field]);
+          const teamId = field.startsWith('home_') ? homeId : awayId;
+          standings[teamId].fair_play_points += value * penalty;
+        });
+      }
       if (homeScore > awayScore) {
         standings[homeId].points += 3;
       } else if (awayScore > homeScore) {
@@ -1036,17 +1123,101 @@ function recalculateGroupQualifications_(seasonId, user) {
       return Object.assign({}, team, {
         goal_difference: team.goals_for - team.goals_against
       });
-    }).sort((left, right) =>
+    });
+    const splitTiedTeams = (teams, compare) => {
+      const sorted = teams.slice().sort(compare);
+      return sorted.reduce((groups, team) => {
+        const current = groups[groups.length - 1];
+        if (!current || compare(current[0], team) !== 0) {
+          groups.push([team]);
+        } else {
+          current.push(team);
+        }
+        return groups;
+      }, []);
+    };
+    const compareOverall = (left, right) =>
       right.points - left.points ||
       right.goal_difference - left.goal_difference ||
-      right.goals_for - left.goals_for ||
-      (left.team_name < right.team_name ? -1 : left.team_name > right.team_name ? 1 : 0) ||
-      left.team_id.localeCompare(right.team_id)
-    );
+      right.goals_for - left.goals_for;
+    const compareHeadToHead = (left, right) =>
+      right.head_to_head_points - left.head_to_head_points ||
+      right.head_to_head_goal_difference - left.head_to_head_goal_difference ||
+      right.head_to_head_goals_for - left.head_to_head_goals_for;
+
+    const resolveHeadToHeadTies = tiedTeams => {
+      const tiedTeamIds = new Set(tiedTeams.map(team => team.team_id));
+      const miniTable = Object.create(null);
+      tiedTeams.forEach(team => {
+        miniTable[team.team_id] = {
+          points: 0,
+          goals_for: 0,
+          goals_against: 0
+        };
+      });
+      completedGroupMatches.forEach(match => {
+        if (!tiedTeamIds.has(match.home_id) || !tiedTeamIds.has(match.away_id)) return;
+        const home = miniTable[match.home_id];
+        const away = miniTable[match.away_id];
+        home.goals_for += match.home_score;
+        home.goals_against += match.away_score;
+        away.goals_for += match.away_score;
+        away.goals_against += match.home_score;
+        if (match.home_score > match.away_score) {
+          home.points += 3;
+        } else if (match.home_score < match.away_score) {
+          away.points += 3;
+        } else {
+          home.points += 1;
+          away.points += 1;
+        }
+      });
+
+      const miniRanked = tiedTeams.map(team => {
+        const stats = miniTable[team.team_id];
+        return Object.assign({}, team, {
+          head_to_head_points: stats.points,
+          head_to_head_goal_difference: stats.goals_for - stats.goals_against,
+          head_to_head_goals_for: stats.goals_for
+        });
+      });
+      const partitions = splitTiedTeams(miniRanked, compareHeadToHead);
+      if (partitions.length === 1) return [tiedTeams];
+      return partitions.flatMap(partition =>
+        partition.length > 1 ? resolveHeadToHeadTies(partition) : [partition]
+      );
+    };
+
+    const finalRankingGroups = [];
+    splitTiedTeams(rankedTeams, compareOverall).forEach(overallGroup => {
+      const headToHeadGroups = overallGroup.length > 1
+        ? resolveHeadToHeadTies(overallGroup)
+        : [overallGroup];
+      headToHeadGroups.forEach(headToHeadGroup => {
+        if (headToHeadGroup.length === 1) {
+          finalRankingGroups.push(headToHeadGroup);
+          return;
+        }
+        if (!headToHeadGroup.every(team => team.fair_play_complete)) {
+          finalRankingGroups.push(headToHeadGroup);
+          return;
+        }
+        splitTiedTeams(
+          headToHeadGroup,
+          (left, right) => left.fair_play_points - right.fair_play_points
+        ).forEach(fairPlayGroup => finalRankingGroups.push(fairPlayGroup));
+      });
+    });
+
+    if (
+      finalRankingGroups.length < 2 ||
+      finalRankingGroups[0].length !== 1 ||
+      finalRankingGroups[1].length !== 1
+    ) return;
 
     qualifiersByGroup[group.name.toUpperCase()] = {
-      first: rankedTeams[0],
-      second: rankedTeams[1]
+      first: finalRankingGroups[0][0],
+      second: finalRankingGroups[1][0]
     };
   });
 
@@ -1665,6 +1836,14 @@ function normalizeMatch_(record, references) {
     home_red_cards: optionalNumber_(record.home_red_cards, 'Matches.home_red_cards'),
     away_yellow_cards: optionalNumber_(record.away_yellow_cards, 'Matches.away_yellow_cards'),
     away_red_cards: optionalNumber_(record.away_red_cards, 'Matches.away_red_cards'),
+    home_fair_play_yellow_only: optionalNumber_(record.home_fair_play_yellow_only, 'Matches.home_fair_play_yellow_only'),
+    home_fair_play_second_yellow_red: optionalNumber_(record.home_fair_play_second_yellow_red, 'Matches.home_fair_play_second_yellow_red'),
+    home_fair_play_direct_red: optionalNumber_(record.home_fair_play_direct_red, 'Matches.home_fair_play_direct_red'),
+    home_fair_play_yellow_direct_red: optionalNumber_(record.home_fair_play_yellow_direct_red, 'Matches.home_fair_play_yellow_direct_red'),
+    away_fair_play_yellow_only: optionalNumber_(record.away_fair_play_yellow_only, 'Matches.away_fair_play_yellow_only'),
+    away_fair_play_second_yellow_red: optionalNumber_(record.away_fair_play_second_yellow_red, 'Matches.away_fair_play_second_yellow_red'),
+    away_fair_play_direct_red: optionalNumber_(record.away_fair_play_direct_red, 'Matches.away_fair_play_direct_red'),
+    away_fair_play_yellow_direct_red: optionalNumber_(record.away_fair_play_yellow_direct_red, 'Matches.away_fair_play_yellow_direct_red'),
     current_period: optionalText_(record.current_period)?.toUpperCase() || null,
     notes: optionalText_(record.notes)
   };
