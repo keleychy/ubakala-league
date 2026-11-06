@@ -11,10 +11,10 @@ import './LeaguePolish.css';
 const MATCHES_PER_PAGE = 10;
 
 const FAIR_PLAY_CARD_CATEGORIES = [
-    { key: 'yellow_only', label: 'Yellow card only (1 point)' },
-    { key: 'second_yellow_red', label: 'Second-yellow dismissal (3 points)' },
-    { key: 'direct_red', label: 'Direct red card (4 points)' },
-    { key: 'yellow_direct_red', label: 'Yellow plus direct red (5 points)' },
+    { key: 'yellow_only', label: 'Yellow only' },
+    { key: 'second_yellow_red', label: 'Second yellow red' },
+    { key: 'direct_red', label: 'Direct red' },
+    { key: 'yellow_direct_red', label: 'Yellow + direct red' },
 ];
 
 const FAIR_PLAY_FIELDS = ['home', 'away'].flatMap((side) =>
@@ -500,13 +500,11 @@ function MatchRow({ match, onUpdated }) {
                     </div>
                 )}
 
-                <section className="results-fair-play-section" aria-label="FIFA fair-play cards">
-                    <div className="results-fair-play-heading">
-                        <strong>Fair-play cards</strong>
-                        <small>
-                            Enter each sanction category for both teams. Leave all blank if not recorded.
-                        </small>
-                    </div>
+                <details className="results-fair-play-section">
+                    <summary className="results-fair-play-heading">
+                        <strong>Fair-play cards (optional)</strong>
+                        <small>Add card counts</small>
+                    </summary>
                     <div className="results-fair-play-teams">
                         {['home', 'away'].map((side) => (
                             <fieldset className="results-fair-play-team" key={side}>
@@ -537,7 +535,7 @@ function MatchRow({ match, onUpdated }) {
                             </fieldset>
                         ))}
                     </div>
-                </section>
+                </details>
 
                 {isFinished && (
                     <label className="results-correction-reason">

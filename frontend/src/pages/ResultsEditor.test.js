@@ -86,16 +86,17 @@ test('saves FIFA fair-play card categories for both teams', async () => {
 
   render(<ResultsEditor />);
   await screen.findByText('Eagle FC', { selector: '.results-team-name' });
+  fireEvent.click(screen.getByText('Fair-play cards (optional)'));
 
   const cardCounts = {
-    'Eagle FC Yellow card only (1 point)': '1',
-    'Eagle FC Second-yellow dismissal (3 points)': '0',
-    'Eagle FC Direct red card (4 points)': '0',
-    'Eagle FC Yellow plus direct red (5 points)': '0',
-    'Rangers FC Yellow card only (1 point)': '0',
-    'Rangers FC Second-yellow dismissal (3 points)': '1',
-    'Rangers FC Direct red card (4 points)': '0',
-    'Rangers FC Yellow plus direct red (5 points)': '0',
+    'Eagle FC Yellow only': '1',
+    'Eagle FC Second yellow red': '0',
+    'Eagle FC Direct red': '0',
+    'Eagle FC Yellow + direct red': '0',
+    'Rangers FC Yellow only': '0',
+    'Rangers FC Second yellow red': '1',
+    'Rangers FC Direct red': '0',
+    'Rangers FC Yellow + direct red': '0',
   };
   Object.entries(cardCounts).forEach(([label, value]) => {
     fireEvent.change(screen.getByLabelText(label), { target: { value } });
