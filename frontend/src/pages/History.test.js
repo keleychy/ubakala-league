@@ -5,7 +5,7 @@ import History from './History';
 
 const archive = {
   total_matches: 3,
-  note: 'Stage and group labels were not included in the source records.',
+  note: 'Round labels follow the competition format.',
   categories: [
     {
       id: 'senior-boys',
@@ -13,6 +13,7 @@ const archive = {
       matches: [{
         date: '2025-11-09T14:00:00Z',
         matchday: 1,
+        stage: 'Group Stage',
         venue: 'UBAKALA MAIN FIELD',
         home_team: 'UMUOSU',
         away_team: 'MGBARAKUMA',
@@ -30,6 +31,7 @@ const archive = {
       matches: [{
         date: '2025-11-09T16:00:00Z',
         matchday: null,
+        stage: 'Group Stage',
         venue: 'UBAKALA MAIN FIELD',
         home_team: 'ABAM',
         away_team: 'AMIBO',
@@ -66,11 +68,13 @@ test('opens the static 2025 archive and filters match results by category', asyn
   expect(await screen.findByRole('heading', { name: '2025 Competition Results' })).toBeInTheDocument();
   expect(window.fetch).toHaveBeenCalledWith('/archive/2025.json');
   expect(await screen.findByText('UMUOSU')).toBeInTheDocument();
+  expect(screen.getByRole('heading', { name: 'Group Stage' })).toBeInTheDocument();
   expect(screen.getByRole('heading', { name: 'Matchday 1' })).toBeInTheDocument();
 
   fireEvent.click(screen.getByRole('button', { name: /Girls/ }));
 
   expect(await screen.findByText('ABAM')).toBeInTheDocument();
+  expect(screen.getByRole('heading', { name: 'Group Stage' })).toBeInTheDocument();
   expect(screen.getByRole('heading', { name: 'Matchday not recorded' })).toBeInTheDocument();
   expect(screen.queryByText('UMUOSU')).not.toBeInTheDocument();
 });

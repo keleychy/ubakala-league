@@ -451,12 +451,26 @@
 .history-matchday {
   display: grid;
   gap: 12px;
+  padding-top: 16px;
+  border-top: 1px solid var(--league-border);
 }
 
 .history-matchday h4 {
   margin: 0;
   color: var(--league-navy);
-  font-size: 15px;
+  font-size: 18px;
+}
+
+.history-stage-matchday {
+  display: grid;
+  gap: 10px;
+}
+
+.history-stage-matchday h5 {
+  margin: 0;
+  color: var(--league-muted);
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .history-match-list {
@@ -476,6 +490,11 @@
   gap: 6px 12px;
   color: var(--league-muted);
   font-size: 11px;
+}
+
+.history-match-stage {
+  color: var(--league-blue);
+  font-weight: 750;
 }
 
 .history-match-scoreline {

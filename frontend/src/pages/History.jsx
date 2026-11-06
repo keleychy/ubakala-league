@@ -30,6 +30,14 @@ const historicalData = [
   }
 ];
 
+const STAGE_ORDER = [
+  'Group Stage',
+  'Quarter-Finals',
+  'Semi-Finals',
+  'Third-Place Match',
+  'Final'
+];
+
 function formatMatchDate(value) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return 'Date unavailable';
@@ -56,10 +64,19 @@ function groupByMatchday(matches) {
   });
 }
 
+function groupByStage(matches) {
+  const grouped = new Map(STAGE_ORDER.map(stage => [stage, []]));
+  matches.forEach(match => {
+    if (grouped.has(match.stage)) grouped.get(match.stage).push(match);
+  });
+  return [...grouped.entries()].filter(([, stageMatches]) => stageMatches.length > 0);
+}
+
 function MatchCard({ match }) {
   return (
     <article className="league-page-card history-match-card">
       <div className="history-match-meta">
+        <span className="history-match-stage">{match.stage}</span>
         <time dateTime={match.date}>{formatMatchDate(match.date)}</time>
         {match.venue && <span>{match.venue}</span>}
       </div>
@@ -89,7 +106,7 @@ function SeasonArchive({ archive, categoryId, onCategoryChange }) {
   const category = archive.categories.find(item => item.id === categoryId) || archive.categories[0];
   if (!category) return <p className="league-page-empty">No archived categories are available.</p>;
 
-  const matchdayGroups = groupByMatchday(category.matches);
+  const stageGroups = groupByStage(category.matches);
 
   return (
     <section className="history-archive" aria-label="2025 season results">
@@ -123,14 +140,19 @@ function SeasonArchive({ archive, categoryId, onCategoryChange }) {
 
       <p className="history-archive-note">{archive.note}</p>
 
-      {matchdayGroups.map(([matchday, matches]) => (
-        <section className="history-matchday" key={matchday === null ? 'unassigned' : matchday}>
-          <h4>{matchday === null ? 'Matchday not recorded' : `Matchday ${matchday}`}</h4>
-          <div className="history-match-list">
-            {matches.map((match, index) => (
-              <MatchCard key={`${match.date}-${match.home_team}-${match.away_team}-${index}`} match={match} />
-            ))}
-          </div>
+      {stageGroups.map(([stage, matches]) => (
+        <section className="history-matchday" key={stage}>
+          <h4>{stage}</h4>
+          {groupByMatchday(matches).map(([matchday, stageMatchdayMatches]) => (
+            <div className="history-stage-matchday" key={matchday === null ? 'unassigned' : matchday}>
+              <h5>{matchday === null ? 'Matchday not recorded' : `Matchday ${matchday}`}</h5>
+              <div className="history-match-list">
+                {stageMatchdayMatches.map((match, index) => (
+                  <MatchCard key={`${match.date}-${match.home_team}-${match.away_team}-${index}`} match={match} />
+                ))}
+              </div>
+            </div>
+          ))}
         </section>
       ))}
     </section>
