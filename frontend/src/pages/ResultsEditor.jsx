@@ -94,7 +94,7 @@ function MatchRow({ match, onUpdated }) {
     const statusLabel =
         MATCH_STATUS_OPTIONS.find((option) => option.value === status)?.label ||
         status;
-    const isFinished = getMatchStatus(match) === 'FINISHED';
+    const isFinished = status === 'FINISHED';
 
     const handleSaveResult = async () => {
         setMessage('');
@@ -644,6 +644,10 @@ export default function ResultsEditor() {
         (visiblePage - 1) * MATCHES_PER_PAGE,
         visiblePage * MATCHES_PER_PAGE
     );
+    const firstVisibleMatch = filteredMatches.length
+        ? (visiblePage - 1) * MATCHES_PER_PAGE + 1
+        : 0;
+    const lastVisibleMatch = Math.min(visiblePage * MATCHES_PER_PAGE, filteredMatches.length);
 
     if (loading) {
         return (
@@ -764,7 +768,7 @@ export default function ResultsEditor() {
                         </select>
                     </label>
                     <span className="results-match-count">
-                        Showing {filteredMatches.length} of {matches.length}
+                        Showing {firstVisibleMatch}-{lastVisibleMatch} of {filteredMatches.length} matching
                     </span>
                 </div>
             )}
