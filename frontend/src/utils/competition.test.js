@@ -6,6 +6,8 @@ import {
   getMatchStatusCode,
   getMatchStatusLabel,
   getMatchPeriodLabel,
+  getMatchCategory,
+  getCompetitionCategoryLabel,
   formatMatchSchedule,
   getMatchesForStage,
   isGroupStageMatch,
@@ -19,6 +21,17 @@ describe('competition compatibility helpers', () => {
       value: 'intermediate',
       label: 'Intermediate'
     });
+  });
+
+  test('reads and labels competition category separately from match stage', () => {
+    const match = {
+      season: { category: 'junior_boys' },
+      stage: 'SF'
+    };
+
+    expect(getMatchCategory(match)).toBe('junior_boys');
+    expect(getCompetitionCategoryLabel(getMatchCategory(match))).toBe('Junior Boys');
+    expect(getMatchStageLabel(match)).toBe('Semifinals');
   });
 
   test.each([

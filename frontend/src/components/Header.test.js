@@ -18,7 +18,7 @@ jest.mock('../api/firebaseAuth', () => ({
 
 test('signed-in users have a dashboard shortcut in desktop and mobile navigation', async () => {
   onAuthStateChanged.mockImplementation((auth, callback) => {
-    Promise.resolve().then(() => callback({ email: 'admin@example.com' }));
+    callback({ email: 'admin@example.com' });
     return jest.fn();
   });
 

@@ -6,7 +6,10 @@ import {
   getMatchPeriodLabel,
   getMatchStatusCode,
   getMatchStatusLabel,
-  getMatchStageLabel
+  getMatchStageLabel,
+  getMatchCategory,
+  getCompetitionCategoryLabel,
+  PUBLIC_CATEGORIES
 } from '../utils/competition';
 
 const FLASH_DURATION = 800;
@@ -24,6 +27,21 @@ const styles = `
     padding: 38px 22px 64px;
     background: var(--rs-background);
     color: var(--rs-text);
+  }
+
+  .results-category-badge {
+    display: inline-flex;
+    align-items: center;
+    min-height: 23px;
+    padding: 0 8px;
+    border: 1px solid #dce5f0;
+    border-radius: 5px;
+    background: #f0f4fa;
+    color: #344767;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: .35px;
+    text-transform: uppercase;
   }
 
   .results-container {
@@ -740,6 +758,7 @@ const Results = () => {
   const [matches, setMatches] = useState([]);
   const [seasons, setSeasons] = useState([]);
   const [selectedSeason, setSelectedSeason] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('all');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
@@ -764,13 +783,16 @@ const Results = () => {
 
         if (seasonList.length > 0) {
           const firstSeasonId = getSeasonId(seasonList[0]);
+          const firstCategory = getMatchCategory({ season: seasonList[0] });
 
+          setSelectedCategory(firstCategory || 'all');
           setSelectedSeason(
             firstSeasonId !== null && firstSeasonId !== undefined
               ? String(firstSeasonId)
-              : ''
+              : 'all'
           );
         } else {
+          setSelectedCategory('all');
           setSelectedSeason('');
           setLoading(false);
         }
@@ -895,7 +917,11 @@ const Results = () => {
   const filteredMatches = useMemo(() => {
     let result = matches;
 
-    if (selectedSeason) {
+    if (selectedCategory !== 'all') {
+      result = result.filter(match => getMatchCategory(match) === selectedCategory);
+    }
+
+    if (selectedSeason && selectedSeason !== 'all') {
       result = result.filter((match) => {
         const seasonId = getMatchSeasonId(match);
 
@@ -918,7 +944,24 @@ const Results = () => {
 
       return dateB - dateA;
     });
-  }, [matches, selectedSeason]);
+  }, [matches, selectedCategory, selectedSeason]);
+
+  const availableCategories = useMemo(() => {
+    const categoryValues = new Set(
+      seasons.map(season => getMatchCategory({ season })).filter(Boolean)
+    );
+    return [
+      ...PUBLIC_CATEGORIES.filter(category => categoryValues.has(category.value)),
+      ...[...categoryValues]
+        .filter(value => !PUBLIC_CATEGORIES.some(category => category.value === value))
+        .sort()
+        .map(value => ({ value, label: getCompetitionCategoryLabel(value) }))
+    ];
+  }, [seasons]);
+
+  const availableSeasons = selectedCategory === 'all'
+    ? seasons
+    : seasons.filter(season => getMatchCategory({ season }) === selectedCategory);
 
   /* Group fixtures by competition stage. */
   const groupedMatches = useMemo(() => {
@@ -1022,6 +1065,9 @@ const Results = () => {
     return (
       <div className="results-bracket-card" key={match.id}>
         <div className="results-bracket-title">{label}</div>
+        <div className="results-category-badge">
+          {getCompetitionCategoryLabel(getMatchCategory(match))}
+        </div>
 
         <div className={`results-bracket-team ${homeWinner ? 'winner' : ''}`}>
           <span>{formatPlaceholder(match.home_team)}</span>
@@ -1086,6 +1132,10 @@ const Results = () => {
       <article className="results-match-card" key={match.id}>
         <div className="results-match-meta">
           <div className="results-match-meta-left">
+            <span className="results-category-badge">
+              {getCompetitionCategoryLabel(getMatchCategory(match))}
+            </span>
+
             {match?.matchday !== null &&
               match?.matchday !== undefined && (
                 <span>Matchday {match.matchday}</span>
@@ -1190,7 +1240,11 @@ const Results = () => {
     );
   };
 
-  const selectedSeasonName =
+  const selectedSeasonName = selectedSeason === 'all'
+    ? selectedCategory === 'all'
+      ? 'All Categories'
+      : getCompetitionCategoryLabel(selectedCategory)
+    :
     seasons.find(
       (season) =>
         String(getSeasonId(season)) === String(selectedSeason)
@@ -1220,6 +1274,27 @@ const Results = () => {
           aria-label="Results filters"
         >
           <div className="results-filter">
+            <label htmlFor="results-category">Competition category</label>
+
+            <select
+              id="results-category"
+              value={selectedCategory}
+              onChange={(event) => {
+                setSelectedCategory(event.target.value);
+                setSelectedSeason('all');
+              }}
+              disabled={!availableCategories.length}
+            >
+              <option value="all">All categories</option>
+              {availableCategories.map(category => (
+                <option key={category.value} value={category.value}>
+                  {category.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="results-filter">
             <label htmlFor="results-season">Season</label>
 
             <select
@@ -1232,7 +1307,13 @@ const Results = () => {
                 <option value="">No season available</option>
               )}
 
-              {seasons.map((season, index) => {
+              {seasons.length > 0 && (
+                <option value="all">
+                  {selectedCategory === 'all' ? 'All seasons' : 'All seasons in category'}
+                </option>
+              )}
+
+              {availableSeasons.map((season, index) => {
                 const seasonId = getSeasonId(season);
 
                 return (

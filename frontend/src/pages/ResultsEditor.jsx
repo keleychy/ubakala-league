@@ -1,6 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { callAdminApi } from '../api/adminApi';
+import {
+    getCompetitionCategoryLabel,
+    getMatchCategory,
+    getMatchStageLabel,
+    PUBLIC_CATEGORIES
+} from '../utils/competition';
 import './LeaguePolish.css';
+
+const MATCHES_PER_PAGE = 10;
 
 const MATCH_STATUS_OPTIONS = [
     { value: 'PENDING', label: 'Pending' },
@@ -30,17 +38,11 @@ function normalizePeriod(value) {
 }
 
 function formatCategory(match) {
-    const category =
-        match?.category ||
-        match?.competition_category ||
-        match?.stage ||
-        '';
+    return getCompetitionCategoryLabel(getMatchCategory(match));
+}
 
-    if (!category) return 'Match';
-
-    return String(category)
-        .replace(/_/g, ' ')
-        .replace(/\b\w/g, (letter) => letter.toUpperCase());
+function formatStage(match) {
+    return getMatchStageLabel(match);
 }
 
 function getMatchStatus(match) {
@@ -63,6 +65,10 @@ function MatchRow({ match, onUpdated }) {
     const [savingPeriod, setSavingPeriod] = useState(false);
     const [savingStatus, setSavingStatus] = useState(false);
     const [finishing, setFinishing] = useState(false);
+    const [reopenFormOpen, setReopenFormOpen] = useState(false);
+    const [reopenReason, setReopenReason] = useState('');
+    const [correctionReason, setCorrectionReason] = useState('');
+    const [reopening, setReopening] = useState(false);
     const [message, setMessage] = useState('');
 
     useEffect(() => {
@@ -74,10 +80,11 @@ function MatchRow({ match, onUpdated }) {
         setPeriod(normalizePeriod(match.current_period || 'NOT_STARTED'));
     }, [match]);
 
-    const isKnockout = Boolean(
-        match.stage &&
-        String(match.stage).toLowerCase().includes('knockout')
-    );
+    const stage = String(match.stage || match.match_stage || '')
+        .trim()
+        .toUpperCase()
+        .replace(/[\s-]+/g, '_');
+    const isKnockout = Boolean(stage && !['GROUP', 'GROUP_STAGE'].includes(stage));
 
     const showPenalties =
         isKnockout &&
@@ -87,6 +94,7 @@ function MatchRow({ match, onUpdated }) {
     const statusLabel =
         MATCH_STATUS_OPTIONS.find((option) => option.value === status)?.label ||
         status;
+    const isFinished = getMatchStatus(match) === 'FINISHED';
 
     const handleSaveResult = async () => {
         setMessage('');
@@ -96,11 +104,32 @@ function MatchRow({ match, onUpdated }) {
             return;
         }
 
+        const scoreChanged =
+            String(homeScore) !== String(match.home_score ?? '') ||
+            String(awayScore) !== String(match.away_score ?? '') ||
+            String(homePenalties) !== String(match.home_penalties ?? '') ||
+            String(awayPenalties) !== String(match.away_penalties ?? '');
+
+        if (isFinished && scoreChanged && !correctionReason.trim()) {
+            setMessage('Enter a reason for correcting this finished match.');
+            return;
+        }
+
+        if (isFinished && scoreChanged && !window.confirm(
+            'Save this score correction and keep the match marked as finished?'
+        )) {
+            return;
+        }
+
         const payload = {
             match_id: match.id,
             home_score: Number(homeScore),
             away_score: Number(awayScore),
         };
+
+        if (isFinished && scoreChanged) {
+            payload.reason = correctionReason.trim();
+        }
 
         if (showPenalties) {
             if (homePenalties === '' || awayPenalties === '') {
@@ -201,6 +230,33 @@ function MatchRow({ match, onUpdated }) {
         }
     };
 
+    const handleReopenMatch = async () => {
+        setMessage('');
+        if (!reopenReason.trim()) {
+            setMessage('Enter a reason for reopening this match.');
+            return;
+        }
+
+        try {
+            setReopening(true);
+            await callAdminApi('admin.matches.reopen', {
+                match_id: match.id,
+                reason: reopenReason.trim(),
+            });
+            setStatus('SCHEDULED');
+            setPeriod('NOT_STARTED');
+            setReopenFormOpen(false);
+            setReopenReason('');
+            setMessage('Match reopened and returned to Scheduled.');
+            window.dispatchEvent(new CustomEvent('match-updated'));
+            if (onUpdated) onUpdated();
+        } catch (error) {
+            setMessage(error?.message || 'Unable to reopen match.');
+        } finally {
+            setReopening(false);
+        }
+    };
+
     return (
         <div className="results-match-card">
             <div className="results-match-top">
@@ -208,6 +264,9 @@ function MatchRow({ match, onUpdated }) {
                     <div className="results-match-tags">
                         <span className="results-match-category">
                             {formatCategory(match)}
+                        </span>
+                        <span className="results-match-stage">
+                            {formatStage(match)}
                         </span>
                         <span className={`results-status-badge results-status-${status.toLowerCase()}`}>
                             {statusLabel}
@@ -275,7 +334,11 @@ function MatchRow({ match, onUpdated }) {
                             onChange={(event) => setStatus(event.target.value)}
                         >
                             {MATCH_STATUS_OPTIONS.map((option) => (
-                                <option key={option.value} value={option.value}>
+                                <option
+                                    key={option.value}
+                                    value={option.value}
+                                    disabled={isFinished && option.value !== 'FINISHED'}
+                                >
                                     {option.label}
                                 </option>
                             ))}
@@ -399,6 +462,65 @@ function MatchRow({ match, onUpdated }) {
                     </div>
                 )}
 
+                {isFinished && (
+                    <label className="results-correction-reason">
+                        Reason for score correction
+                        <input
+                            type="text"
+                            value={correctionReason}
+                            onChange={(event) => setCorrectionReason(event.target.value)}
+                            placeholder="Explain why this finished result is being corrected"
+                            maxLength={500}
+                        />
+                    </label>
+                )}
+
+                {isFinished && (
+                    <div className="results-reopen-panel">
+                        {reopenFormOpen ? (
+                            <>
+                                <label className="results-correction-reason">
+                                    Reason for reopening
+                                    <input
+                                        type="text"
+                                        value={reopenReason}
+                                        onChange={(event) => setReopenReason(event.target.value)}
+                                        placeholder="For example: match was marked finished by mistake"
+                                        maxLength={500}
+                                    />
+                                </label>
+                                <button
+                                    type="button"
+                                    className="results-reopen-button"
+                                    onClick={handleReopenMatch}
+                                    disabled={reopening}
+                                >
+                                    {reopening ? 'Reopening...' : 'Confirm Reopen'}
+                                </button>
+                                <button
+                                    type="button"
+                                    className="results-reopen-cancel"
+                                    onClick={() => {
+                                        setReopenFormOpen(false);
+                                        setReopenReason('');
+                                    }}
+                                    disabled={reopening}
+                                >
+                                    Cancel
+                                </button>
+                            </>
+                        ) : (
+                            <button
+                                type="button"
+                                className="results-reopen-button"
+                                onClick={() => setReopenFormOpen(true)}
+                            >
+                                Reopen Match
+                            </button>
+                        )}
+                    </div>
+                )}
+
                 {message && (
                     <div className="results-feedback" role="status" aria-live="polite">
                         {message}
@@ -436,6 +558,8 @@ export default function ResultsEditor() {
     const [refreshing, setRefreshing] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [categoryFilter, setCategoryFilter] = useState('all');
+    const [statusFilter, setStatusFilter] = useState('all');
+    const [currentPage, setCurrentPage] = useState(1);
 
     const loadMatches = async () => {
         try {
@@ -447,18 +571,7 @@ export default function ResultsEditor() {
                 ? response
                 : response?.matches || response?.data || [];
 
-            const activeMatches = matchList.filter((match) => {
-                const currentStatus = String(match.status || '').toUpperCase();
-
-                return ![
-                    'FINISHED',
-                    'AWARDED',
-                    'CANCELLED',
-                    'VOID',
-                ].includes(currentStatus);
-            });
-
-            setMatches(activeMatches);
+            setMatches(matchList);
         } catch (err) {
             setError(err?.message || 'Unable to load matches.');
         } finally {
@@ -488,27 +601,49 @@ export default function ResultsEditor() {
         loadMatches();
     };
 
-    const categories = [...new Set(matches.map(formatCategory))].sort();
+    const availableCategoryValues = new Set(matches.map(getMatchCategory).filter(Boolean));
+    const categories = [
+        ...PUBLIC_CATEGORIES.filter(({ value }) => availableCategoryValues.has(value)),
+        ...[...availableCategoryValues]
+            .filter(value => !PUBLIC_CATEGORIES.some(category => category.value === value))
+            .sort()
+            .map(value => ({ value, label: getCompetitionCategoryLabel(value) }))
+    ];
     const normalizedSearch = searchTerm.trim().toLowerCase();
     const filteredMatches = matches.filter((match) => {
+        const status = getMatchStatus(match);
         const matchesCategory =
-            categoryFilter === 'all' || formatCategory(match) === categoryFilter;
+            categoryFilter === 'all' || getMatchCategory(match) === categoryFilter;
+        const matchesStatus =
+            statusFilter === 'all' ||
+            (statusFilter === 'upcoming' && ['PENDING', 'SCHEDULED', 'POSTPONED'].includes(status)) ||
+            (statusFilter === 'live' && status === 'LIVE') ||
+            (statusFilter === 'finished' && status === 'FINISHED') ||
+            (statusFilter === 'other' && !['PENDING', 'SCHEDULED', 'POSTPONED', 'LIVE', 'FINISHED'].includes(status));
         const searchableText = [
             match.home_team_name,
             match.away_team_name,
             formatCategory(match),
+            formatStage(match),
             match.venue,
         ]
             .filter(Boolean)
             .join(' ')
             .toLowerCase();
 
-        return matchesCategory && searchableText.includes(normalizedSearch);
+        return matchesCategory && matchesStatus && searchableText.includes(normalizedSearch);
     });
     const liveCount = matches.filter((match) => getMatchStatus(match) === 'LIVE').length;
     const scheduledCount = matches.filter((match) =>
         ['PENDING', 'SCHEDULED'].includes(getMatchStatus(match))
     ).length;
+    const finishedCount = matches.filter((match) => getMatchStatus(match) === 'FINISHED').length;
+    const pageCount = Math.max(1, Math.ceil(filteredMatches.length / MATCHES_PER_PAGE));
+    const visiblePage = Math.min(currentPage, pageCount);
+    const visibleMatches = filteredMatches.slice(
+        (visiblePage - 1) * MATCHES_PER_PAGE,
+        visiblePage * MATCHES_PER_PAGE
+    );
 
     if (loading) {
         return (
@@ -554,7 +689,7 @@ export default function ResultsEditor() {
                     <span className="results-summary-mark" aria-hidden="true">01</span>
                     <div>
                         <strong>{matches.length}</strong>
-                        <span>Active matches</span>
+                        <span>Total matches</span>
                     </div>
                 </div>
                 <div className="results-summary-card">
@@ -566,6 +701,13 @@ export default function ResultsEditor() {
                 </div>
                 <div className="results-summary-card">
                     <span className="results-summary-mark" aria-hidden="true">03</span>
+                    <div>
+                        <strong>{finishedCount}</strong>
+                        <span>Finished</span>
+                    </div>
+                </div>
+                <div className="results-summary-card">
+                    <span className="results-summary-mark" aria-hidden="true">04</span>
                     <div>
                         <strong>{scheduledCount}</strong>
                         <span>Upcoming</span>
@@ -581,7 +723,10 @@ export default function ResultsEditor() {
                         <input
                             type="search"
                             value={searchTerm}
-                            onChange={(event) => setSearchTerm(event.target.value)}
+                            onChange={(event) => {
+                                setSearchTerm(event.target.value);
+                                setCurrentPage(1);
+                            }}
                             placeholder="Search teams or venues"
                         />
                     </label>
@@ -589,14 +734,33 @@ export default function ResultsEditor() {
                         <span>Category</span>
                         <select
                             value={categoryFilter}
-                            onChange={(event) => setCategoryFilter(event.target.value)}
+                            onChange={(event) => {
+                                setCategoryFilter(event.target.value);
+                                setCurrentPage(1);
+                            }}
                         >
                             <option value="all">All categories</option>
                             {categories.map((category) => (
-                                <option key={category} value={category}>
-                                    {category}
+                                <option key={category.value} value={category.value}>
+                                    {category.label}
                                 </option>
                             ))}
+                        </select>
+                    </label>
+                    <label className="results-category-filter results-status-filter">
+                        <span>Match status</span>
+                        <select
+                            value={statusFilter}
+                            onChange={(event) => {
+                                setStatusFilter(event.target.value);
+                                setCurrentPage(1);
+                            }}
+                        >
+                            <option value="all">All matches</option>
+                            <option value="upcoming">Upcoming</option>
+                            <option value="live">Live</option>
+                            <option value="finished">Finished</option>
+                            <option value="other">Other statuses</option>
                         </select>
                     </label>
                     <span className="results-match-count">
@@ -608,7 +772,7 @@ export default function ResultsEditor() {
             {matches.length === 0 ? (
                 <div className="results-editor-empty">
                     <span className="results-empty-mark" aria-hidden="true">✓</span>
-                    <h3>No Active Matches</h3>
+                    <h3>No Matches Available</h3>
                     <p>
                         There are currently no matches available for result entry.
                     </p>
@@ -620,7 +784,7 @@ export default function ResultsEditor() {
                 </div>
             ) : (
                 <div className="results-match-list">
-                    {filteredMatches.map((match) => (
+                    {visibleMatches.map((match) => (
                         <MatchRow
                             key={match.id}
                             match={match}
@@ -628,6 +792,26 @@ export default function ResultsEditor() {
                         />
                     ))}
                 </div>
+            )}
+
+            {filteredMatches.length > MATCHES_PER_PAGE && (
+                <nav className="results-editor-pagination" aria-label="Match list pages">
+                    <button
+                        type="button"
+                        onClick={() => setCurrentPage(page => Math.max(1, page - 1))}
+                        disabled={visiblePage === 1}
+                    >
+                        Previous
+                    </button>
+                    <span>Page {visiblePage} of {pageCount}</span>
+                    <button
+                        type="button"
+                        onClick={() => setCurrentPage(page => Math.min(pageCount, page + 1))}
+                        disabled={visiblePage === pageCount}
+                    >
+                        Next
+                    </button>
+                </nav>
             )}
         </div>
     );

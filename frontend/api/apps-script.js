@@ -20,6 +20,7 @@ const ADMIN_ACTIONS = new Set([
   'admin.matches.setPeriod',
   'admin.matches.setStatus',
   'admin.matches.markFinished',
+  'admin.matches.reopen',
   'admin.news.create',
   'admin.news.update',
   'admin.news.delete',

@@ -5,6 +5,28 @@ export const PUBLIC_CATEGORIES = [
   { value: 'intermediate', label: 'Intermediate' }
 ];
 
+const CATEGORY_LABELS = new Map(
+  PUBLIC_CATEGORIES.map(({ value, label }) => [value, label])
+);
+
+export function getMatchCategory(match) {
+  const category =
+    match?.category ??
+    match?.competition_category ??
+    match?.season?.category ??
+    match?.season_category;
+  return category === null || category === undefined
+    ? ''
+    : String(category).trim().toLowerCase().replace(/[\s-]+/g, '_');
+}
+
+export function getCompetitionCategoryLabel(category) {
+  const normalized = String(category || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
+  if (!normalized) return 'Category unavailable';
+  return CATEGORY_LABELS.get(normalized) ||
+    normalized.replace(/_/g, ' ').replace(/\b\w/g, letter => letter.toUpperCase());
+}
+
 const STAGE_ALIASES = {
   GROUP: 'GROUP',
   'GROUP STAGE': 'GROUP',

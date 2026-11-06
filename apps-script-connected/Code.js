@@ -530,6 +530,10 @@ function handleAdminPost_(body, user) {
     requireAdminPermission_(user, 'matches');
     return markMatchFinished_(body, user);
   }
+  if (action === 'admin.matches.reopen') {
+    requireAdminPermission_(user, 'matches');
+    return reopenMatch_(body, user);
+  }
   if (action === 'admin.news.create') {
     requireAdminPermission_(user, 'news');
     return createNews_(body, user);
@@ -897,6 +901,19 @@ function markMatchFinished_(body, user) {
     user,
     'match.finished',
     body.reason
+  );
+}
+
+function reopenMatch_(body, user) {
+  const id = requireRecordId_(body, 'match id');
+  const reason = requiredText_(body.reason, 'reason');
+  return updateRecordFieldsAndAudit_(
+    'Matches',
+    id,
+    { status: 'SCHEDULED', current_period: 'NOT_STARTED' },
+    user,
+    'match.reopened',
+    reason
   );
 }
 
