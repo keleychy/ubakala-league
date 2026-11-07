@@ -763,6 +763,7 @@ function appendAuditLog_(user, action, entityType, entityId, oldValue, newValue,
   sheet.appendRow(headers.map(header =>
     Object.prototype.hasOwnProperty.call(values, header) ? values[header] : ''
   ));
+  invalidateSheetRecordsCache_('AuditLog');
 }
 
 function readRowObject_(sheet, headers, rowNumber) {

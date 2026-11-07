@@ -13,10 +13,14 @@ const SETTING_TITLES = {
 
 export default function AdminPredictions() {
   const [summary, setSummary] = useState(null);
+  const [overview, setOverview] = useState(null);
+  const [auditHistory, setAuditHistory] = useState([]);
   const [predictors, setPredictors] = useState([]);
+  const [predictorHistory, setPredictorHistory] = useState(null);
   const [query, setQuery] = useState('');
   const [searchDone, setSearchDone] = useState(false);
   const [searching, setSearching] = useState(false);
+  const [loadingHistory, setLoadingHistory] = useState(false);
   const [initializing, setInitializing] = useState(false);
   const [initRequired, setInitRequired] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -28,8 +32,14 @@ export default function AdminPredictions() {
   const loadSummary = useCallback(async () => {
     setError('');
     try {
-      const result = await predictionsAdminApi.getSummary();
+      const [result, overviewResult, auditResult] = await Promise.all([
+        predictionsAdminApi.getSummary(),
+        predictionsAdminApi.getOverview(),
+        predictionsAdminApi.getAuditHistory()
+      ]);
       setSummary(result);
+      setOverview(overviewResult);
+      setAuditHistory(auditResult || []);
       setPointsValue(result.settings.points_per_correct_prediction || '1');
       setInitRequired(false);
     } catch (loadError) {
@@ -70,6 +80,20 @@ export default function AdminPredictions() {
       setError(searchError.message || 'Could not search predictors.');
     } finally {
       setSearching(false);
+    }
+  };
+
+  const handlePredictorHistory = async predictor => {
+    setLoadingHistory(true);
+    setError('');
+    try {
+      setPredictorHistory(
+        await predictionsAdminApi.getPredictorHistory(predictor.predictor_id)
+      );
+    } catch (historyError) {
+      setError(historyError.message || 'Could not load predictor history.');
+    } finally {
+      setLoadingHistory(false);
     }
   };
 
@@ -138,6 +162,11 @@ export default function AdminPredictions() {
 
   const settings = summary?.settings || {};
   const currentSeasons = summary?.seasons || [];
+  const outcomeLabel = outcome => ({
+    '1': 'Home win',
+    X: 'Draw',
+    '2': 'Away win'
+  }[outcome] || '—');
 
   return (
     <main className="predictions-page">
@@ -178,6 +207,53 @@ export default function AdminPredictions() {
               <div className="predictions-admin-actions">
                 <button type="button" className="predictions-button" disabled={busy} onClick={handleSettle}>Check and settle official results</button>
               </div>
+            </section>
+
+            <section className="predictions-panel">
+              <span className="predictions-eyebrow">Fixture monitoring</span>
+              <h2>Prediction activity by match</h2>
+              {!overview?.fixtures?.length ? <p>No fixtures are available for monitoring.</p> : (
+                <div className="predictions-table-wrap">
+                  <table className="predictions-table">
+                    <thead><tr><th>Match</th><th>Competition / stage</th><th>Kickoff</th><th>State</th><th>Predictions</th><th>1 / X / 2</th><th>Settled</th></tr></thead>
+                    <tbody>{overview.fixtures.map(fixture => (
+                      <tr key={fixture.fixture_id}>
+                        <td>{fixture.home_team_name} vs {fixture.away_team_name}</td>
+                        <td>{fixture.season_name}{fixture.stage ? ` · ${fixture.stage}` : ''}</td>
+                        <td>{fixture.match_date} {fixture.kickoff_time}</td>
+                        <td>{fixture.prediction_state.replace(/_/g, ' ')}</td>
+                        <td>{fixture.total_predictions}</td>
+                        <td>{fixture.outcome_counts['1']} / {fixture.outcome_counts.X} / {fixture.outcome_counts['2']}</td>
+                        <td>{fixture.settled_predictions}/{fixture.total_predictions}</td>
+                      </tr>
+                    ))}</tbody>
+                  </table>
+                </div>
+              )}
+            </section>
+
+            <section className="predictions-panel">
+              <div className="predictions-section-heading">
+                <div><span className="predictions-eyebrow">Completed matches</span><h2>Pending settlements</h2></div>
+                <span>{overview?.pending_settlements_total || 0} pending</span>
+              </div>
+              {!overview?.pending_settlements?.length ? <p>No completed matches are awaiting prediction settlement.</p> : (
+                <div className="predictions-table-wrap">
+                  <table className="predictions-table">
+                    <thead><tr><th>Match</th><th>Date</th><th>Predictor ID</th><th>Pick</th><th>Official outcome</th><th>State</th></tr></thead>
+                    <tbody>{overview.pending_settlements.map(item => (
+                      <tr key={item.prediction_id}>
+                        <td>{item.match}</td><td>{item.match_date}</td><td>{item.predictor_id}</td>
+                        <td>{outcomeLabel(item.selected_outcome)}</td>
+                        <td>{outcomeLabel(item.official_outcome)}</td>
+                        <td>{item.issue}</td>
+                      </tr>
+                    ))}</tbody>
+                  </table>
+                  {overview.pending_settlements_total > overview.pending_settlements.length &&
+                    <p>Showing the first {overview.pending_settlements.length} of {overview.pending_settlements_total} pending records.</p>}
+                </div>
+              )}
             </section>
 
             <section className="predictions-panel">
@@ -239,8 +315,52 @@ export default function AdminPredictions() {
                           <button type="button" disabled={busy} onClick={() => handleStatus(predictor, predictor.account_status === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE')}>
                             {predictor.account_status === 'ACTIVE' ? 'Suspend' : 'Reactivate'}
                           </button>
+                          <button type="button" disabled={loadingHistory} onClick={() => handlePredictorHistory(predictor)}>View history</button>
                           <button type="button" disabled={busy} onClick={() => handleResetCode(predictor)}>Reset code</button>
                         </td>
+                      </tr>
+                    ))}</tbody>
+                  </table>
+                </div>
+              )}
+              {predictorHistory && (
+                <div className="predictions-admin-history">
+                  <div className="predictions-section-heading">
+                    <div><span className="predictions-eyebrow">Participant activity</span><h3>{predictorHistory.predictor.display_name} · {predictorHistory.predictor.predictor_id}</h3></div>
+                    <button type="button" className="predictions-text-button" onClick={() => setPredictorHistory(null)}>Close</button>
+                  </div>
+                  {!predictorHistory.predictions.length ? <p>No predictions have been submitted.</p> : (
+                    <div className="predictions-table-wrap">
+                      <table className="predictions-table">
+                        <thead><tr><th>Match</th><th>Date</th><th>Pick</th><th>Official result</th><th>Settlement</th><th>Points</th><th>Edits</th></tr></thead>
+                        <tbody>{predictorHistory.predictions.map(item => (
+                          <tr key={item.prediction_id}>
+                            <td>{item.match}</td><td>{item.match_date}</td>
+                            <td>{outcomeLabel(item.selected_outcome)}</td>
+                            <td>{outcomeLabel(item.official_result)}</td>
+                            <td>{item.settlement_status}</td><td>{item.points_awarded}</td><td>{item.revision_count}</td>
+                          </tr>
+                        ))}</tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
+            </section>
+
+            <section className="predictions-panel">
+              <span className="predictions-eyebrow">Administrative controls</span>
+              <h2>Prediction audit history</h2>
+              {!auditHistory.length ? <p>No prediction-related audit entries are available.</p> : (
+                <div className="predictions-table-wrap">
+                  <table className="predictions-table">
+                    <thead><tr><th>Time</th><th>Administrator</th><th>Action</th><th>Record</th><th>Reason</th><th>Change</th></tr></thead>
+                    <tbody>{auditHistory.map((entry, index) => (
+                      <tr key={`${entry.timestamp}-${entry.action}-${index}`}>
+                        <td>{entry.timestamp}</td><td>{entry.user_email}</td>
+                        <td>{entry.action}</td><td>{entry.entity_type} · {entry.entity_id}</td>
+                        <td>{entry.reason || '—'}</td>
+                        <td><details><summary>View</summary><pre>{entry.old_value || 'null'} → {entry.new_value || 'null'}</pre></details></td>
                       </tr>
                     ))}</tbody>
                   </table>

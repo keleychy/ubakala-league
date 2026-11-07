@@ -60,6 +60,12 @@ export const predictionsApi = {
 export const predictionsAdminApi = {
   initialize: () => callAdminApi('admin.predictions.initialize'),
   getSummary: () => callAdminApi('admin.predictions.summary'),
+  getOverview: (filters = {}) => callAdminApi('admin.predictions.overview', filters),
+  getPredictorHistory: predictorId => callAdminApi(
+    'admin.predictions.predictorHistory',
+    { predictor_id: predictorId }
+  ),
+  getAuditHistory: () => callAdminApi('admin.predictions.audit'),
   settle: seasonId => callAdminApi('admin.predictions.settle', { season_id: seasonId }),
   searchPredictors: query => callAdminApi('admin.predictions.predictors', { query }),
   setAccountStatus: (predictorId, accountStatus) => callAdminApi(

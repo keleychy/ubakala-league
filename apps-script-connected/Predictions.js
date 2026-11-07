@@ -983,6 +983,13 @@ function handlePredictionAdminAction_(body, user) {
   assertPredictionSheetsReady_();
   if (action === 'admin.predictions.summary') {
     const settings = getPredictionSettings_();
+    const predictions = getSheetRecords('Predictions');
+    const settlements = getSheetRecords('Prediction Results');
+    const pendingSettlements = getPendingPredictionSettlements_(
+      predictions,
+      getSheetRecords('Matches'),
+      settlements
+    );
     return {
       settings: settings,
       statistics: getPredictionStatistics_(null, null, settings),
@@ -994,13 +1001,20 @@ function handlePredictionAdminAction_(body, user) {
         name: season.name,
         category: season.category
         })),
-      pending_settlements: getSheetRecords('Predictions').filter(prediction => {
-        const settlement = getSheetRecords('Prediction Results').find(result =>
-          String(result.prediction_id) === String(prediction.prediction_id)
-        );
-        return !settlement || String(settlement.settlement_status).toUpperCase() === 'PENDING';
-      }).length
+      pending_settlements: pendingSettlements.length
     };
+  }
+  if (action === 'admin.predictions.overview') {
+    return getPredictionAdminOverview_(
+      optionalText_(body.season_id),
+      optionalText_(body.category)
+    );
+  }
+  if (action === 'admin.predictions.predictorHistory') {
+    return getPredictionAdminHistory_(body.predictor_id);
+  }
+  if (action === 'admin.predictions.audit') {
+    return getPredictionAuditHistory_();
   }
   if (action === 'admin.predictions.settle') {
     const count = settlePredictions_(optionalText_(body.season_id));
@@ -1032,6 +1046,207 @@ function handlePredictionAdminAction_(body, user) {
     return setPredictionSetting_(body, user);
   }
   throw apiError_('Unsupported Predictions Centre administrator action');
+}
+
+function getPendingPredictionSettlements_(predictions, matches, settlements) {
+  const matchesById = Object.create(null);
+  matches.forEach(match => { matchesById[String(match.id)] = match; });
+  const settlementsByPrediction = Object.create(null);
+  settlements.forEach(settlement => {
+    settlementsByPrediction[String(settlement.prediction_id)] = settlement;
+  });
+  return predictions.filter(prediction => {
+    const match = matchesById[String(prediction.fixture_id)];
+    if (!match || !['FINISHED', 'AWARDED', 'VOID'].includes(
+      String(match.status || '').trim().toUpperCase()
+    )) return false;
+    const settlement = settlementsByPrediction[String(prediction.prediction_id)];
+    if (settlement && ['SETTLED', 'VOID'].includes(
+      String(settlement.settlement_status || '').trim().toUpperCase()
+    )) return false;
+    return true;
+  });
+}
+
+function getPredictionAdminOverview_(seasonId, category) {
+  const seasonsById = Object.create(null);
+  getSheetRecords('Seasons').map(normalizeSeason_).forEach(season => {
+    seasonsById[season.id] = season;
+  });
+  const matches = getSheetRecords('Matches').filter(match => {
+    const season = seasonsById[String(match.season_id)];
+    return season &&
+      (!seasonId || season.id === seasonId) &&
+      (!category || season.category === category);
+  });
+  const matchesById = Object.create(null);
+  matches.forEach(match => { matchesById[String(match.id)] = match; });
+  const predictions = getSheetRecords('Predictions').filter(prediction =>
+    matchesById[String(prediction.fixture_id)]
+  );
+  const predictionsByFixture = Object.create(null);
+  predictions.forEach(prediction => {
+    const key = String(prediction.fixture_id);
+    if (!predictionsByFixture[key]) predictionsByFixture[key] = [];
+    predictionsByFixture[key].push(prediction);
+  });
+  const settlements = getSheetRecords('Prediction Results');
+  const settlementsByPrediction = Object.create(null);
+  settlements.forEach(settlement => {
+    settlementsByPrediction[String(settlement.prediction_id)] = settlement;
+  });
+  const settings = getPredictionSettings_();
+  const fixtures = matches.map(match => {
+    const fixturePredictions = predictionsByFixture[String(match.id)] || [];
+    const outcomeCounts = { '1': 0, X: 0, '2': 0 };
+    let settledPredictions = 0;
+    fixturePredictions.forEach(prediction => {
+      const selected = String(prediction.selected_outcome || '').toUpperCase();
+      if (Object.prototype.hasOwnProperty.call(outcomeCounts, selected)) {
+        outcomeCounts[selected] += 1;
+      }
+      const settlement = settlementsByPrediction[String(prediction.prediction_id)];
+      if (settlement && ['SETTLED', 'VOID'].includes(
+        String(settlement.settlement_status || '').trim().toUpperCase()
+      )) settledPredictions += 1;
+    });
+    const matchStatus = String(match.status || '').trim().toUpperCase();
+    const completed = ['FINISHED', 'AWARDED', 'VOID'].includes(matchStatus);
+    const outcome = getPredictionOutcome_(match);
+    const kickoff = parseMatchKickoff_(match.match_date, match.kickoff_time);
+    let predictionState = 'LOCKED';
+    if (completed) {
+      predictionState = outcome ? 'COMPLETED' : 'RESULT_INCOMPLETE';
+    } else if (
+      settings.submissions_enabled === 'true' &&
+      (matchStatus === 'PENDING' || matchStatus === 'SCHEDULED' ||
+        (matchStatus === 'POSTPONED' && settings.reopen_postponed_predictions === 'true')) &&
+      kickoff && kickoff.getTime() > Date.now() &&
+      String(match.home_team_id || '') && String(match.away_team_id || '')
+    ) {
+      predictionState = 'OPEN';
+    }
+    return {
+      fixture_id: String(match.id),
+      season_id: String(match.season_id || ''),
+      season_name: seasonsById[String(match.season_id)].name,
+      category: seasonsById[String(match.season_id)].category,
+      match_number: optionalNumber_(match.match_number, 'Matches.match_number'),
+      stage: String(match.stage || ''),
+      match_date: String(match.match_date || ''),
+      kickoff_time: String(match.kickoff_time || ''),
+      home_team_name: String(match.home_team_name || ''),
+      away_team_name: String(match.away_team_name || ''),
+      match_status: matchStatus,
+      prediction_state: predictionState,
+      total_predictions: fixturePredictions.length,
+      settled_predictions: settledPredictions,
+      pending_settlements: completed
+        ? fixturePredictions.length - settledPredictions
+        : 0,
+      outcome_counts: outcomeCounts
+    };
+  }).sort((left, right) =>
+    String(left.match_date).localeCompare(String(right.match_date)) ||
+    String(left.kickoff_time).localeCompare(String(right.kickoff_time))
+  );
+  const pending = getPendingPredictionSettlements_(
+    predictions,
+    matches,
+    settlements
+  ).map(prediction => {
+    const match = matchesById[String(prediction.fixture_id)];
+    const outcome = getPredictionOutcome_(match);
+    const settlement = settlementsByPrediction[String(prediction.prediction_id)];
+    return {
+      prediction_id: String(prediction.prediction_id),
+      predictor_id: String(prediction.predictor_id || ''),
+      fixture_id: String(prediction.fixture_id),
+      match: String(match.home_team_name || '') + ' vs ' + String(match.away_team_name || ''),
+      match_date: String(match.match_date || ''),
+      match_status: String(match.status || '').toUpperCase(),
+      selected_outcome: String(prediction.selected_outcome || '').toUpperCase(),
+      official_outcome: outcome ? outcome.outcome : '',
+      settlement_status: settlement ? String(settlement.settlement_status || '') : 'NOT_SETTLED',
+      issue: outcome ? 'Ready to settle' : 'Official match result needs a valid winner'
+    };
+  });
+  return {
+    fixtures: fixtures,
+    pending_settlements: pending.slice(0, 100),
+    pending_settlements_total: pending.length
+  };
+}
+
+function getPredictionAdminHistory_(predictorId) {
+  const id = requiredText_(predictorId, 'Predictor ID').toUpperCase();
+  const predictor = getSheetRecords('Predictors').find(record =>
+    String(record.predictor_id || '').trim().toUpperCase() === id
+  );
+  if (!predictor) throw apiError_('Predictor not found');
+  const matchesById = Object.create(null);
+  getSheetRecords('Matches').forEach(match => {
+    matchesById[String(match.id)] = match;
+  });
+  const settlementsByPrediction = Object.create(null);
+  getSheetRecords('Prediction Results').forEach(settlement => {
+    settlementsByPrediction[String(settlement.prediction_id)] = settlement;
+  });
+  const history = getSheetRecords('Predictions')
+    .filter(record => String(record.predictor_id || '').toUpperCase() === id)
+    .map(record => {
+      const match = matchesById[String(record.fixture_id)] || {};
+      const settlement = settlementsByPrediction[String(record.prediction_id)] || {};
+      return {
+        prediction_id: String(record.prediction_id || ''),
+        fixture_id: String(record.fixture_id || ''),
+        season_id: String(record.season_id || ''),
+        match: String(match.home_team_name || 'Unknown') + ' vs ' +
+          String(match.away_team_name || 'Unknown'),
+        match_date: String(match.match_date || ''),
+        match_status: String(match.status || ''),
+        selected_outcome: String(record.selected_outcome || ''),
+        submitted_at: String(record.submitted_at || ''),
+        updated_at: String(record.updated_at || ''),
+        revision_count: Number(record.revision_count || 0),
+        is_locked: optionalBoolean_(record.is_locked, 'Predictions.is_locked') === true,
+        settlement_status: String(settlement.settlement_status || 'PENDING'),
+        official_result: String(settlement.official_result || ''),
+        points_awarded: Number(settlement.points_awarded || 0)
+      };
+    })
+    .sort((left, right) => String(right.submitted_at).localeCompare(String(left.submitted_at)));
+  return {
+    predictor: {
+      predictor_id: id,
+      display_name: String(predictor.display_name || ''),
+      account_status: String(predictor.account_status || '')
+    },
+    predictions: history
+  };
+}
+
+function getPredictionAuditHistory_() {
+  const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName('AuditLog');
+  if (!sheet || sheet.getLastRow() < 2) return [];
+  return getSheetRecords('AuditLog')
+    .filter(record =>
+      String(record.action || '').indexOf('prediction.') === 0 ||
+      ['Predictors', 'Predictions', 'Prediction Results', 'Prediction Settings']
+        .includes(String(record.entity_type || ''))
+    )
+    .sort((left, right) => String(right.timestamp || '').localeCompare(String(left.timestamp || '')))
+    .slice(0, 100)
+    .map(record => ({
+      timestamp: String(record.timestamp || ''),
+      user_email: String(record.user_email || ''),
+      action: String(record.action || ''),
+      entity_type: String(record.entity_type || ''),
+      entity_id: String(record.entity_id || ''),
+      old_value: String(record.old_value || ''),
+      new_value: String(record.new_value || ''),
+      reason: String(record.reason || '')
+    }));
 }
 
 function updatePredictorAccountStatus_(body, user) {
