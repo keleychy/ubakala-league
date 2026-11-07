@@ -1326,8 +1326,8 @@ function recalculateGroupQualifications_(seasonId, user) {
   const quarterfinalSlots = {
     22: { home: ['first', 'A'], away: ['second', 'B'] },
     23: { home: ['first', 'B'], away: ['second', 'A'] },
-    24: { home: ['first', 'D'], away: ['second', 'C'] },
-    25: { home: ['first', 'C'], away: ['second', 'D'] }
+    24: { home: ['first', 'C'], away: ['second', 'D'] },
+    25: { home: ['first', 'D'], away: ['second', 'C'] }
   };
   let updatedCount = 0;
 
@@ -1364,6 +1364,29 @@ function recalculateGroupQualifications_(seasonId, user) {
       updates.away_team_name = away.name;
     }
     if (Object.keys(updates).length === 0) return;
+
+    const status = String(match.status || '').trim().toUpperCase();
+    const hasRecordedResult = [
+      match.home_score,
+      match.away_score,
+      match.home_penalties,
+      match.away_penalties,
+      match.official_home_score,
+      match.official_away_score,
+      match.result_type,
+      match.awarded_winner_team_id,
+      match.award_reason
+    ].some(value => value !== '' && value !== null && value !== undefined);
+    if (
+      hasRecordedResult ||
+      (status && !['PENDING', 'SCHEDULED'].includes(status))
+    ) {
+      console.warn(
+        'Qualification changed for knockout match ' + match.id +
+        ', but its saved result or status prevents automatic team replacement.'
+      );
+      return;
+    }
 
     updateRecordFieldsAndAudit_(
       'Matches',
