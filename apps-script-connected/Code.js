@@ -849,10 +849,61 @@ function requiredNonNegativeInteger_(value, fieldName) {
 
 function setMatchResult_(body, user) {
   const id = requireRecordId_(body, 'match id');
+  const status = optionalText_(body.status)
+    ? optionalText_(body.status).toUpperCase()
+    : null;
   const updates = {
     home_score: requiredNonNegativeInteger_(body.home_score, 'home_score'),
     away_score: requiredNonNegativeInteger_(body.away_score, 'away_score')
   };
+  if (status && !['FINISHED', 'AWARDED'].includes(status)) {
+    throw apiError_('Only FINISHED or AWARDED matches can be finalized with a result');
+  }
+
+  if (status === 'FINISHED') {
+    updates.status = 'FINISHED';
+    updates.current_period = 'ENDED';
+    updates.result_type = '';
+    updates.awarded_winner_team_id = '';
+    updates.award_reason = '';
+  }
+
+  if (status === 'AWARDED') {
+    const resultType = requiredText_(body.result_type, 'result_type')
+      .toUpperCase()
+      .replace(/[\s-]+/g, '_');
+    const allowedResultTypes = ['WALKOVER', 'PROTEST', 'OTHER'];
+    if (!allowedResultTypes.includes(resultType)) {
+      throw apiError_('result_type must be WALKOVER, PROTEST, or OTHER');
+    }
+
+    const awardedWinner = requiredId_(
+      body.awarded_winner_team_id,
+      'awarded_winner_team_id'
+    );
+    const awardReason = requiredText_(body.award_reason, 'award_reason');
+    const match = getSheetRecords('Matches')
+      .find(record => String(record.id) === String(id));
+    if (!match) throw apiError_('Match not found');
+    if (
+      awardedWinner !== String(match.home_team_id) &&
+      awardedWinner !== String(match.away_team_id)
+    ) {
+      throw apiError_('Awarded winner must be one of the teams in this match');
+    }
+
+    if (resultType === 'WALKOVER') {
+      updates.home_score = awardedWinner === String(match.home_team_id) ? 3 : 0;
+      updates.away_score = awardedWinner === String(match.away_team_id) ? 3 : 0;
+    }
+
+    updates.status = 'AWARDED';
+    updates.current_period = 'ENDED';
+    updates.result_type = resultType;
+    updates.awarded_winner_team_id = awardedWinner;
+    updates.award_reason = awardReason;
+  }
+
   const homePenalties = body.home_penalties !== undefined
     ? body.home_penalties
     : body.penalty_home;
@@ -953,6 +1004,9 @@ function setMatchStatus_(body, user) {
   if (!allowedStatuses.includes(status)) {
     throw apiError_('status is not supported');
   }
+  if (status === 'FINISHED' || status === 'AWARDED') {
+    throw apiError_('Use the match finalization action to save a finished or awarded result');
+  }
   return updateMatchFieldsAndRecalculateQualifications_(
     'Matches', id, { status: status }, user, 'match.status.updated', body.reason
   );
@@ -960,13 +1014,29 @@ function setMatchStatus_(body, user) {
 
 function markMatchFinished_(body, user) {
   const id = requireRecordId_(body, 'match id');
-  return updateMatchFieldsAndRecalculateQualifications_(
-    'Matches',
-    id,
-    { status: 'FINISHED', current_period: 'ENDED' },
-    user,
-    'match.finished',
-    body.reason
+  const requestedStatus = optionalText_(body.status);
+
+  if (!requestedStatus && body.home_score === undefined && body.away_score === undefined) {
+    return updateMatchFieldsAndRecalculateQualifications_(
+      'Matches',
+      id,
+      { status: 'FINISHED', current_period: 'ENDED' },
+      user,
+      'match.finished',
+      body.reason
+    );
+  }
+
+  const status = (requestedStatus || 'FINISHED').toUpperCase();
+  if (['FINISHED', 'AWARDED'].includes(status)) {
+    return setMatchResult_(Object.assign({}, body, { status: status }), user);
+  }
+  if (['CANCELLED', 'ABANDONED', 'VOID'].includes(status)) {
+    return setMatchStatus_(Object.assign({}, body, { status: status }), user);
+  }
+
+  throw apiError_(
+    'Pending, scheduled, live, and postponed matches cannot be finalized'
   );
 }
 

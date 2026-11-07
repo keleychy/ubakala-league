@@ -41,6 +41,12 @@ const MATCH_PERIOD_OPTIONS = [
     { value: 'ENDED', label: 'Full Time' },
 ];
 
+const AWARD_TYPES = [
+    { value: 'WALKOVER', label: 'Walkover' },
+    { value: 'PROTEST', label: 'Protest decision' },
+    { value: 'OTHER', label: 'Other authorised decision' },
+];
+
 function normalizePeriod(value) {
     return String(value || '')
         .trim()
@@ -58,6 +64,16 @@ function formatStage(match) {
 
 function getMatchStatus(match) {
     return String(match.status || 'SCHEDULED').trim().toUpperCase();
+}
+
+function getAwardType(match) {
+    const storedType = String(match.result_type || '').trim().toUpperCase();
+    if (AWARD_TYPES.some((option) => option.value === storedType)) return storedType;
+
+    const storedReason = String(match.award_reason || '').trim().toUpperCase();
+    return AWARD_TYPES.some((option) => option.value === storedReason)
+        ? storedReason
+        : '';
 }
 
 function getFairPlayCardCounts(match) {
@@ -80,6 +96,14 @@ function MatchRow({ match, onUpdated }) {
     const [period, setPeriod] = useState(
         normalizePeriod(match.current_period || 'NOT_STARTED')
     );
+    const [awardType, setAwardType] = useState(() => getAwardType(match));
+    const [awardedWinnerId, setAwardedWinnerId] = useState(
+        match.awarded_winner_team_id ?? ''
+    );
+    const [awardReasonDetails, setAwardReasonDetails] = useState(() => {
+        const reason = String(match.award_reason || '').trim();
+        return reason && reason.toUpperCase() !== getAwardType(match) ? reason : '';
+    });
 
     const [saving, setSaving] = useState(false);
     const [savingPeriod, setSavingPeriod] = useState(false);
@@ -99,6 +123,14 @@ function MatchRow({ match, onUpdated }) {
         setFairPlayCards(getFairPlayCardCounts(match));
         setStatus(String(match.status || 'SCHEDULED').trim().toUpperCase());
         setPeriod(normalizePeriod(match.current_period || 'NOT_STARTED'));
+        setAwardType(getAwardType(match));
+        setAwardedWinnerId(match.awarded_winner_team_id ?? '');
+        const storedReason = String(match.award_reason || '').trim();
+        setAwardReasonDetails(
+            storedReason && storedReason.toUpperCase() !== getAwardType(match)
+                ? storedReason
+                : ''
+        );
     }, [match]);
 
     const stage = String(match.stage || match.match_stage || '')
@@ -115,9 +147,25 @@ function MatchRow({ match, onUpdated }) {
     const statusLabel =
         MATCH_STATUS_OPTIONS.find((option) => option.value === status)?.label ||
         status;
-    const isFinished = status === 'FINISHED';
+    const isFinished = status === 'FINISHED' && getMatchStatus(match) === 'FINISHED';
+    const isWalkoverAward = status === 'AWARDED' && awardType === 'WALKOVER';
+    const getWalkoverScore = (teamId) => {
+        if (!awardedWinnerId) return '';
+        return String(awardedWinnerId) === String(teamId) ? 3 : 0;
+    };
+    const awardHomeScore = isWalkoverAward
+        ? getWalkoverScore(match.home_team_id)
+        : homeScore;
+    const awardAwayScore = isWalkoverAward
+        ? getWalkoverScore(match.away_team_id)
+        : awayScore;
 
     const handleSaveResult = async () => {
+        if (status === 'AWARDED' || (status === 'FINISHED' && getMatchStatus(match) !== 'FINISHED')) {
+            await handleMarkFinished();
+            return;
+        }
+
         setMessage('');
 
         if (homeScore === '' || awayScore === '') {
@@ -221,6 +269,11 @@ function MatchRow({ match, onUpdated }) {
     };
 
     const handleSaveStatus = async () => {
+        if (status === 'FINISHED' || status === 'AWARDED') {
+            await handleMarkFinished();
+            return;
+        }
+
         setMessage('');
 
         try {
@@ -231,6 +284,7 @@ function MatchRow({ match, onUpdated }) {
                 status,
             });
 
+            setStatus(status);
             setMessage('Match status updated.');
 
             window.dispatchEvent(new CustomEvent('match-updated'));
@@ -246,17 +300,125 @@ function MatchRow({ match, onUpdated }) {
     const handleMarkFinished = async () => {
         setMessage('');
 
+        if (['PENDING', 'SCHEDULED', 'LIVE', 'POSTPONED'].includes(status)) {
+            setMessage(`A ${status.toLowerCase()} match cannot be finalized. Select Finished, Awarded, Cancelled, Abandoned, or Void.`);
+            return;
+        }
+
+        const isScoreFinalization = status === 'FINISHED' || status === 'AWARDED';
+        const finalHomeScore = status === 'AWARDED' ? awardHomeScore : homeScore;
+        const finalAwayScore = status === 'AWARDED' ? awardAwayScore : awayScore;
+
+        if (
+            isScoreFinalization &&
+            !(status === 'AWARDED' && isWalkoverAward && !awardedWinnerId) &&
+            (finalHomeScore === '' || finalAwayScore === '')
+        ) {
+            setMessage('Enter both team scores before finalizing this result.');
+            return;
+        }
+
+        if (status === 'AWARDED') {
+            if (!AWARD_TYPES.some((option) => option.value === awardType)) {
+                setMessage('Select the authorised award reason.');
+                return;
+            }
+            if (!awardedWinnerId) {
+                setMessage('Select the team named as the awarded winner.');
+                return;
+            }
+            if (
+                String(awardedWinnerId) !== String(match.home_team_id) &&
+                String(awardedWinnerId) !== String(match.away_team_id)
+            ) {
+                setMessage('The awarded winner must be one of the teams in this match.');
+                return;
+            }
+            if (awardType !== 'WALKOVER' && !awardReasonDetails.trim()) {
+                setMessage('Enter the authorised protest or award decision details.');
+                return;
+            }
+        }
+
+        const fairPlayFieldsEntered = FAIR_PLAY_FIELDS.filter((field) =>
+            fairPlayCards[field.slice(1)] !== ''
+        );
+        if (
+            isScoreFinalization &&
+            fairPlayFieldsEntered.length > 0 &&
+            fairPlayFieldsEntered.length !== FAIR_PLAY_FIELDS.length
+        ) {
+            setMessage('Enter fair-play card counts for both teams, or leave all card counts blank.');
+            return;
+        }
+
+        const scoreChangedSinceFinished =
+            status === 'FINISHED' &&
+            getMatchStatus(match) === 'FINISHED' &&
+            (
+                String(finalHomeScore) !== String(match.home_score ?? '') ||
+                String(finalAwayScore) !== String(match.away_score ?? '') ||
+                String(homePenalties) !== String(match.home_penalties ?? '') ||
+                String(awayPenalties) !== String(match.away_penalties ?? '') ||
+                FAIR_PLAY_FIELDS.some((field) =>
+                    String(fairPlayCards[field.slice(1)]) !== String(match[field.slice(1)] ?? '')
+                )
+            );
+        if (scoreChangedSinceFinished && !correctionReason.trim()) {
+            setMessage('Enter a reason for correcting this finished match.');
+            return;
+        }
+        if (scoreChangedSinceFinished && !window.confirm(
+            'Save this score correction and keep the match marked as finished?'
+        )) {
+            return;
+        }
+
         try {
             setFinishing(true);
 
-            await callAdminApi('admin.matches.markFinished', {
+            const payload = {
                 match_id: match.id,
-            });
+                status,
+                ...(scoreChangedSinceFinished ? { reason: correctionReason.trim() } : {}),
+            };
+            if (isScoreFinalization) {
+                payload.home_score = Number(finalHomeScore);
+                payload.away_score = Number(finalAwayScore);
+                if (showPenalties && !isWalkoverAward) {
+                    if (homePenalties === '' || awayPenalties === '') {
+                        setMessage('Enter both penalty scores before finalizing this result.');
+                        return;
+                    }
+                    payload.home_penalties = Number(homePenalties);
+                    payload.away_penalties = Number(awayPenalties);
+                }
+                if (fairPlayFieldsEntered.length === FAIR_PLAY_FIELDS.length) {
+                    FAIR_PLAY_FIELDS.forEach((field) => {
+                        payload[field.slice(1)] = Number(fairPlayCards[field.slice(1)]);
+                    });
+                }
+            }
 
-            setStatus('FINISHED');
-            setPeriod('ENDED');
+            if (status === 'AWARDED') {
+                payload.result_type = awardType;
+                payload.awarded_winner_team_id = String(awardedWinnerId);
+                payload.award_reason = awardReasonDetails.trim() || awardType;
+            }
 
-            setMessage('Match marked as finished.');
+            await callAdminApi('admin.matches.markFinished', payload);
+
+            if (status === 'FINISHED' || status === 'AWARDED') setPeriod('ENDED');
+            setStatus(status);
+
+            const successMessage = {
+                FINISHED: 'Match result finalized successfully.',
+                AWARDED: 'Awarded result saved successfully.',
+                CANCELLED: 'Match marked as cancelled.',
+                ABANDONED: 'Match marked as abandoned.',
+                VOID: 'Match marked as void.',
+            }[status];
+            setMessage(successMessage);
 
             window.dispatchEvent(new CustomEvent('match-updated'));
 
@@ -361,7 +523,7 @@ function MatchRow({ match, onUpdated }) {
                                 type="button"
                                 className="results-small-button"
                                 onClick={handleSaveStatus}
-                                disabled={savingStatus}
+                                disabled={savingStatus || finishing || saving}
                             >
                                 {savingStatus ? 'Saving...' : 'Update'}
                             </button>
@@ -370,6 +532,7 @@ function MatchRow({ match, onUpdated }) {
                             id={`status-${match.id}`}
                             value={status}
                             onChange={(event) => setStatus(event.target.value)}
+                            disabled={savingStatus || finishing || saving}
                         >
                             {MATCH_STATUS_OPTIONS.map((option) => (
                                 <option
@@ -415,6 +578,68 @@ function MatchRow({ match, onUpdated }) {
                 </div>
             </div>
 
+            {status === 'AWARDED' && (
+                <section className="results-award-editor" aria-label="Awarded match details">
+                    <h3>Award decision</h3>
+                    <div className="results-award-fields">
+                        <label>
+                            Award reason
+                            <select
+                                aria-label="Award reason"
+                                value={awardType}
+                                onChange={(event) => setAwardType(event.target.value)}
+                                disabled={finishing || saving}
+                            >
+                                <option value="">Select an authorised decision</option>
+                                {AWARD_TYPES.map((option) => (
+                                    <option key={option.value} value={option.value}>
+                                        {option.label}
+                                    </option>
+                                ))}
+                            </select>
+                        </label>
+
+                        <label>
+                            Awarded winner
+                            <select
+                                aria-label="Awarded winner"
+                                value={awardedWinnerId}
+                                onChange={(event) => setAwardedWinnerId(event.target.value)}
+                                disabled={finishing || saving}
+                            >
+                                <option value="">Select the authorised winner</option>
+                                <option value={match.home_team_id}>
+                                    {match.home_team_name || 'Home Team'}
+                                </option>
+                                <option value={match.away_team_id}>
+                                    {match.away_team_name || 'Away Team'}
+                                </option>
+                            </select>
+                        </label>
+
+                        {awardType && awardType !== 'WALKOVER' && (
+                            <label className="results-award-details">
+                                {awardType === 'PROTEST' ? 'Protest committee decision' : 'Authorised decision details'}
+                                <input
+                                    type="text"
+                                    aria-label="Award decision details"
+                                    value={awardReasonDetails}
+                                    onChange={(event) => setAwardReasonDetails(event.target.value)}
+                                    placeholder="Record the authorised decision"
+                                    maxLength={500}
+                                    disabled={finishing || saving}
+                                />
+                            </label>
+                        )}
+                    </div>
+                    <p>
+                        {isWalkoverAward
+                            ? 'Ubakala walkovers are recorded 3–0 for the selected winner.'
+                            : 'Enter the score ordered by the authorised committee decision; it will not be changed automatically.'}
+                    </p>
+                </section>
+            )}
+
             <div className="results-score-section">
                 <div className="results-score-heading">
                     <div>
@@ -433,9 +658,10 @@ function MatchRow({ match, onUpdated }) {
                         <input
                             type="number"
                             min="0"
-                            value={homeScore}
+                            value={status === 'AWARDED' ? awardHomeScore : homeScore}
                             onChange={(event) => setHomeScore(event.target.value)}
                             placeholder="0"
+                            readOnly={isWalkoverAward}
                         />
                     </div>
 
@@ -449,9 +675,10 @@ function MatchRow({ match, onUpdated }) {
                         <input
                             type="number"
                             min="0"
-                            value={awayScore}
+                            value={status === 'AWARDED' ? awardAwayScore : awayScore}
                             onChange={(event) => setAwayScore(event.target.value)}
                             placeholder="0"
+                            readOnly={isWalkoverAward}
                         />
                     </div>
                 </div>
@@ -616,7 +843,7 @@ function MatchRow({ match, onUpdated }) {
                         type="button"
                         className="results-finish-button"
                         onClick={handleMarkFinished}
-                        disabled={finishing}
+                        disabled={finishing || saving || savingStatus}
                     >
                         {finishing ? 'Updating...' : 'Mark Match Finished'}
                     </button>
@@ -693,8 +920,8 @@ export default function ResultsEditor() {
             statusFilter === 'all' ||
             (statusFilter === 'upcoming' && ['PENDING', 'SCHEDULED', 'POSTPONED'].includes(status)) ||
             (statusFilter === 'live' && status === 'LIVE') ||
-            (statusFilter === 'finished' && status === 'FINISHED') ||
-            (statusFilter === 'other' && !['PENDING', 'SCHEDULED', 'POSTPONED', 'LIVE', 'FINISHED'].includes(status));
+            (statusFilter === 'finished' && ['FINISHED', 'AWARDED'].includes(status)) ||
+            (statusFilter === 'other' && !['PENDING', 'SCHEDULED', 'POSTPONED', 'LIVE', 'FINISHED', 'AWARDED'].includes(status));
         const searchableText = [
             match.home_team_name,
             match.away_team_name,
@@ -712,7 +939,9 @@ export default function ResultsEditor() {
     const scheduledCount = matches.filter((match) =>
         ['PENDING', 'SCHEDULED'].includes(getMatchStatus(match))
     ).length;
-    const finishedCount = matches.filter((match) => getMatchStatus(match) === 'FINISHED').length;
+    const finishedCount = matches.filter((match) =>
+        ['FINISHED', 'AWARDED'].includes(getMatchStatus(match))
+    ).length;
     const pageCount = Math.max(1, Math.ceil(filteredMatches.length / MATCHES_PER_PAGE));
     const visiblePage = Math.min(currentPage, pageCount);
     const visibleMatches = filteredMatches.slice(

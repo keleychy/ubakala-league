@@ -58,3 +58,34 @@ test('public results identify competitions by category and filter by category', 
   });
   expect(screen.getAllByText('Girls').length).toBeGreaterThan(0);
 });
+
+test('public results display awarded score, reason, and selected winner', async () => {
+  api.getSeasons.mockResolvedValue([
+    { id: 'awarded-season', name: 'Senior Boys 2026', category: 'senior_boys' }
+  ]);
+  api.getMatches.mockResolvedValue([
+    {
+      id: 'walkover-match',
+      season: { id: 'awarded-season', category: 'senior_boys' },
+      status: 'AWARDED',
+      home_team_id: 'team-home',
+      away_team_id: 'team-away',
+      home_team: { id: 'team-home', name: 'Senior Eagles' },
+      away_team: { id: 'team-away', name: 'Senior Rangers' },
+      home_score: 0,
+      away_score: 3,
+      awarded_winner_team_id: 'team-away',
+      result_type: 'WALKOVER',
+      award_reason: 'WALKOVER'
+    }
+  ]);
+
+  render(<Results />);
+
+  const awardedMessage = await screen.findByText('Match awarded.');
+  const matchCard = awardedMessage.closest('.results-match-card');
+
+  expect(within(matchCard).getByText('Awarded')).toBeInTheDocument();
+  expect(within(matchCard).getByText('0:3')).toBeInTheDocument();
+  expect(within(matchCard).getByText(/WALKOVER Awarded to: Senior Rangers/)).toBeInTheDocument();
+});
