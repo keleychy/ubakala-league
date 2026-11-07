@@ -294,6 +294,33 @@
     font-variant-numeric: tabular-nums;
 }
 
+.bracket-root .br-team.br-winner .br-team-name,
+.bracket-root .br-team.br-winner .score {
+    color: #89651e;
+    font-weight: 850;
+}
+
+.bracket-root .br-team.br-winner .score {
+    background: #fff3cf;
+}
+
+.bracket-root .br-penalty-result {
+    margin-top: 7px;
+    padding-top: 6px;
+    border-top: 1px solid #edf0f4;
+    color: var(--br-muted);
+    font-size: 10px;
+    font-weight: 700;
+    text-align: right;
+}
+
+.bracket-root .br-penalty-result strong {
+    margin-left: 5px;
+    color: var(--br-navy);
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+}
+
 .bracket-root .br-match-divider {
     display: flex;
     align-items: center;

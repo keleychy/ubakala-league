@@ -189,6 +189,133 @@ test('reopening a finished match records a reason and resets its status and peri
     });
   });
 
+  test('a tied knockout finalizes with separate penalty scores', async () => {
+    const tiedMatch = { ...scheduledMatch, home_score: 1, away_score: 1 };
+    renderScheduledMatch(tiedMatch);
+    await screen.findByText('Eagle FC', { selector: '.results-team-name' });
+
+    fireEvent.change(getMatchStatusSelect(), { target: { value: 'FINISHED' } });
+    fireEvent.change(screen.getByLabelText('Eagle FC Penalties'), {
+      target: { value: '4' }
+    });
+    fireEvent.change(screen.getByLabelText('Rangers FC Penalties'), {
+      target: { value: '3' }
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Mark Match Finished' }));
+
+    await waitFor(() => {
+      expect(callAdminApi).toHaveBeenCalledWith('admin.matches.markFinished', {
+        match_id: 'match-1',
+        status: 'FINISHED',
+        home_score: 1,
+        away_score: 1,
+        home_penalties: 4,
+        away_penalties: 3
+      });
+    });
+  });
+
+  test.each([
+    ['equal', '3', '3'],
+    ['missing', '4', '']
+  ])('blocks a tied knockout with %s penalty scores', async (_case, home, away) => {
+    const tiedMatch = { ...scheduledMatch, home_score: 0, away_score: 0 };
+    renderScheduledMatch(tiedMatch);
+    await screen.findByText('Eagle FC', { selector: '.results-team-name' });
+
+    fireEvent.change(getMatchStatusSelect(), { target: { value: 'FINISHED' } });
+    if (home !== '') {
+      fireEvent.change(screen.getByLabelText('Eagle FC Penalties'), {
+        target: { value: home }
+      });
+    }
+    if (away !== '') {
+      fireEvent.change(screen.getByLabelText('Rangers FC Penalties'), {
+        target: { value: away }
+      });
+    }
+    fireEvent.click(screen.getByRole('button', { name: 'Mark Match Finished' }));
+
+    expect(await screen.findByText(
+      home === away
+        ? /Penalty scores cannot be level/
+        : /Enter both penalty scores/
+    )).toBeInTheDocument();
+    expect(callAdminApi).not.toHaveBeenCalledWith(
+      'admin.matches.markFinished',
+      expect.anything()
+    );
+  });
+
+  test('a group-stage draw does not request penalty scores', async () => {
+    const groupMatch = {
+      ...scheduledMatch,
+      stage: 'GROUP',
+      home_score: 1,
+      away_score: 1
+    };
+    renderScheduledMatch(groupMatch);
+    await screen.findByText('Eagle FC', { selector: '.results-team-name' });
+
+    expect(screen.queryByText('Penalty Shootout')).not.toBeInTheDocument();
+    fireEvent.change(getMatchStatusSelect(), { target: { value: 'FINISHED' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Mark Match Finished' }));
+
+    await waitFor(() => {
+      expect(callAdminApi).toHaveBeenCalledWith('admin.matches.markFinished', {
+        match_id: 'match-1',
+        status: 'FINISHED',
+        home_score: 1,
+        away_score: 1
+      });
+    });
+  });
+
+  test('previously saved penalty scores load in the editor', async () => {
+    const savedMatch = {
+      ...finishedMatch,
+      home_score: 1,
+      away_score: 1,
+      home_penalties: 5,
+      away_penalties: 4
+    };
+    renderScheduledMatch(savedMatch);
+    await screen.findByText('Eagle FC', { selector: '.results-team-name' });
+
+    expect(screen.getByLabelText('Eagle FC Penalties')).toHaveValue(5);
+    expect(screen.getByLabelText('Rangers FC Penalties')).toHaveValue(4);
+  });
+
+  test('an awarded tied knockout does not require penalty scores', async () => {
+    const tiedMatch = { ...scheduledMatch, home_score: 1, away_score: 1 };
+    renderScheduledMatch(tiedMatch);
+    await screen.findByText('Eagle FC', { selector: '.results-team-name' });
+
+    fireEvent.change(getMatchStatusSelect(), { target: { value: 'AWARDED' } });
+    expect(screen.queryByText('Penalty Shootout')).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Award reason'), {
+      target: { value: 'PROTEST' }
+    });
+    fireEvent.change(screen.getByLabelText('Awarded winner'), {
+      target: { value: 'team-away' }
+    });
+    fireEvent.change(screen.getByLabelText('Award decision details'), {
+      target: { value: 'Committee decision' }
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Mark Match Finished' }));
+
+    await waitFor(() => {
+      expect(callAdminApi).toHaveBeenCalledWith('admin.matches.markFinished', expect.objectContaining({
+        status: 'AWARDED',
+        awarded_winner_team_id: 'team-away'
+      }));
+    });
+    expect(callAdminApi).not.toHaveBeenCalledWith(
+      'admin.matches.markFinished',
+      expect.objectContaining({ home_penalties: expect.anything() })
+    );
+  });
+
   test('walkover award saves a 3–0 score for the selected winner with award metadata', async () => {
     renderScheduledMatch();
     await screen.findByText('Eagle FC', { selector: '.results-team-name' });

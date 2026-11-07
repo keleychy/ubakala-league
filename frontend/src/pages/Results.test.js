@@ -89,3 +89,39 @@ test('public results display awarded score, reason, and selected winner', async 
   expect(matchCard.querySelector('.results-score')).toHaveTextContent('0:3');
   expect(within(matchCard).getByText(/WALKOVER Awarded to: Senior Rangers/)).toBeInTheDocument();
 });
+
+test('public knockout results show penalties and mark the penalty winner', async () => {
+  api.getMatches.mockResolvedValue([
+    {
+      id: 'penalty-final',
+      season: { id: 'senior-season', category: 'senior_boys' },
+      stage: 'FINAL',
+      status: 'FINISHED',
+      home_team_id: 'team-home',
+      away_team_id: 'team-away',
+      home_team: { id: 'team-home', name: 'Senior Eagles' },
+      away_team: { id: 'team-away', name: 'Senior Rangers' },
+      home_score: 1,
+      away_score: 1,
+      home_penalties: 4,
+      away_penalties: 3,
+      match_date: '2026-10-02'
+    }
+  ]);
+
+  render(<Results />);
+
+  const resultCard = await screen.findByText('Senior Eagles', {
+    selector: '.results-team.home'
+  });
+  expect(resultCard.closest('.results-match-card').querySelector('.results-penalties'))
+    .toHaveTextContent('Penalties: 4 - 3');
+
+  const bracket = document.querySelector('.results-bracket-card');
+  expect(bracket).toBeInTheDocument();
+  expect(within(bracket).getByText('Senior Eagles').closest('.results-bracket-team'))
+    .toHaveClass('winner');
+  expect(within(bracket).getByText('Senior Rangers').closest('.results-bracket-team'))
+    .not.toHaveClass('winner');
+  expect(bracket.querySelector('.results-bracket-penalties')).toHaveTextContent('Penalties: 4 - 3');
+});

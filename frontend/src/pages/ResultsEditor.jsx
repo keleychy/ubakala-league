@@ -76,6 +76,12 @@ function getAwardType(match) {
         : '';
 }
 
+function isValidPenaltyScore(value) {
+    return value !== '' &&
+        /^\d+$/.test(String(value)) &&
+        Number.isSafeInteger(Number(value));
+}
+
 function getFairPlayCardCounts(match) {
     return FAIR_PLAY_FIELDS.reduce((counts, field) => {
         const key = field.slice(1);
@@ -139,11 +145,13 @@ function MatchRow({ match, onUpdated }) {
         .replace(/[\s-]+/g, '_');
     const isKnockout = Boolean(stage && !['GROUP', 'GROUP_STAGE'].includes(stage));
 
-    const showPenalties =
-        isKnockout &&
+    const isNormalTimeTied =
         homeScore !== '' &&
         awayScore !== '' &&
         Number(homeScore) === Number(awayScore);
+    const showPenalties = isKnockout &&
+        status !== 'AWARDED' &&
+        (isNormalTimeTied || homePenalties !== '' || awayPenalties !== '');
     const statusLabel =
         MATCH_STATUS_OPTIONS.find((option) => option.value === status)?.label ||
         status;
@@ -211,14 +219,25 @@ function MatchRow({ match, onUpdated }) {
             payload.reason = correctionReason.trim();
         }
 
-        if (showPenalties) {
+        if (showPenalties && (homePenalties !== '' || awayPenalties !== '')) {
             if (homePenalties === '' || awayPenalties === '') {
-                setMessage('Enter both penalty scores before saving.');
+                setMessage('Enter both penalty scores, or leave both blank until the shootout is recorded.');
+                return;
+            }
+            if (!isValidPenaltyScore(homePenalties) || !isValidPenaltyScore(awayPenalties)) {
+                setMessage('Penalty scores must be non-negative whole numbers.');
+                return;
+            }
+            if (isFinished && isNormalTimeTied && Number(homePenalties) === Number(awayPenalties)) {
+                setMessage('Penalty scores cannot be level when finalizing a knockout match.');
                 return;
             }
 
             payload.home_penalties = Number(homePenalties);
             payload.away_penalties = Number(awayPenalties);
+        } else if (isFinished && isKnockout && isNormalTimeTied) {
+            setMessage('Enter both penalty scores before saving a finished tied knockout match.');
+            return;
         }
 
         if (fairPlayFieldsEntered.length === FAIR_PLAY_FIELDS.length) {
@@ -308,6 +327,10 @@ function MatchRow({ match, onUpdated }) {
         const isScoreFinalization = status === 'FINISHED' || status === 'AWARDED';
         const finalHomeScore = status === 'AWARDED' ? awardHomeScore : homeScore;
         const finalAwayScore = status === 'AWARDED' ? awardAwayScore : awayScore;
+        const finalScoreIsTied =
+            finalHomeScore !== '' &&
+            finalAwayScore !== '' &&
+            Number(finalHomeScore) === Number(finalAwayScore);
 
         if (
             isScoreFinalization &&
@@ -316,6 +339,21 @@ function MatchRow({ match, onUpdated }) {
         ) {
             setMessage('Enter both team scores before finalizing this result.');
             return;
+        }
+
+        if (
+            status === 'FINISHED' &&
+            isKnockout &&
+            finalScoreIsTied
+        ) {
+            if (!isValidPenaltyScore(homePenalties) || !isValidPenaltyScore(awayPenalties)) {
+                setMessage('Enter both penalty scores as non-negative whole numbers before finalizing this tied knockout match.');
+                return;
+            }
+            if (Number(homePenalties) === Number(awayPenalties)) {
+                setMessage('Penalty scores cannot be level; a knockout winner must be determined.');
+                return;
+            }
         }
 
         if (status === 'AWARDED') {
@@ -385,11 +423,11 @@ function MatchRow({ match, onUpdated }) {
             if (isScoreFinalization) {
                 payload.home_score = Number(finalHomeScore);
                 payload.away_score = Number(finalAwayScore);
-                if (showPenalties && !isWalkoverAward) {
-                    if (homePenalties === '' || awayPenalties === '') {
-                        setMessage('Enter both penalty scores before finalizing this result.');
-                        return;
-                    }
+                if (
+                    status === 'FINISHED' &&
+                    isKnockout &&
+                    finalScoreIsTied
+                ) {
                     payload.home_penalties = Number(homePenalties);
                     payload.away_penalties = Number(awayPenalties);
                 }
@@ -688,6 +726,9 @@ function MatchRow({ match, onUpdated }) {
                         <div className="results-penalty-heading">
                             Penalty Shootout
                         </div>
+                        <p className="results-penalty-hint">
+                            Required to decide a tied knockout match. Penalties are recorded separately from the match score.
+                        </p>
 
                         <div className="results-score-inputs">
                             <div className="results-score-team">
@@ -696,13 +737,17 @@ function MatchRow({ match, onUpdated }) {
                                 </label>
 
                                 <input
+                                    aria-label={`${match.home_team_name || 'Home Team'} Penalties`}
                                     type="number"
                                     min="0"
+                                    step="1"
+                                    inputMode="numeric"
                                     value={homePenalties}
                                     onChange={(event) =>
                                         setHomePenalties(event.target.value)
                                     }
                                     placeholder="0"
+                                    disabled={!isNormalTimeTied || finishing || saving}
                                 />
                             </div>
 
@@ -714,13 +759,17 @@ function MatchRow({ match, onUpdated }) {
                                 </label>
 
                                 <input
+                                    aria-label={`${match.away_team_name || 'Away Team'} Penalties`}
                                     type="number"
                                     min="0"
+                                    step="1"
+                                    inputMode="numeric"
                                     value={awayPenalties}
                                     onChange={(event) =>
                                         setAwayPenalties(event.target.value)
                                     }
                                     placeholder="0"
+                                    disabled={!isNormalTimeTied || finishing || saving}
                                 />
                             </div>
                         </div>

@@ -15,6 +15,38 @@ const isPlaceholder = (teamName) => {
     return /WINNER|LOSER/i.test(teamName);
 };
 
+const hasValidScore = (value) =>
+    value !== null &&
+    value !== undefined &&
+    Number.isSafeInteger(Number(value)) &&
+    Number(value) >= 0;
+
+const getKnockoutWinnerSide = (match) => {
+    const status = String(match?.status || '').toUpperCase();
+    if (!['FINISHED', 'AWARDED'].includes(status)) return null;
+
+    if (status === 'AWARDED' && match.awarded_winner_team_id) {
+        if (String(match.awarded_winner_team_id) === String(match.home_team_id)) return 'home';
+        if (String(match.awarded_winner_team_id) === String(match.away_team_id)) return 'away';
+        return null;
+    }
+
+    if (!hasValidScore(match.home_score) || !hasValidScore(match.away_score)) return null;
+    if (Number(match.home_score) > Number(match.away_score)) return 'home';
+    if (Number(match.away_score) > Number(match.home_score)) return 'away';
+
+    if (
+        status !== 'AWARDED' &&
+        hasValidScore(match.home_penalties) &&
+        hasValidScore(match.away_penalties) &&
+        Number(match.home_penalties) !== Number(match.away_penalties)
+    ) {
+        return Number(match.home_penalties) > Number(match.away_penalties) ? 'home' : 'away';
+    }
+
+    return null;
+};
+
 const renderBracketTeam = (teamValue, match) => {
     const name = typeof teamValue === 'object' ? teamValue?.name : teamValue;
 
@@ -240,10 +272,7 @@ export default function Bracket() {
                     m => String(m.id) === String(c.from)
                 );
 
-                const revealed = src &&
-                    src.home_score !== null &&
-                    src.away_score !== null &&
-                    src.home_score !== src.away_score;
+                const revealed = Boolean(getKnockoutWinnerSide(src));
 
                 return {
                     id: `conn-${idx}`,
@@ -347,7 +376,7 @@ export default function Bracket() {
                 boxRefs.current[m.id] = el;
             }}
         >
-            <div className="br-team br-home">
+            <div className={`br-team br-home ${getKnockoutWinnerSide(m) === 'home' ? 'br-winner' : ''}`}>
                 <span className="br-team-name">
                     {renderBracketTeam(m.home_team, m)}
                 </span>
@@ -361,7 +390,7 @@ export default function Bracket() {
                 <span>VS</span>
             </div>
 
-            <div className="br-team br-away">
+            <div className={`br-team br-away ${getKnockoutWinnerSide(m) === 'away' ? 'br-winner' : ''}`}>
                 <span className="br-team-name">
                     {renderBracketTeam(m.away_team, m)}
                 </span>
@@ -370,6 +399,15 @@ export default function Bracket() {
                     {m.away_score ?? '-'}
                 </span>
             </div>
+            {getKnockoutWinnerSide(m) &&
+                hasValidScore(m.home_score) &&
+                Number(m.home_score) === Number(m.away_score) &&
+                hasValidScore(m.home_penalties) &&
+                hasValidScore(m.away_penalties) && (
+                    <div className="br-penalty-result">
+                        Penalties <strong>{m.home_penalties}–{m.away_penalties}</strong>
+                    </div>
+                )}
         </div>
     );
 

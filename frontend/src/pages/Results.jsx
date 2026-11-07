@@ -513,6 +513,14 @@ const styles = `
     font-variant-numeric: tabular-nums;
   }
 
+  .results-bracket-penalties {
+    padding: 8px 13px 10px;
+    border-top: 1px solid #edf0f4;
+    color: #64748b;
+    font-size: 10px;
+    font-weight: 700;
+  }
+
   .results-loading {
     display: flex;
     justify-content: center;
@@ -734,6 +742,42 @@ const getMatchDate = (match) => {
 const isMatchAwarded = (match) => getMatchStatusCode(match) === 'AWARDED';
 
 const isMatchVoid = (match) => getMatchStatusCode(match) === 'VOID';
+
+const isValidScore = (value) =>
+  value !== null &&
+  value !== undefined &&
+  Number.isSafeInteger(Number(value)) &&
+  Number(value) >= 0;
+
+const getKnockoutWinnerSide = (match) => {
+  const status = getMatchStatusCode(match);
+  if (!['FINISHED', 'AWARDED'].includes(status)) return null;
+
+  if (status === 'AWARDED') {
+    const awardedWinner = match?.awarded_winner_team_id ?? match?.awarded_to;
+    if (awardedWinner && typeof awardedWinner !== 'object') {
+      if (String(awardedWinner) === String(match?.home_team_id ?? match?.home_team?.id)) {
+        return 'home';
+      }
+      if (String(awardedWinner) === String(match?.away_team_id ?? match?.away_team?.id)) {
+        return 'away';
+      }
+    }
+    return null;
+  }
+
+  if (!isValidScore(match?.home_score) || !isValidScore(match?.away_score)) return null;
+  if (Number(match.home_score) > Number(match.away_score)) return 'home';
+  if (Number(match.away_score) > Number(match.home_score)) return 'away';
+  if (
+    isValidScore(match.home_penalties) &&
+    isValidScore(match.away_penalties) &&
+    Number(match.home_penalties) !== Number(match.away_penalties)
+  ) {
+    return Number(match.home_penalties) > Number(match.away_penalties) ? 'home' : 'away';
+  }
+  return null;
+};
 
 const getAwardedName = (match) => {
   const awardedTo = match?.awarded_to ?? match?.awarded_winner_team_id;
@@ -1054,13 +1098,14 @@ const Results = () => {
       match?.away_score !== null &&
       match?.away_score !== undefined;
 
-    const homeWinner =
+    const winnerSide = getKnockoutWinnerSide(match);
+    const hasPenaltyResult =
+      getMatchStatusCode(match) === 'FINISHED' &&
       hasScores &&
-      Number(match.home_score) > Number(match.away_score);
-
-    const awayWinner =
-      hasScores &&
-      Number(match.away_score) > Number(match.home_score);
+      Number(match.home_score) === Number(match.away_score) &&
+      isValidScore(match.home_penalties) &&
+      isValidScore(match.away_penalties) &&
+      Number(match.home_penalties) !== Number(match.away_penalties);
 
     return (
       <div className="results-bracket-card" key={match.id}>
@@ -1069,7 +1114,7 @@ const Results = () => {
           {getCompetitionCategoryLabel(getMatchCategory(match))}
         </div>
 
-        <div className={`results-bracket-team ${homeWinner ? 'winner' : ''}`}>
+        <div className={`results-bracket-team ${winnerSide === 'home' ? 'winner' : ''}`}>
           <span>{formatPlaceholder(match.home_team)}</span>
 
           <span className="results-bracket-score">
@@ -1077,13 +1122,18 @@ const Results = () => {
           </span>
         </div>
 
-        <div className={`results-bracket-team ${awayWinner ? 'winner' : ''}`}>
+        <div className={`results-bracket-team ${winnerSide === 'away' ? 'winner' : ''}`}>
           <span>{formatPlaceholder(match.away_team)}</span>
 
           <span className="results-bracket-score">
             {hasScores ? match.away_score : '—'}
           </span>
         </div>
+        {hasPenaltyResult && (
+          <div className="results-bracket-penalties">
+            Penalties: {match.home_penalties} - {match.away_penalties}
+          </div>
+        )}
       </div>
     );
   };
@@ -1111,10 +1161,16 @@ const Results = () => {
       match?.away_penalty_score ?? match?.away_penalties;
 
     const hasPenalties =
+      statusCode === 'FINISHED' &&
+      hasScores &&
+      Number(match.home_score) === Number(match.away_score) &&
       homePenalty !== null &&
       homePenalty !== undefined &&
       awayPenalty !== null &&
-      awayPenalty !== undefined;
+      awayPenalty !== undefined &&
+      isValidScore(homePenalty) &&
+      isValidScore(awayPenalty) &&
+      Number(homePenalty) !== Number(awayPenalty);
 
     const originalHome = match?.official_home_score ?? match?.original_home_score;
     const originalAway = match?.official_away_score ?? match?.original_away_score;

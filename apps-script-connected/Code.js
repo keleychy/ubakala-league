@@ -1048,16 +1048,26 @@ function updateMatchFieldsAndRecalculateQualifications_(
   );
   const match = getSheetRecords('Matches')
     .find(record => String(record.id) === String(id));
-  if (!match || !isGroupStageRecord_(match)) {
-    return updated;
+  if (!match) return updated;
+
+  if (isGroupStageRecord_(match)) {
+    try {
+      recalculateGroupQualifications_(String(match.season_id), user);
+    } catch (error) {
+      console.error('Group qualification synchronization failed:', error);
+      throw apiError_(
+        'The match update was saved, but group qualification could not be synchronized. ' +
+        'Refresh and retry the match update.'
+      );
+    }
   }
 
   try {
-    recalculateGroupQualifications_(String(match.season_id), user);
+    recalculateKnockoutProgression_(String(match.season_id), user);
   } catch (error) {
-    console.error('Group qualification synchronization failed:', error);
+    console.error('Knockout progression synchronization failed:', error);
     throw apiError_(
-      'The match update was saved, but group qualification could not be synchronized. ' +
+      'The match update was saved, but knockout progression could not be synchronized. ' +
       'Refresh and retry the match update.'
     );
   }
@@ -1332,6 +1342,100 @@ function recalculateGroupQualifications_(seasonId, user) {
   });
 
   return updatedCount;
+}
+
+function recalculateKnockoutProgression_(seasonId, user) {
+  const seasonMatches = getSheetRecords('Matches')
+    .filter(match => String(match.season_id) === seasonId)
+    .sort((left, right) =>
+      Number(left.match_number || Number.MAX_SAFE_INTEGER) -
+      Number(right.match_number || Number.MAX_SAFE_INTEGER)
+    );
+  const matchesByNumber = Object.create(null);
+  seasonMatches.forEach(match => {
+    const matchNumber = Number(match.match_number);
+    if (Number.isSafeInteger(matchNumber)) matchesByNumber[String(matchNumber)] = match;
+  });
+  let updatedCount = 0;
+
+  seasonMatches.forEach(target => {
+    if (isGroupStageRecord_(target)) return;
+
+    ['home', 'away'].forEach(side => {
+      const nameField = side + '_team_name';
+      const idField = side + '_team_id';
+      const placeholder = String(target[nameField] || '').trim()
+        .match(/^(WINNER|LOSER)[\s_-]*(\d+)$/i);
+      if (!placeholder) return;
+
+      const source = matchesByNumber[placeholder[2]];
+      const outcome = source && getKnockoutMatchOutcome_(source);
+      const teamId = outcome
+        ? outcome[placeholder[1].toLowerCase() + '_team_id']
+        : '';
+      if (String(target[idField] || '') === String(teamId || '')) return;
+
+      updateRecordFieldsAndAudit_(
+        'Matches',
+        String(target.id),
+        { [idField]: teamId || '' },
+        user,
+        'match.knockout.progression.updated',
+        'Automatically synchronized from the completed knockout result'
+      );
+      target[idField] = teamId || '';
+      updatedCount += 1;
+    });
+  });
+
+  return updatedCount;
+}
+
+function getKnockoutMatchOutcome_(match) {
+  const stage = String(match.stage || '').trim();
+  if (!stage || isGroupStageRecord_(match)) return null;
+
+  const homeTeamId = String(match.home_team_id || '');
+  const awayTeamId = String(match.away_team_id || '');
+  if (!homeTeamId || !awayTeamId || homeTeamId === awayTeamId) return null;
+
+  let winnerTeamId = '';
+  const status = String(match.status || '').trim().toUpperCase();
+  if (status === 'AWARDED') {
+    const awardedWinner = String(match.awarded_winner_team_id || '');
+    if (awardedWinner === homeTeamId || awardedWinner === awayTeamId) {
+      winnerTeamId = awardedWinner;
+    }
+  } else if (status === 'FINISHED') {
+    const homeScore = nonNegativeIntegerOrNull_(match.home_score);
+    const awayScore = nonNegativeIntegerOrNull_(match.away_score);
+    if (homeScore === null || awayScore === null) return null;
+
+    if (homeScore > awayScore) {
+      winnerTeamId = homeTeamId;
+    } else if (awayScore > homeScore) {
+      winnerTeamId = awayTeamId;
+    } else {
+      const homePenalties = nonNegativeIntegerOrNull_(match.home_penalties);
+      const awayPenalties = nonNegativeIntegerOrNull_(match.away_penalties);
+      if (homePenalties === null || awayPenalties === null || homePenalties === awayPenalties) {
+        return null;
+      }
+      winnerTeamId = homePenalties > awayPenalties ? homeTeamId : awayTeamId;
+    }
+  }
+
+  if (!winnerTeamId) return null;
+  return {
+    winner_team_id: winnerTeamId,
+    loser_team_id: winnerTeamId === homeTeamId ? awayTeamId : homeTeamId
+  };
+}
+
+function nonNegativeIntegerOrNull_(value) {
+  if (value === '' || value === null || value === undefined) return null;
+  const number = Number(value);
+  return Number.isSafeInteger(number) && number >= 0 ? number : null;
 }
 
 function validateNewsInput_(body, partial) {
@@ -1885,6 +1989,16 @@ function normalizeMatch_(record, references) {
   const groupId = optionalId_(record.group_id);
   const homeTeamId = optionalId_(record.home_team_id);
   const awayTeamId = optionalId_(record.away_team_id);
+  const homeTeamName = getMatchTeamDisplayName_(
+    record.home_team_name,
+    homeTeamId,
+    references
+  );
+  const awayTeamName = getMatchTeamDisplayName_(
+    record.away_team_name,
+    awayTeamId,
+    references
+  );
   const stage = optionalText_(record.stage);
   const date = normalizeDate_(record.match_date);
   const kickoffTime = normalizeTime_(record.kickoff_time);
@@ -1904,21 +2018,15 @@ function normalizeMatch_(record, references) {
     kickoff_at: date && kickoffTime ? date + 'T' + kickoffTime + ':00+01:00' : null,
     home_team_id: homeTeamId,
     away_team_id: awayTeamId,
-    home_team_name: optionalText_(record.home_team_name),
-    away_team_name: optionalText_(record.away_team_name),
+    home_team_name: homeTeamName,
+    away_team_name: awayTeamName,
     home_team: {
       id: homeTeamId,
-      name: optionalText_(record.home_team_name) ||
-        (homeTeamId && references.teamsById[homeTeamId]
-          ? references.teamsById[homeTeamId].name
-          : null)
+      name: homeTeamName
     },
     away_team: {
       id: awayTeamId,
-      name: optionalText_(record.away_team_name) ||
-        (awayTeamId && references.teamsById[awayTeamId]
-          ? references.teamsById[awayTeamId].name
-          : null)
+      name: awayTeamName
     },
     home_score: optionalNumber_(record.home_score, 'Matches.home_score'),
     away_score: optionalNumber_(record.away_score, 'Matches.away_score'),
@@ -1948,6 +2056,15 @@ function normalizeMatch_(record, references) {
     current_period: optionalText_(record.current_period)?.toUpperCase() || null,
     notes: optionalText_(record.notes)
   };
+}
+
+function getMatchTeamDisplayName_(storedName, teamId, references) {
+  const name = optionalText_(storedName);
+  const isProgressionPlaceholder = /^(WINNER|LOSER)[\s_-]*\d+$/i.test(name || '');
+  const team = teamId && references.teamsById[teamId];
+
+  if (isProgressionPlaceholder && team) return team.name;
+  return name || (team ? team.name : null);
 }
 
 function normalizeNews_(record) {
