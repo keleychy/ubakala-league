@@ -382,6 +382,7 @@ export default function Home() {
 
                 const statusCode = getMatchStatusCode(match);
                 const statusLabel = getMatchStatusLabel(match);
+                const isMatchComplete = ['FINISHED', 'AWARDED'].includes(statusCode);
                 const periodLabel = statusCode === 'LIVE'
                   ? getMatchPeriodLabel(match)
                   : null;
@@ -500,9 +501,10 @@ export default function Home() {
                       )}
                     </div>
 
-                    {statusCode === 'FINISHED' && (
+                    {isMatchComplete && (
                       <div className="home-completed-label">
-                        <span aria-hidden="true">✓</span> Full Time
+                        <span aria-hidden="true">✓</span>{' '}
+                        {statusCode === 'AWARDED' ? 'Match Complete' : 'Full Time'}
                       </div>
                     )}
 

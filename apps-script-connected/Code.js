@@ -1124,7 +1124,7 @@ function recalculateGroupQualifications_(seasonId, user) {
 
     const teamIdSet = new Set(teamIds);
     const groupMatches = seasonMatches.filter(match =>
-      String(match.group_id || '') === group.id && isGroupStageRecord_(match) &&
+      isGroupStageRecord_(match) &&
       teamIdSet.has(String(match.home_team_id || '')) &&
       teamIdSet.has(String(match.away_team_id || ''))
     );
@@ -1317,7 +1317,7 @@ function recalculateGroupQualifications_(seasonId, user) {
       finalRankingGroups[1].length !== 1
     ) return;
 
-    qualifiersByGroup[group.name.toUpperCase()] = {
+    qualifiersByGroup[normalizeQualificationGroupKey_(group.name)] = {
       first: finalRankingGroups[0][0],
       second: finalRankingGroups[1][0]
     };
@@ -1339,7 +1339,7 @@ function recalculateGroupQualifications_(seasonId, user) {
 
     const resolveSlot = slot => {
       const [place, groupName] = slot;
-      const qualifier = qualifiersByGroup[groupName];
+      const qualifier = qualifiersByGroup[normalizeQualificationGroupKey_(groupName)];
       const team = qualifier && qualifier[place];
       return {
         id: team ? team.team_id : '',
@@ -1377,6 +1377,14 @@ function recalculateGroupQualifications_(seasonId, user) {
   });
 
   return updatedCount;
+}
+
+function normalizeQualificationGroupKey_(value) {
+  return String(value || '')
+    .trim()
+    .toUpperCase()
+    .replace(/^GROUP[\s_-]+/, '')
+    .replace(/[\s_-]+/g, '');
 }
 
 function recalculateKnockoutProgression_(seasonId, user) {
