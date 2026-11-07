@@ -744,6 +744,7 @@ const isMatchAwarded = (match) => getMatchStatusCode(match) === 'AWARDED';
 const isMatchVoid = (match) => getMatchStatusCode(match) === 'VOID';
 
 const isValidScore = (value) =>
+  value !== '' &&
   value !== null &&
   value !== undefined &&
   Number.isSafeInteger(Number(value)) &&

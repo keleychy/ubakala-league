@@ -215,10 +215,36 @@ test('reopening a finished match records a reason and resets its status and peri
     });
   });
 
+  test('a 0-0 knockout draw can be decided by a penalty shootout', async () => {
+    const tiedMatch = { ...scheduledMatch, home_score: 0, away_score: 0 };
+    renderScheduledMatch(tiedMatch);
+    await screen.findByText('Eagle FC', { selector: '.results-team-name' });
+
+    fireEvent.change(getMatchStatusSelect(), { target: { value: 'FINISHED' } });
+    fireEvent.change(screen.getByLabelText('Eagle FC Penalties'), {
+      target: { value: '5' }
+    });
+    fireEvent.change(screen.getByLabelText('Rangers FC Penalties'), {
+      target: { value: '4' }
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Mark Match Finished' }));
+
+    await waitFor(() => {
+      expect(callAdminApi).toHaveBeenCalledWith('admin.matches.markFinished', expect.objectContaining({
+        home_score: 0,
+        away_score: 0,
+        home_penalties: 5,
+        away_penalties: 4
+      }));
+    });
+  });
+
   test.each([
-    ['equal', '3', '3'],
-    ['missing', '4', '']
-  ])('blocks a tied knockout with %s penalty scores', async (_case, home, away) => {
+    ['equal', '3', '3', /Penalty scores cannot be level/],
+    ['missing', '4', '', /Enter both penalty scores/],
+    ['fractional', '2.5', '3', /non-negative whole numbers/],
+    ['negative', '-1', '3', /non-negative whole numbers/]
+  ])('blocks a tied knockout with %s penalty scores', async (_case, home, away, message) => {
     const tiedMatch = { ...scheduledMatch, home_score: 0, away_score: 0 };
     renderScheduledMatch(tiedMatch);
     await screen.findByText('Eagle FC', { selector: '.results-team-name' });
@@ -236,11 +262,7 @@ test('reopening a finished match records a reason and resets its status and peri
     }
     fireEvent.click(screen.getByRole('button', { name: 'Mark Match Finished' }));
 
-    expect(await screen.findByText(
-      home === away
-        ? /Penalty scores cannot be level/
-        : /Enter both penalty scores/
-    )).toBeInTheDocument();
+    expect(await screen.findByText(message)).toBeInTheDocument();
     expect(callAdminApi).not.toHaveBeenCalledWith(
       'admin.matches.markFinished',
       expect.anything()
@@ -284,6 +306,35 @@ test('reopening a finished match records a reason and resets its status and peri
 
     expect(screen.getByLabelText('Eagle FC Penalties')).toHaveValue(5);
     expect(screen.getByLabelText('Rangers FC Penalties')).toHaveValue(4);
+  });
+
+  test('penalty scores remain available after the finalized match reloads', async () => {
+    let storedMatch = { ...scheduledMatch, home_score: 1, away_score: 1 };
+    renderScheduledMatch(storedMatch, (action, payload) => {
+      if (action === 'admin.matches.list') return Promise.resolve([{ ...storedMatch }]);
+      if (action === 'admin.matches.markFinished') {
+        storedMatch = { ...storedMatch, ...payload, current_period: 'ENDED' };
+        return Promise.resolve(storedMatch);
+      }
+      return Promise.resolve({});
+    });
+    await screen.findByText('Eagle FC', { selector: '.results-team-name' });
+
+    fireEvent.change(getMatchStatusSelect(), { target: { value: 'FINISHED' } });
+    fireEvent.change(screen.getByLabelText('Eagle FC Penalties'), {
+      target: { value: '4' }
+    });
+    fireEvent.change(screen.getByLabelText('Rangers FC Penalties'), {
+      target: { value: '3' }
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Mark Match Finished' }));
+
+    await waitFor(() => {
+      expect(storedMatch.home_penalties).toBe(4);
+      expect(storedMatch.away_penalties).toBe(3);
+    });
+    expect(await screen.findByLabelText('Eagle FC Penalties')).toHaveValue(4);
+    expect(screen.getByLabelText('Rangers FC Penalties')).toHaveValue(3);
   });
 
   test('an awarded tied knockout does not require penalty scores', async () => {

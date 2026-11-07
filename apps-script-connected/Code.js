@@ -1365,7 +1365,7 @@ function recalculateKnockoutProgression_(seasonId, user) {
       const nameField = side + '_team_name';
       const idField = side + '_team_id';
       const placeholder = String(target[nameField] || '').trim()
-        .match(/^(WINNER|LOSER)[\s_-]*(\d+)$/i);
+        .match(/^(WINNER|LOSER)[\s_-]*(?:MD[\s_-]*)?(\d+)$/i);
       if (!placeholder) return;
 
       const source = matchesByNumber[placeholder[2]];
@@ -2060,7 +2060,8 @@ function normalizeMatch_(record, references) {
 
 function getMatchTeamDisplayName_(storedName, teamId, references) {
   const name = optionalText_(storedName);
-  const isProgressionPlaceholder = /^(WINNER|LOSER)[\s_-]*\d+$/i.test(name || '');
+  const isProgressionPlaceholder =
+    /^(WINNER|LOSER)[\s_-]*(?:MD[\s_-]*)?\d+$/i.test(name || '');
   const team = teamId && references.teamsById[teamId];
 
   if (isProgressionPlaceholder && team) return team.name;

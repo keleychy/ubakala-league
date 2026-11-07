@@ -16,6 +16,7 @@ const isPlaceholder = (teamName) => {
 };
 
 const hasValidScore = (value) =>
+    value !== '' &&
     value !== null &&
     value !== undefined &&
     Number.isSafeInteger(Number(value)) &&
@@ -25,7 +26,8 @@ const getKnockoutWinnerSide = (match) => {
     const status = String(match?.status || '').toUpperCase();
     if (!['FINISHED', 'AWARDED'].includes(status)) return null;
 
-    if (status === 'AWARDED' && match.awarded_winner_team_id) {
+    if (status === 'AWARDED') {
+        if (!match.awarded_winner_team_id) return null;
         if (String(match.awarded_winner_team_id) === String(match.home_team_id)) return 'home';
         if (String(match.awarded_winner_team_id) === String(match.away_team_id)) return 'away';
         return null;
@@ -399,7 +401,8 @@ export default function Bracket() {
                     {m.away_score ?? '-'}
                 </span>
             </div>
-            {getKnockoutWinnerSide(m) &&
+            {String(m.status || '').toUpperCase() === 'FINISHED' &&
+                getKnockoutWinnerSide(m) &&
                 hasValidScore(m.home_score) &&
                 Number(m.home_score) === Number(m.away_score) &&
                 hasValidScore(m.home_penalties) &&
