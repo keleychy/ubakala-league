@@ -53,6 +53,12 @@ function doPost(e) {
         data: recordNewsView_(body)
       });
     }
+    if (String(body.action || '').indexOf('predictions.') === 0) {
+      return jsonResponse({
+        success: true,
+        data: handlePredictionPublicPost_(body)
+      });
+    }
     const user = authenticateAdmin_(body.idToken);
     const data = handleAdminPost_(body, user);
     return jsonResponse({ success: true, data: data });
@@ -493,6 +499,12 @@ function handleApiGet(parameters) {
       .filter(match => !seasonId || match.season_id === seasonId);
     return { success: true, data: matches };
   }
+  if (action.indexOf('predictions.') === 0) {
+    return {
+      success: true,
+      data: handlePredictionPublicGet_(parameters)
+    };
+  }
 
   if (action === 'news') {
     const publishedNews = getSheetRecords('News')
@@ -518,6 +530,10 @@ function handleAdminPost_(body, user) {
 
   if (action === 'admin.me') {
     return { email: user.email, role: user.role };
+  }
+  if (action.indexOf('admin.predictions.') === 0) {
+    requireAdminPermission_(user, 'predictions');
+    return handlePredictionAdminAction_(body, user);
   }
   if (action === 'admin.matches.list') {
     requireAdminPermission_(user, 'matches');

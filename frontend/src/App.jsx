@@ -19,6 +19,8 @@ import Header from './components/Header';
 import Footer from './components/Footer';
 import ErrorBoundary from './components/ErrorBoundary';
 import GroupManager from './pages/GroupManager';
+import Predictions from './pages/Predictions';
+import AdminPredictions from './pages/AdminPredictions';
 
 // 1. IMPORT ANALYTICS LIBRARIES
 import { Analytics } from '@vercel/analytics/react';
@@ -73,6 +75,7 @@ export default function App() {
                 <Route path="/history" element={<History />} />
                 <Route path="/history/:year" element={<History />} />
                 <Route path="/rules-regulations" element={<RulesRegulations />} />
+                <Route path="/predictions" element={<Predictions />} />
                 <Route path="/admin" element={<AdminLogin />} />
                 <Route path="/admin-dashboard" element={
                   <RequireAuth allowedRoles={['admin', 'ResultsEditor', 'newsuser']}>
@@ -102,6 +105,11 @@ export default function App() {
                 <Route path="/group-manager" element={
                   <RequireAuth allowedRoles={['admin']}>
                     <GroupManager />
+                  </RequireAuth>
+                } />
+                <Route path="/admin-predictions" element={
+                  <RequireAuth allowedRoles={['admin']}>
+                    <AdminPredictions />
                   </RequireAuth>
                 } />
               </Routes>

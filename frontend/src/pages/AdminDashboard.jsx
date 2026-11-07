@@ -168,6 +168,15 @@ export default function AdminDashboard() {
                   </div>
                 </div>
               </Link>
+
+              <Link to="/admin-predictions" className="league-dashboard-link">
+                <div className="league-dashboard-card">
+                  <div>
+                    <div className="league-dashboard-card__title">Predictions Centre</div>
+                    <div className="league-dashboard-card__description">Manage predictors, settings and prediction settlements.</div>
+                  </div>
+                </div>
+              </Link>
             </>
           )}
         </div>
