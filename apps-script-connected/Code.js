@@ -1014,20 +1014,7 @@ function setMatchStatus_(body, user) {
 
 function markMatchFinished_(body, user) {
   const id = requireRecordId_(body, 'match id');
-  const requestedStatus = optionalText_(body.status);
-
-  if (!requestedStatus && body.home_score === undefined && body.away_score === undefined) {
-    return updateMatchFieldsAndRecalculateQualifications_(
-      'Matches',
-      id,
-      { status: 'FINISHED', current_period: 'ENDED' },
-      user,
-      'match.finished',
-      body.reason
-    );
-  }
-
-  const status = (requestedStatus || 'FINISHED').toUpperCase();
+  const status = requiredText_(body.status, 'status').toUpperCase();
   if (['FINISHED', 'AWARDED'].includes(status)) {
     return setMatchResult_(Object.assign({}, body, { status: status }), user);
   }

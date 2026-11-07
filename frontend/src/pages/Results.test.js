@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { api } from '../api/api';
 import Results from './Results';
 
@@ -86,6 +86,6 @@ test('public results display awarded score, reason, and selected winner', async 
   const matchCard = awardedMessage.closest('.results-match-card');
 
   expect(within(matchCard).getByText('Awarded')).toBeInTheDocument();
-  expect(within(matchCard).getByText('0:3')).toBeInTheDocument();
+  expect(matchCard.querySelector('.results-score')).toHaveTextContent('0:3');
   expect(within(matchCard).getByText(/WALKOVER Awarded to: Senior Rangers/)).toBeInTheDocument();
 });
