@@ -156,6 +156,8 @@ function MatchRow({ match, onUpdated }) {
         MATCH_STATUS_OPTIONS.find((option) => option.value === status)?.label ||
         status;
     const isFinished = status === 'FINISHED' && getMatchStatus(match) === 'FINISHED';
+    const isAwarded = status === 'AWARDED' && getMatchStatus(match) === 'AWARDED';
+    const isFinalized = isFinished || isAwarded;
     const isWalkoverAward = status === 'AWARDED' && awardType === 'WALKOVER';
     const getWalkoverScore = (teamId) => {
         if (!awardedWinnerId) return '';
@@ -561,7 +563,7 @@ function MatchRow({ match, onUpdated }) {
                                 type="button"
                                 className="results-small-button"
                                 onClick={handleSaveStatus}
-                                disabled={savingStatus || finishing || saving}
+                                disabled={isFinalized || savingStatus || finishing || saving}
                             >
                                 {savingStatus ? 'Saving...' : 'Update'}
                             </button>
@@ -570,13 +572,13 @@ function MatchRow({ match, onUpdated }) {
                             id={`status-${match.id}`}
                             value={status}
                             onChange={(event) => setStatus(event.target.value)}
-                            disabled={savingStatus || finishing || saving}
+                            disabled={isFinalized || savingStatus || finishing || saving}
                         >
                             {MATCH_STATUS_OPTIONS.map((option) => (
                                 <option
                                     key={option.value}
                                     value={option.value}
-                                    disabled={isFinished && option.value !== 'FINISHED'}
+                                    disabled={isFinalized && option.value !== status}
                                 >
                                     {option.label}
                                 </option>
@@ -593,7 +595,7 @@ function MatchRow({ match, onUpdated }) {
                                 type="button"
                                 className="results-small-button"
                                 onClick={handleSavePeriod}
-                                disabled={savingPeriod}
+                                disabled={isAwarded || savingPeriod}
                             >
                                 {savingPeriod ? 'Saving...' : 'Update'}
                             </button>
@@ -602,6 +604,7 @@ function MatchRow({ match, onUpdated }) {
                             id={`period-${match.id}`}
                             value={period}
                             onChange={(event) => setPeriod(event.target.value)}
+                            disabled={isAwarded}
                         >
                             {MATCH_PERIOD_OPTIONS.map((option) => (
                                 <option
@@ -626,7 +629,7 @@ function MatchRow({ match, onUpdated }) {
                                 aria-label="Award reason"
                                 value={awardType}
                                 onChange={(event) => setAwardType(event.target.value)}
-                                disabled={finishing || saving}
+                                disabled={isAwarded || finishing || saving}
                             >
                                 <option value="">Select an authorised decision</option>
                                 {AWARD_TYPES.map((option) => (
@@ -643,7 +646,7 @@ function MatchRow({ match, onUpdated }) {
                                 aria-label="Awarded winner"
                                 value={awardedWinnerId}
                                 onChange={(event) => setAwardedWinnerId(event.target.value)}
-                                disabled={finishing || saving}
+                                disabled={isAwarded || finishing || saving}
                             >
                                 <option value="">Select the authorised winner</option>
                                 <option value={match.home_team_id}>
@@ -665,7 +668,7 @@ function MatchRow({ match, onUpdated }) {
                                     onChange={(event) => setAwardReasonDetails(event.target.value)}
                                     placeholder="Record the authorised decision"
                                     maxLength={500}
-                                    disabled={finishing || saving}
+                                    disabled={isAwarded || finishing || saving}
                                 />
                             </label>
                         )}
@@ -699,7 +702,7 @@ function MatchRow({ match, onUpdated }) {
                             value={status === 'AWARDED' ? awardHomeScore : homeScore}
                             onChange={(event) => setHomeScore(event.target.value)}
                             placeholder="0"
-                            readOnly={isWalkoverAward}
+                            readOnly={isWalkoverAward || isAwarded}
                         />
                     </div>
 
@@ -716,7 +719,7 @@ function MatchRow({ match, onUpdated }) {
                             value={status === 'AWARDED' ? awardAwayScore : awayScore}
                             onChange={(event) => setAwayScore(event.target.value)}
                             placeholder="0"
-                            readOnly={isWalkoverAward}
+                            readOnly={isWalkoverAward || isAwarded}
                         />
                     </div>
                 </div>
@@ -747,7 +750,7 @@ function MatchRow({ match, onUpdated }) {
                                         setHomePenalties(event.target.value)
                                     }
                                     placeholder="0"
-                                    disabled={!isNormalTimeTied || finishing || saving}
+                                    disabled={!isNormalTimeTied || isAwarded || finishing || saving}
                                 />
                             </div>
 
@@ -769,7 +772,7 @@ function MatchRow({ match, onUpdated }) {
                                         setAwayPenalties(event.target.value)
                                     }
                                     placeholder="0"
-                                    disabled={!isNormalTimeTied || finishing || saving}
+                                    disabled={!isNormalTimeTied || isAwarded || finishing || saving}
                                 />
                             </div>
                         </div>
@@ -804,6 +807,7 @@ function MatchRow({ match, onUpdated }) {
                                                     ...current,
                                                     [field]: event.target.value,
                                                 }))}
+                                                disabled={isAwarded}
                                             />
                                         </label>
                                     );
@@ -826,7 +830,7 @@ function MatchRow({ match, onUpdated }) {
                     </label>
                 )}
 
-                {isFinished && (
+                {isFinalized && (
                     <div className="results-reopen-panel">
                         {reopenFormOpen ? (
                             <>
@@ -883,7 +887,7 @@ function MatchRow({ match, onUpdated }) {
                         type="button"
                         className="results-save-button"
                         onClick={handleSaveResult}
-                        disabled={saving}
+                        disabled={isAwarded || saving}
                     >
                         {saving ? 'Saving Result...' : 'Save Result'}
                     </button>
@@ -892,7 +896,7 @@ function MatchRow({ match, onUpdated }) {
                         type="button"
                         className="results-finish-button"
                         onClick={handleMarkFinished}
-                        disabled={finishing || saving || savingStatus}
+                        disabled={isAwarded || finishing || saving || savingStatus}
                     >
                         {finishing ? 'Updating...' : 'Mark Match Finished'}
                     </button>

@@ -521,6 +521,7 @@ function handleAdminPost_(body, user) {
   }
   if (action === 'admin.matches.list') {
     requireAdminPermission_(user, 'matches');
+    synchronizeActiveSeasonProgression_(user);
     const references = readReferences_();
     return getSheetRecords('Matches')
       .map(record => normalizeMatch_(record, references));
@@ -1050,16 +1051,14 @@ function updateMatchFieldsAndRecalculateQualifications_(
     .find(record => String(record.id) === String(id));
   if (!match) return updated;
 
-  if (isGroupStageRecord_(match)) {
-    try {
-      recalculateGroupQualifications_(String(match.season_id), user);
-    } catch (error) {
-      console.error('Group qualification synchronization failed:', error);
-      throw apiError_(
-        'The match update was saved, but group qualification could not be synchronized. ' +
-        'Refresh and retry the match update.'
-      );
-    }
+  try {
+    recalculateGroupQualifications_(String(match.season_id), user);
+  } catch (error) {
+    console.error('Group qualification synchronization failed:', error);
+    throw apiError_(
+      'The match update was saved, but group qualification could not be synchronized. ' +
+      'Refresh and retry the match update.'
+    );
   }
 
   try {
@@ -1072,6 +1071,28 @@ function updateMatchFieldsAndRecalculateQualifications_(
     );
   }
   return updated;
+}
+
+function synchronizeActiveSeasonProgression_(user) {
+  const activeSeasons = getSheetRecords('Seasons')
+    .map(normalizeSeason_)
+    .filter(season => season.active && !season.archived);
+
+  activeSeasons.forEach(season => {
+    try {
+      recalculateGroupQualifications_(season.id, user);
+      recalculateKnockoutProgression_(season.id, user);
+    } catch (error) {
+      console.error(
+        'Competition progression synchronization failed for ' + season.id + ':',
+        error
+      );
+      throw apiError_(
+        'Match results could not be loaded because competition progression could not be synchronized. ' +
+        'Refresh and retry.'
+      );
+    }
+  });
 }
 
 function isGroupStageRecord_(match) {
@@ -1145,7 +1166,10 @@ function recalculateGroupQualifications_(seasonId, user) {
         home_id: homeId,
         away_id: awayId,
         home_score: homeScore,
-        away_score: awayScore
+        away_score: awayScore,
+        awarded_winner_team_id: status === 'AWARDED'
+          ? String(match.awarded_winner_team_id || '')
+          : ''
       });
       standings[homeId].goals_for += homeScore;
       standings[homeId].goals_against += awayScore;
@@ -1169,7 +1193,14 @@ function recalculateGroupQualifications_(seasonId, user) {
           standings[teamId].fair_play_points += value * penalty;
         });
       }
-      if (homeScore > awayScore) {
+      const awardedWinner = status === 'AWARDED'
+        ? String(match.awarded_winner_team_id || '')
+        : '';
+      if (awardedWinner === homeId) {
+        standings[homeId].points += 3;
+      } else if (awardedWinner === awayId) {
+        standings[awayId].points += 3;
+      } else if (homeScore > awayScore) {
         standings[homeId].points += 3;
       } else if (awayScore > homeScore) {
         standings[awayId].points += 3;
@@ -1230,7 +1261,11 @@ function recalculateGroupQualifications_(seasonId, user) {
         home.goals_against += match.away_score;
         away.goals_for += match.away_score;
         away.goals_against += match.home_score;
-        if (match.home_score > match.away_score) {
+        if (match.awarded_winner_team_id === match.home_id) {
+          home.points += 3;
+        } else if (match.awarded_winner_team_id === match.away_id) {
+          away.points += 3;
+        } else if (match.home_score > match.away_score) {
           home.points += 3;
         } else if (match.home_score < match.away_score) {
           away.points += 3;

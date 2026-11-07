@@ -367,6 +367,29 @@ test('reopening a finished match records a reason and resets its status and peri
     );
   });
 
+  test('saved awarded matches are locked until explicitly reopened', async () => {
+    const awardedMatch = {
+      ...finishedMatch,
+      status: 'AWARDED',
+      home_score: 0,
+      away_score: 3,
+      result_type: 'WALKOVER',
+      award_reason: 'WALKOVER',
+      awarded_winner_team_id: 'team-away'
+    };
+    renderScheduledMatch(awardedMatch);
+    await screen.findByText('Eagle FC', { selector: '.results-team-name' });
+
+    expect(getMatchStatusSelect()).toBeDisabled();
+    expect(screen.getByLabelText('Award reason')).toBeDisabled();
+    expect(screen.getByLabelText('Awarded winner')).toBeDisabled();
+    expect(screen.getAllByRole('spinbutton')[0]).toHaveAttribute('readonly');
+    expect(screen.getAllByRole('spinbutton')[1]).toHaveAttribute('readonly');
+    expect(screen.getByRole('button', { name: 'Save Result' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Mark Match Finished' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Reopen Match' })).toBeEnabled();
+  });
+
   test('walkover award saves a 3–0 score for the selected winner with award metadata', async () => {
     renderScheduledMatch();
     await screen.findByText('Eagle FC', { selector: '.results-team-name' });
