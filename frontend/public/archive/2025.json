@@ -709,7 +709,7 @@
           "away_team": "AMIBO",
           "home_score": 1,
           "away_score": 1,
-          "penalty_home": 2,
+          "penalty_home": 4,
           "penalty_away": 3,
           "awarded": false,
           "void": false,
