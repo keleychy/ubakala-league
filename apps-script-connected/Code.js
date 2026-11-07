@@ -1326,8 +1326,8 @@ function recalculateGroupQualifications_(seasonId, user) {
   const quarterfinalSlots = {
     22: { home: ['first', 'A'], away: ['second', 'B'] },
     23: { home: ['first', 'B'], away: ['second', 'A'] },
-    24: { home: ['first', 'C'], away: ['second', 'D'] },
-    25: { home: ['first', 'D'], away: ['second', 'C'] }
+    24: { home: ['first', 'D'], away: ['second', 'C'] },
+    25: { home: ['first', 'C'], away: ['second', 'D'] }
   };
   let updatedCount = 0;
 
