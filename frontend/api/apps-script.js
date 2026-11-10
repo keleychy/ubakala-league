@@ -8,7 +8,11 @@ const READ_ACTIONS = {
   teamgroups: ['season_id', 'season'],
   'groups-with-teams': ['season_id', 'season'],
   matches: ['season_id', 'season'],
-  news: ['id']
+  news: ['id'],
+  'predictions.configuration': [],
+  'predictions.fixtures': [],
+  'predictions.leaderboard': ['season_id', 'category'],
+  'predictions.statistics': ['season_id', 'category']
 };
 
 const ADMIN_ACTIONS = new Set([
@@ -27,10 +31,25 @@ const ADMIN_ACTIONS = new Set([
   'admin.groups.list',
   'admin.teams.createManual',
   'admin.teams.move',
-  'admin.teams.import'
+  'admin.teams.import',
+  'admin.predictions.initialize',
+  'admin.predictions.summary',
+  'admin.predictions.overview',
+  'admin.predictions.predictorHistory',
+  'admin.predictions.audit',
+  'admin.predictions.settle',
+  'admin.predictions.predictors',
+  'admin.predictions.accountStatus',
+  'admin.predictions.resetAccessCode',
+  'admin.predictions.setSetting'
 ]);
 
-const PUBLIC_POST_ACTIONS = new Set(['news.recordView']);
+const PUBLIC_POST_ACTIONS = new Set([
+  'news.recordView',
+  'predictions.register',
+  'predictions.history',
+  'predictions.submit'
+]);
 
 const appsScriptApiUrl =
   process.env.APPS_SCRIPT_API_URL || DEFAULT_APPS_SCRIPT_API_URL;
@@ -92,13 +111,24 @@ module.exports = async function handler(request, response) {
         error: 'Firebase ID token is required'
       });
     }
-    if (isPublicAction && (
-      typeof payload.news_id !== 'string' ||
-      typeof payload.visitor_id !== 'string'
-    )) {
+    if (
+      payload.action === 'news.recordView' &&
+      (typeof payload.news_id !== 'string' ||
+        typeof payload.visitor_id !== 'string')
+    ) {
       return response.status(400).json({
         success: false,
         error: 'news_id and visitor_id are required'
+      });
+    }
+    if (
+      payload.action === 'predictions.history' &&
+      (typeof payload.predictor_id !== 'string' ||
+        typeof payload.access_code !== 'string')
+    ) {
+      return response.status(400).json({
+        success: false,
+        error: 'predictor_id and access_code are required'
       });
     }
 
