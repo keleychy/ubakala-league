@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import './Predictions.css';
 import { predictionsAdminApi } from '../api/predictionsApi';
+import Pagination from '../components/Pagination';
 
 const SETTING_TITLES = {
   feature_enabled: 'Enable Predictions Centre',
@@ -11,10 +12,21 @@ const SETTING_TITLES = {
   reopen_postponed_predictions: 'Allow admin-approved postponed fixture reopening'
 };
 
+const ADMIN_TABS = [
+  ['overview', 'Overview'],
+  ['recovery', 'Recovery'],
+  ['fixtures', 'Fixtures & results'],
+  ['predictors', 'Predictors'],
+  ['settings', 'Settings'],
+  ['audit', 'Audit history']
+];
+
 export default function AdminPredictions() {
   const [summary, setSummary] = useState(null);
   const [overview, setOverview] = useState(null);
   const [auditHistory, setAuditHistory] = useState([]);
+  const [recoveryRequests, setRecoveryRequests] = useState([]);
+  const [recoveryMessage, setRecoveryMessage] = useState(null);
   const [predictors, setPredictors] = useState([]);
   const [predictorHistory, setPredictorHistory] = useState(null);
   const [query, setQuery] = useState('');
@@ -28,18 +40,38 @@ export default function AdminPredictions() {
   const [message, setMessage] = useState('');
   const [newAccessCode, setNewAccessCode] = useState(null);
   const [pointsValue, setPointsValue] = useState('');
+  const [activeTab, setActiveTab] = useState('overview');
+  const [recoveryPage, setRecoveryPage] = useState(1);
+  const [fixturePage, setFixturePage] = useState(1);
+  const [pendingPage, setPendingPage] = useState(1);
+  const [predictorPage, setPredictorPage] = useState(1);
+  const [predictorHistoryPage, setPredictorHistoryPage] = useState(1);
+  const [auditPage, setAuditPage] = useState(1);
+
+  const visibleRecoveryRequests = recoveryRequests.slice((recoveryPage - 1) * 10, recoveryPage * 10);
+  const visibleFixtures = (overview?.fixtures || []).slice((fixturePage - 1) * 15, fixturePage * 15);
+  const visiblePending = (overview?.pending_settlements || []).slice((pendingPage - 1) * 10, pendingPage * 10);
+  const visiblePredictors = predictors.slice((predictorPage - 1) * 10, predictorPage * 10);
+  const visiblePredictorHistory = (predictorHistory?.predictions || []).slice((predictorHistoryPage - 1) * 10, predictorHistoryPage * 10);
+  const visibleAudit = auditHistory.slice((auditPage - 1) * 10, auditPage * 10);
 
   const loadSummary = useCallback(async () => {
     setError('');
     try {
-      const [result, overviewResult, auditResult] = await Promise.all([
+      const [result, overviewResult, auditResult, recoveryResult] = await Promise.all([
         predictionsAdminApi.getSummary(),
         predictionsAdminApi.getOverview(),
-        predictionsAdminApi.getAuditHistory()
+        predictionsAdminApi.getAuditHistory(),
+        predictionsAdminApi.getRecoveryRequests()
       ]);
       setSummary(result);
       setOverview(overviewResult);
       setAuditHistory(auditResult || []);
+      setRecoveryRequests(recoveryResult || []);
+      setRecoveryPage(1);
+      setFixturePage(1);
+      setPendingPage(1);
+      setAuditPage(1);
       setPointsValue(result.settings.points_per_correct_prediction || '1');
       setInitRequired(false);
     } catch (loadError) {
@@ -75,6 +107,7 @@ export default function AdminPredictions() {
     try {
       const result = await predictionsAdminApi.searchPredictors(query.trim());
       setPredictors(result || []);
+      setPredictorPage(1);
       setSearchDone(true);
     } catch (searchError) {
       setError(searchError.message || 'Could not search predictors.');
@@ -90,6 +123,7 @@ export default function AdminPredictions() {
       setPredictorHistory(
         await predictionsAdminApi.getPredictorHistory(predictor.predictor_id)
       );
+      setPredictorHistoryPage(1);
     } catch (historyError) {
       setError(historyError.message || 'Could not load predictor history.');
     } finally {
@@ -160,6 +194,33 @@ export default function AdminPredictions() {
     }
   };
 
+  const handleRecoveryReview = async (request, decision) => {
+    const prompt = decision === 'APPROVE'
+      ? `Confirm how you verified ${request.submitted_name}'s identity:`
+      : `Reason to reject ${request.submitted_name}'s recovery request:`;
+    const note = window.prompt(prompt);
+    if (!note || !note.trim()) return;
+    setBusy(true);
+    setError('');
+    setMessage('');
+    try {
+      const result = await predictionsAdminApi.reviewRecovery(
+        request.request_id,
+        decision,
+        note.trim()
+      );
+      setRecoveryMessage(result);
+      setMessage(decision === 'APPROVE'
+        ? 'Recovery approved. Send the one-time temporary code to the registered WhatsApp number; the predictor must replace it with a password.'
+        : 'Recovery rejected. Review the prepared message and notify the requester on WhatsApp.');
+      await loadSummary();
+    } catch (reviewError) {
+      setError(reviewError.message || 'Could not review the recovery request.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const settings = summary?.settings || {};
   const currentSeasons = summary?.seasons || [];
   const outcomeLabel = outcome => ({
@@ -191,7 +252,15 @@ export default function AdminPredictions() {
 
         {summary && (
           <>
-            <section className="predictions-panel">
+            <nav className="predictions-tabs predictions-admin-tabs" aria-label="Predictions administration sections">
+              {ADMIN_TABS.map(([id, label]) => (
+                <button type="button" key={id} className={activeTab === id ? 'is-active' : ''} aria-pressed={activeTab === id} onClick={() => setActiveTab(id)}>
+                  {label}{id === 'recovery' && recoveryRequests.some(request => request.status === 'PENDING') ? ` (${recoveryRequests.filter(request => request.status === 'PENDING').length})` : ''}
+                </button>
+              ))}
+            </nav>
+
+            {activeTab === 'overview' && <section className="predictions-panel">
               <div className="predictions-section-heading">
                 <div><span className="predictions-eyebrow">Saved records</span><h2>Service overview</h2></div>
                 <button type="button" className="predictions-button predictions-button--secondary" onClick={loadSummary}>Refresh</button>
@@ -207,8 +276,51 @@ export default function AdminPredictions() {
               <div className="predictions-admin-actions">
                 <button type="button" className="predictions-button" disabled={busy} onClick={handleSettle}>Check and settle official results</button>
               </div>
-            </section>
+            </section>}
 
+            {activeTab === 'recovery' && <section className="predictions-panel">
+              <div className="predictions-section-heading">
+                <div><span className="predictions-eyebrow">Account support</span><h2>WhatsApp recovery requests</h2></div>
+                <span>{recoveryRequests.filter(request => request.status === 'PENDING').length} awaiting review</span>
+              </div>
+              <p>Verify the predictor’s name and registered WhatsApp number before approving. Recovery messages are prepared here; send them manually to the registered number.</p>
+              {recoveryMessage && (
+                <div className="predictions-code-notice" role="status">
+                  <strong>{recoveryMessage.status === 'APPROVED' ? 'Send this temporary code only to the registered WhatsApp number.' : 'Prepared rejection note for manual WhatsApp delivery.'}</strong>
+                  {recoveryMessage.temporary_code && <span>{recoveryMessage.temporary_code}</span>}
+                  <p>{recoveryMessage.whatsapp_message}</p>
+                  <button type="button" className="predictions-text-button" onClick={() => setRecoveryMessage(null)}>Dismiss</button>
+                </div>
+              )}
+              {!recoveryRequests.length ? <p>No account recovery requests.</p> : (
+                <div className="predictions-table-wrap">
+                  <table className="predictions-table">
+                    <thead><tr><th>Requested</th><th>Name</th><th>WhatsApp</th><th>Account match</th><th>Status</th><th>Action</th></tr></thead>
+                    <tbody>{visibleRecoveryRequests.map(request => (
+                      <tr key={request.request_id}>
+                        <td>{request.submitted_at}</td>
+                        <td>{request.submitted_name}</td>
+                        <td>{request.submitted_phone}</td>
+                        <td>{request.predictor_id ? request.predictor_id : 'No exact match'}</td>
+                        <td>{request.status}</td>
+                        <td className="predictions-row-actions">
+                          {request.status === 'PENDING' && (
+                            <>
+                              <button type="button" disabled={busy || !request.predictor_id} onClick={() => handleRecoveryReview(request, 'APPROVE')}>Verify & approve</button>
+                              <button type="button" disabled={busy} onClick={() => handleRecoveryReview(request, 'REJECT')}>Reject</button>
+                            </>
+                          )}
+                          {request.admin_note && <span>{request.admin_note}</span>}
+                        </td>
+                      </tr>
+                    ))}</tbody>
+                  </table>
+                  <Pagination page={recoveryPage} pageSize={10} total={recoveryRequests.length} onPageChange={setRecoveryPage} label="Recovery requests" />
+                </div>
+              )}
+            </section>}
+
+            {activeTab === 'fixtures' && <>
             <section className="predictions-panel">
               <span className="predictions-eyebrow">Fixture monitoring</span>
               <h2>Prediction activity by match</h2>
@@ -216,7 +328,7 @@ export default function AdminPredictions() {
                 <div className="predictions-table-wrap">
                   <table className="predictions-table">
                     <thead><tr><th>Match</th><th>Competition / stage</th><th>Kickoff</th><th>State</th><th>Predictions</th><th>1 / X / 2</th><th>Settled</th></tr></thead>
-                    <tbody>{overview.fixtures.map(fixture => (
+                    <tbody>{visibleFixtures.map(fixture => (
                       <tr key={fixture.fixture_id}>
                         <td>{fixture.home_team_name} vs {fixture.away_team_name}</td>
                         <td>{fixture.season_name}{fixture.stage ? ` · ${fixture.stage}` : ''}</td>
@@ -228,6 +340,7 @@ export default function AdminPredictions() {
                       </tr>
                     ))}</tbody>
                   </table>
+                  <Pagination page={fixturePage} pageSize={15} total={overview.fixtures.length} onPageChange={setFixturePage} label="Fixture activity" />
                 </div>
               )}
             </section>
@@ -241,7 +354,7 @@ export default function AdminPredictions() {
                 <div className="predictions-table-wrap">
                   <table className="predictions-table">
                     <thead><tr><th>Match</th><th>Date</th><th>Predictor ID</th><th>Pick</th><th>Official outcome</th><th>State</th></tr></thead>
-                    <tbody>{overview.pending_settlements.map(item => (
+                    <tbody>{visiblePending.map(item => (
                       <tr key={item.prediction_id}>
                         <td>{item.match}</td><td>{item.match_date}</td><td>{item.predictor_id}</td>
                         <td>{outcomeLabel(item.selected_outcome)}</td>
@@ -250,13 +363,15 @@ export default function AdminPredictions() {
                       </tr>
                     ))}</tbody>
                   </table>
+                  <Pagination page={pendingPage} pageSize={10} total={overview.pending_settlements.length} onPageChange={setPendingPage} label="Pending settlements" />
                   {overview.pending_settlements_total > overview.pending_settlements.length &&
                     <p>Showing the first {overview.pending_settlements.length} of {overview.pending_settlements_total} pending records.</p>}
                 </div>
               )}
             </section>
+            </>}
 
-            <section className="predictions-panel">
+            {activeTab === 'settings' && <section className="predictions-panel">
               <span className="predictions-eyebrow">Public controls</span>
               <h2>Feature settings</h2>
               <div className="predictions-setting-list">
@@ -286,9 +401,9 @@ export default function AdminPredictions() {
                   </select>
                 </label>
               </div>
-            </section>
+            </section>}
 
-            <section className="predictions-panel">
+            {activeTab === 'predictors' && <section className="predictions-panel">
               <span className="predictions-eyebrow">Participant support</span>
               <h2>Find a predictor</h2>
               <form className="predictions-admin-search" onSubmit={handleSearch}>
@@ -307,7 +422,7 @@ export default function AdminPredictions() {
                 <div className="predictions-table-wrap">
                   <table className="predictions-table">
                     <thead><tr><th>Predictor ID</th><th>Name</th><th>Status</th><th>Registration</th><th>Actions</th></tr></thead>
-                    <tbody>{predictors.map(predictor => (
+                    <tbody>{visiblePredictors.map(predictor => (
                       <tr key={predictor.predictor_id}>
                         <td>{predictor.predictor_id}</td><td>{predictor.display_name}</td><td>{predictor.account_status}</td>
                         <td>{predictor.registration_date ? new Date(predictor.registration_date).toLocaleDateString() : '—'}</td>
@@ -321,6 +436,7 @@ export default function AdminPredictions() {
                       </tr>
                     ))}</tbody>
                   </table>
+                  <Pagination page={predictorPage} pageSize={10} total={predictors.length} onPageChange={setPredictorPage} label="Predictor search results" />
                 </div>
               )}
               {predictorHistory && (
@@ -333,7 +449,7 @@ export default function AdminPredictions() {
                     <div className="predictions-table-wrap">
                       <table className="predictions-table">
                         <thead><tr><th>Match</th><th>Date</th><th>Pick</th><th>Official result</th><th>Settlement</th><th>Points</th><th>Edits</th></tr></thead>
-                        <tbody>{predictorHistory.predictions.map(item => (
+                        <tbody>{visiblePredictorHistory.map(item => (
                           <tr key={item.prediction_id}>
                             <td>{item.match}</td><td>{item.match_date}</td>
                             <td>{outcomeLabel(item.selected_outcome)}</td>
@@ -342,20 +458,21 @@ export default function AdminPredictions() {
                           </tr>
                         ))}</tbody>
                       </table>
+                      <Pagination page={predictorHistoryPage} pageSize={10} total={predictorHistory.predictions.length} onPageChange={setPredictorHistoryPage} label="Predictor prediction history" />
                     </div>
                   )}
                 </div>
               )}
-            </section>
+            </section>}
 
-            <section className="predictions-panel">
+            {activeTab === 'audit' && <section className="predictions-panel">
               <span className="predictions-eyebrow">Administrative controls</span>
               <h2>Prediction audit history</h2>
               {!auditHistory.length ? <p>No prediction-related audit entries are available.</p> : (
                 <div className="predictions-table-wrap">
                   <table className="predictions-table">
                     <thead><tr><th>Time</th><th>Administrator</th><th>Action</th><th>Record</th><th>Reason</th><th>Change</th></tr></thead>
-                    <tbody>{auditHistory.map((entry, index) => (
+                    <tbody>{visibleAudit.map((entry, index) => (
                       <tr key={`${entry.timestamp}-${entry.action}-${index}`}>
                         <td>{entry.timestamp}</td><td>{entry.user_email}</td>
                         <td>{entry.action}</td><td>{entry.entity_type} · {entry.entity_id}</td>
@@ -364,11 +481,13 @@ export default function AdminPredictions() {
                       </tr>
                     ))}</tbody>
                   </table>
+                  <Pagination page={auditPage} pageSize={10} total={auditHistory.length} onPageChange={setAuditPage} label="Audit history" />
                 </div>
               )}
             </section>
+            }
 
-            <section className="predictions-panel">
+            {activeTab === 'overview' && <section className="predictions-panel">
               <span className="predictions-eyebrow">Current rankings</span>
               <h2>Leaderboard preview</h2>
               {!summary.leaderboard.length ? <p>No settled predictions yet.</p> : (
@@ -382,6 +501,7 @@ export default function AdminPredictions() {
                 </div>
               )}
             </section>
+            }
           </>
         )}
       </div>

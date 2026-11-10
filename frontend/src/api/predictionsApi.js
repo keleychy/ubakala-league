@@ -54,7 +54,10 @@ export const predictionsApi = {
   getStatistics: (filters = {}) => getAction('predictions.statistics', filters),
   register: details => postAction('predictions.register', details),
   getHistory: credentials => postAction('predictions.history', credentials),
-  submit: prediction => postAction('predictions.submit', prediction)
+  setPassword: credentials => postAction('predictions.setPassword', credentials),
+  requestRecovery: details => postAction('predictions.recoveryRequest', details),
+  submit: prediction => postAction('predictions.submit', prediction),
+  submitBatch: batch => postAction('predictions.submitBatch', batch)
 };
 
 export const predictionsAdminApi = {
@@ -64,6 +67,11 @@ export const predictionsAdminApi = {
   getPredictorHistory: predictorId => callAdminApi(
     'admin.predictions.predictorHistory',
     { predictor_id: predictorId }
+  ),
+  getRecoveryRequests: () => callAdminApi('admin.predictions.recoveryRequests'),
+  reviewRecovery: (requestId, decision, adminNote) => callAdminApi(
+    'admin.predictions.reviewRecovery',
+    { request_id: requestId, decision, admin_note: adminNote }
   ),
   getAuditHistory: () => callAdminApi('admin.predictions.audit'),
   settle: seasonId => callAdminApi('admin.predictions.settle', { season_id: seasonId }),

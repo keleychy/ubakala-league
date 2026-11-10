@@ -17,6 +17,10 @@ const PREDICTION_SHEET_HEADERS = {
   ],
   'Prediction Settings': [
     'setting_key', 'setting_value', 'description', 'updated_at', 'updated_by'
+  ],
+  'Recovery Requests': [
+    'request_id', 'predictor_id', 'submitted_name', 'submitted_phone',
+    'status', 'submitted_at', 'reviewed_at', 'reviewed_by', 'admin_note'
   ]
 };
 
@@ -187,8 +191,17 @@ function handlePredictionPublicPost_(body) {
   if (action === 'predictions.history') {
     return getPredictorHistory_(body.predictor_id, body.access_code);
   }
+  if (action === 'predictions.recoveryRequest') {
+    return submitPredictorRecoveryRequest_(body);
+  }
+  if (action === 'predictions.setPassword') {
+    return setPredictorPassword_(body);
+  }
   if (action === 'predictions.submit') {
     return submitPrediction_(body, settings);
+  }
+  if (action === 'predictions.submitBatch') {
+    return submitPredictionsBatch_(body, settings);
   }
   throw apiError_('Unsupported public Predictions Centre request');
 }
@@ -203,6 +216,7 @@ function registerPredictor_(body, settings) {
     ? ''
     : validatePredictorName_(body.third_name, 'Third name');
   const normalizedPhone = normalizePredictorPhone_(body.phone);
+  const password = validatePredictorPassword_(body.password);
   enforcePredictionRateLimit_('register', normalizedPhone, 4, 3600);
 
   const lock = LockService.getScriptLock();
@@ -220,7 +234,6 @@ function registerPredictor_(body, settings) {
     }
 
     const predictorId = generateUniquePredictorId_(surname, normalizedPhone, predictors);
-    const accessCode = generatePredictorAccessCode_();
     const displayName = [firstName, thirdName, surname].filter(Boolean).join(' ');
     const timestamp = new Date().toISOString();
     const predictor = {
@@ -234,7 +247,7 @@ function registerPredictor_(body, settings) {
       account_status: 'ACTIVE',
       last_updated: timestamp,
       verification_status: 'UNVERIFIED',
-      access_code_hash: hashPredictorAccessCode_(accessCode)
+      access_code_hash: hashPredictorPassword_(password)
     };
     appendPredictionRecordLocked_(
       'Predictors',
@@ -247,8 +260,8 @@ function registerPredictor_(body, settings) {
     return {
       predictor_id: predictorId,
       display_name: displayName,
-      access_code: accessCode,
-      access_code_notice: 'Save this private access code. It is shown only once.'
+      credential_type: 'password',
+      credential_notice: 'You chose the password for this Predictor ID.'
     };
   } finally {
     lock.releaseLock();
@@ -324,20 +337,88 @@ function hashPredictorAccessCode_(accessCode) {
   return bytes.map(byte => ('0' + (byte & 255).toString(16)).slice(-2)).join('');
 }
 
+function validatePredictorPassword_(value) {
+  const password = requiredText_(value, 'Password');
+  if (
+    password.length < 12 ||
+    password.length > 128 ||
+    /[\u0000-\u001f\u007f]/.test(password)
+  ) {
+    throw apiError_('Choose a passphrase between 12 and 128 characters');
+  }
+  return password;
+}
+
+function hashPredictorPassword_(password) {
+  const iterations = 50000;
+  const salt = Utilities.getUuid().replace(/-/g, '');
+  const saltBytes = Utilities.newBlob(salt).getBytes();
+  const block = saltBytes.concat([0, 0, 0, 1]);
+  let current = Utilities.computeHmacSha256SignatureForBlob(
+    Utilities.newBlob(block),
+    password
+  );
+  const derived = current.slice();
+  for (let iteration = 1; iteration < iterations; iteration += 1) {
+    current = Utilities.computeHmacSha256SignatureForBlob(
+      Utilities.newBlob(current),
+      password
+    );
+    for (let index = 0; index < derived.length; index += 1) {
+      derived[index] ^= current[index];
+    }
+  }
+  return 'pbkdf2_sha256$' + iterations + '$' + salt + '$' +
+    derived.map(byte => ('0' + (byte & 255).toString(16)).slice(-2)).join('');
+}
+
+function verifyPredictorCredential_(storedHash, credential) {
+  const stored = String(storedHash || '');
+  if (stored.indexOf('pbkdf2_sha256$') === 0) {
+    const parts = stored.split('$');
+    if (parts.length !== 4 || Number(parts[1]) !== 50000) return false;
+    const saltBytes = Utilities.newBlob(parts[2]).getBytes();
+    const currentInput = saltBytes.concat([0, 0, 0, 1]);
+    let current = Utilities.computeHmacSha256SignatureForBlob(
+      Utilities.newBlob(currentInput),
+      credential
+    );
+    const derived = current.slice();
+    for (let iteration = 1; iteration < 50000; iteration += 1) {
+      current = Utilities.computeHmacSha256SignatureForBlob(
+        Utilities.newBlob(current),
+        credential
+      );
+      for (let index = 0; index < derived.length; index += 1) {
+        derived[index] ^= current[index];
+      }
+    }
+    const derivedHex = derived.map(byte =>
+      ('0' + (byte & 255).toString(16)).slice(-2)
+    ).join('');
+    return constantTimeStringEqual_(parts[3], derivedHex);
+  }
+  const isTemporary = stored.indexOf('reset_sha256$') === 0;
+  const expected = isTemporary ? stored.slice('reset_sha256$'.length) : stored;
+  const normalizedCredential = isTemporary || /^[0-9a-f]{64}$/i.test(stored)
+    ? String(credential).toUpperCase()
+    : String(credential);
+  return constantTimeStringEqual_(
+    expected,
+    hashPredictorAccessCode_(normalizedCredential)
+  );
+}
+
 function getPredictorByAccessCode_(predictorId, accessCode) {
   const id = requiredText_(predictorId, 'Predictor ID').toUpperCase();
-  const code = requiredText_(accessCode, 'Private access code').toUpperCase();
+  const code = requiredText_(accessCode, 'Password or access code');
   enforcePredictionRateLimit_('access', id, 8, 900);
   const predictor = getSheetRecords('Predictors').find(record =>
     String(record.predictor_id || '').trim().toUpperCase() === id
   );
-  const submittedHash = hashPredictorAccessCode_(code);
   if (
     !predictor ||
-    !constantTimeStringEqual_(
-      String(predictor.access_code_hash || ''),
-      submittedHash
-    )
+    !verifyPredictorCredential_(predictor.access_code_hash, code)
   ) {
     throw apiError_('Predictor ID or access code is incorrect');
   }
@@ -365,6 +446,86 @@ function enforcePredictionRateLimit_(prefix, identifier, limit, windowSeconds) {
     throw apiError_('Too many requests. Please wait before trying again.');
   }
   cache.put(key, String(attempts + 1), windowSeconds);
+}
+
+function submitPredictorRecoveryRequest_(body) {
+  const submittedName = validatePredictorName_(body.name, 'Full name');
+  const submittedPhone = normalizePredictorPhone_(body.phone);
+  enforcePredictionRateLimit_('recovery', submittedPhone, 3, 86400);
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(10000)) {
+    throw apiError_('Recovery requests are busy; please try again shortly');
+  }
+  try {
+    const normalizedName = submittedName.toLowerCase().replace(/\s+/g, ' ');
+    const predictor = getSheetRecords('Predictors').find(record =>
+      normalizePredictorPhone_(record.normalized_phone) === submittedPhone &&
+      String(record.display_name || '').toLowerCase().replace(/\s+/g, ' ') === normalizedName
+    );
+    const request = {
+      request_id: Utilities.getUuid(),
+      predictor_id: predictor ? String(predictor.predictor_id) : '',
+      submitted_name: submittedName,
+      submitted_phone: submittedPhone,
+      status: 'PENDING',
+      submitted_at: new Date().toISOString(),
+      reviewed_at: '',
+      reviewed_by: '',
+      admin_note: ''
+    };
+    appendPredictionRecordLocked_(
+      'Recovery Requests',
+      request,
+      'prediction.recovery.requested',
+      request.request_id,
+      { email: 'public-participant' },
+      { request_id: request.request_id, matched_account: Boolean(predictor) }
+    );
+  } finally {
+    lock.releaseLock();
+  }
+  return {
+    submitted: true,
+    message: 'Your request was sent for administrator review. We will contact you on the WhatsApp number associated with your account after checking the details.'
+  };
+}
+
+function setPredictorPassword_(body) {
+  const predictorId = requiredText_(body.predictor_id, 'Predictor ID').toUpperCase();
+  const currentCredential = requiredText_(body.access_code, 'Current password or temporary code');
+  const newPassword = validatePredictorPassword_(body.new_password);
+  const predictor = getPredictorByAccessCode_(predictorId, currentCredential);
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(10000)) {
+    throw apiError_('Password update is busy; please try again shortly');
+  }
+  try {
+    const latest = getSheetRecords('Predictors').find(record =>
+      String(record.predictor_id || '').toUpperCase() === predictorId
+    );
+    if (!latest || !verifyPredictorCredential_(latest.access_code_hash, currentCredential)) {
+      throw apiError_('Your current password or temporary code is no longer valid');
+    }
+    updatePredictionRecordLocked_(
+      'Predictors',
+      'predictor_id',
+      predictorId,
+      {
+        access_code_hash: hashPredictorPassword_(newPassword),
+        last_updated: new Date().toISOString()
+      },
+      'prediction.predictor.password.updated',
+      { predictor_id: predictorId, credential_updated: true },
+      { predictor_id: predictorId, credential_updated: true },
+      { email: 'public-participant' }
+    );
+    return {
+      predictor_id: String(predictor.predictor_id),
+      password_updated: true
+    };
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 function getPredictorHistory_(predictorId, accessCode) {
@@ -413,17 +574,62 @@ function getPredictorHistory_(predictorId, accessCode) {
   return {
     predictor: {
       predictor_id: String(predictor.predictor_id),
-      display_name: String(predictor.display_name || '')
+      display_name: String(predictor.display_name || ''),
+      needs_password_update:
+        String(predictor.access_code_hash || '').indexOf('reset_sha256$') === 0
     },
     predictions: history
   };
 }
 
-function submitPrediction_(body, settings) {
+function submitPredictionsBatch_(body, settings) {
   if (settings.submissions_enabled !== 'true') {
     throw apiError_('Prediction submissions are currently closed');
   }
+  const submissions = body.predictions;
+  if (!Array.isArray(submissions) || submissions.length < 1 || submissions.length > 50) {
+    throw apiError_('Select between 1 and 50 predictions to submit together');
+  }
   const predictor = getPredictorByAccessCode_(body.predictor_id, body.access_code);
+  const results = [];
+  submissions.forEach(submission => {
+    const fixtureId = String(submission && submission.fixture_id || '');
+    try {
+      const result = submitPrediction_({
+        predictor_id: predictor.predictor_id,
+        access_code: body.access_code,
+        fixture_id: fixtureId,
+        selected_outcome: submission && submission.selected_outcome
+      }, settings, predictor);
+      results.push({
+        fixture_id: fixtureId,
+        success: true,
+        updated: result.updated
+      });
+    } catch (error) {
+      results.push({
+        fixture_id: fixtureId,
+        success: false,
+        error: String(error && error.message || 'Prediction could not be saved')
+      });
+    }
+  });
+  return {
+    results: results,
+    submitted: results.filter(result => result.success).length,
+    failed: results.filter(result => !result.success).length
+  };
+}
+
+function submitPrediction_(body, settings, authenticatedPredictor) {
+  if (settings.submissions_enabled !== 'true') {
+    throw apiError_('Prediction submissions are currently closed');
+  }
+  const predictor = authenticatedPredictor ||
+    getPredictorByAccessCode_(body.predictor_id, body.access_code);
+  if (String(predictor.access_code_hash || '').indexOf('reset_sha256$') === 0) {
+    throw apiError_('Set a new password before submitting predictions');
+  }
   const fixtureId = requiredText_(body.fixture_id, 'Fixture ID');
   const outcome = requiredText_(body.selected_outcome, 'Selected outcome').toUpperCase();
   if (!['1', 'X', '2'].includes(outcome)) {
@@ -441,6 +647,13 @@ function submitPrediction_(body, settings) {
       String(record.account_status || '').toUpperCase() === 'ACTIVE'
     );
     if (!activePredictor) throw apiError_('This predictor account is not active');
+    if (String(activePredictor.access_code_hash || '') !==
+      String(predictor.access_code_hash || '')) {
+      throw apiError_('Your credential has changed. Sign in again before submitting.');
+    }
+    if (String(activePredictor.access_code_hash || '').indexOf('reset_sha256$') === 0) {
+      throw apiError_('Set a new password before submitting predictions');
+    }
     const match = getSheetRecords('Matches').find(record =>
       String(record.id) === fixtureId
     );
@@ -1013,6 +1226,12 @@ function handlePredictionAdminAction_(body, user) {
   if (action === 'admin.predictions.predictorHistory') {
     return getPredictionAdminHistory_(body.predictor_id);
   }
+  if (action === 'admin.predictions.recoveryRequests') {
+    return getPredictorRecoveryRequests_();
+  }
+  if (action === 'admin.predictions.reviewRecovery') {
+    return reviewPredictorRecoveryRequest_(body, user);
+  }
   if (action === 'admin.predictions.audit') {
     return getPredictionAuditHistory_();
   }
@@ -1226,6 +1445,107 @@ function getPredictionAdminHistory_(predictorId) {
   };
 }
 
+function getPredictorRecoveryRequests_() {
+  return getSheetRecords('Recovery Requests')
+    .sort((left, right) =>
+      String(right.submitted_at || '').localeCompare(String(left.submitted_at || ''))
+    )
+    .slice(0, 100)
+    .map(record => ({
+      request_id: String(record.request_id || ''),
+      predictor_id: String(record.predictor_id || ''),
+      submitted_name: String(record.submitted_name || ''),
+      submitted_phone: String(record.submitted_phone || ''),
+      status: String(record.status || ''),
+      submitted_at: String(record.submitted_at || ''),
+      reviewed_at: String(record.reviewed_at || ''),
+      reviewed_by: String(record.reviewed_by || ''),
+      admin_note: String(record.admin_note || '')
+    }));
+}
+
+function reviewPredictorRecoveryRequest_(body, user) {
+  const requestId = requiredText_(body.request_id, 'Recovery request ID');
+  const decision = requiredText_(body.decision, 'Decision').toUpperCase();
+  if (!['APPROVE', 'REJECT'].includes(decision)) {
+    throw apiError_('Choose approve or reject');
+  }
+  const note = requiredText_(body.admin_note, decision === 'REJECT' ? 'Rejection note' : 'Review note');
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(10000)) {
+    throw apiError_('Recovery request review is busy; please try again shortly');
+  }
+  try {
+    const request = getSheetRecords('Recovery Requests').find(record =>
+      String(record.request_id) === requestId
+    );
+    if (!request) throw apiError_('Recovery request not found');
+    if (String(request.status || '').toUpperCase() !== 'PENDING') {
+      throw apiError_('This recovery request has already been reviewed');
+    }
+
+    let temporaryCode = '';
+    let predictorId = String(request.predictor_id || '');
+    let status = 'REJECTED';
+    if (decision === 'APPROVE') {
+      if (!predictorId) {
+        throw apiError_('Account details did not match. Reject this request with an appropriate note.');
+      }
+      const predictor = getSheetRecords('Predictors').find(record =>
+        String(record.predictor_id || '') === predictorId &&
+        String(record.account_status || '').toUpperCase() === 'ACTIVE'
+      );
+      if (!predictor) throw apiError_('The matched predictor account is not active');
+      temporaryCode = generatePredictorAccessCode_();
+      updatePredictionRecordLocked_(
+        'Predictors',
+        'predictor_id',
+        predictorId,
+        {
+          access_code_hash: 'reset_sha256$' + hashPredictorAccessCode_(temporaryCode),
+          last_updated: new Date().toISOString()
+        },
+        'prediction.recovery.credential.issued',
+        { predictor_id: predictorId, credential_updated: true },
+        { predictor_id: predictorId, temporary_code_issued: true },
+        user,
+        note
+      );
+      status = 'APPROVED';
+    }
+
+    const reviewedAt = new Date().toISOString();
+    updatePredictionRecordLocked_(
+      'Recovery Requests',
+      'request_id',
+      requestId,
+      {
+        status: status,
+        reviewed_at: reviewedAt,
+        reviewed_by: user.email,
+        admin_note: note
+      },
+      'prediction.recovery.request.reviewed',
+      { status: 'PENDING' },
+      { status: status, predictor_id: predictorId, admin_note: note },
+      user
+    );
+    return {
+      request_id: requestId,
+      predictor_id: predictorId,
+      status: status,
+      temporary_code: temporaryCode,
+      whatsapp_message: temporaryCode
+        ? 'Your account recovery was approved. Sign in with Predictor ID ' +
+          predictorId + ' and this temporary code: ' + temporaryCode +
+          '. You will be asked to create a new password.'
+        : 'Your account recovery request could not be verified: ' + note
+    };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
 function getPredictionAuditHistory_() {
   const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName('AuditLog');
   if (!sheet || sheet.getLastRow() < 2) return [];
@@ -1290,7 +1610,7 @@ function resetPredictorAccessCode_(body, user) {
     updatePredictionRecordLocked_(
       'Predictors', 'predictor_id', predictorId,
       {
-        access_code_hash: hashPredictorAccessCode_(accessCode),
+        access_code_hash: 'reset_sha256$' + hashPredictorAccessCode_(accessCode),
         last_updated: new Date().toISOString()
       },
       'prediction.predictor.access_code.reset',
@@ -1302,7 +1622,7 @@ function resetPredictorAccessCode_(body, user) {
     return {
       predictor_id: predictorId,
       access_code: accessCode,
-      access_code_notice: 'Deliver this code privately. It will not be shown again.'
+      access_code_notice: 'Deliver this temporary code privately. The predictor must choose a new password after signing in.'
     };
   } finally {
     lock.releaseLock();

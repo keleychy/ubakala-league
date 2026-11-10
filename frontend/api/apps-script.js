@@ -36,6 +36,8 @@ const ADMIN_ACTIONS = new Set([
   'admin.predictions.summary',
   'admin.predictions.overview',
   'admin.predictions.predictorHistory',
+  'admin.predictions.recoveryRequests',
+  'admin.predictions.reviewRecovery',
   'admin.predictions.audit',
   'admin.predictions.settle',
   'admin.predictions.predictors',
@@ -48,7 +50,10 @@ const PUBLIC_POST_ACTIONS = new Set([
   'news.recordView',
   'predictions.register',
   'predictions.history',
-  'predictions.submit'
+  'predictions.setPassword',
+  'predictions.recoveryRequest',
+  'predictions.submit',
+  'predictions.submitBatch'
 ]);
 
 const appsScriptApiUrl =

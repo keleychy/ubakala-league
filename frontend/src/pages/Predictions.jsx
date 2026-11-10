@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import './Predictions.css';
 import { predictionsApi } from '../api/predictionsApi';
+import Pagination from '../components/Pagination';
 
 const OUTCOMES = [
   { value: '1', label: 'Home win' },
@@ -32,6 +33,11 @@ function outcomeLabel(value) {
   return OUTCOMES.find(outcome => outcome.value === value)?.label || value || '—';
 }
 
+function formatCategory(value) {
+  return String(value || '').replace(/_/g, ' ')
+    .replace(/\b[a-z]/g, character => character.toUpperCase());
+}
+
 function predictionHistoryStatus(prediction) {
   if (prediction.settlement_status === 'VOID') return 'void';
   if (prediction.settlement_status === 'SETTLED') {
@@ -59,19 +65,31 @@ export default function Predictions() {
   const [selectedSeason, setSelectedSeason] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedOutcomes, setSelectedOutcomes] = useState({});
-  const [confirmationId, setConfirmationId] = useState('');
+  const [dirtyFixtureIds, setDirtyFixtureIds] = useState({});
+  const [batchConfirmation, setBatchConfirmation] = useState(false);
+  const [fixtureDateFrom, setFixtureDateFrom] = useState('');
+  const [fixtureDateTo, setFixtureDateTo] = useState('');
+  const [fixturePage, setFixturePage] = useState(1);
+  const [historyPage, setHistoryPage] = useState(1);
+  const [leaderboardPage, setLeaderboardPage] = useState(1);
   const [activeSection, setActiveSection] = useState('make');
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [registrationOpen, setRegistrationOpen] = useState(false);
+  const [recoveryOpen, setRecoveryOpen] = useState(false);
+  const [passwordUpdateRequired, setPasswordUpdateRequired] = useState(false);
+  const [passwordChangeOpen, setPasswordChangeOpen] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
   const [registration, setRegistration] = useState({
     first_name: '',
     surname: '',
     third_name: '',
-    phone: ''
+    phone: '',
+    password: ''
   });
+  const [recovery, setRecovery] = useState({ name: '', phone: '' });
   const [newCredentials, setNewCredentials] = useState(null);
   const [credentials, setCredentials] = useState({ predictor_id: '', access_code: '' });
   const [predictor, setPredictor] = useState(null);
@@ -133,6 +151,7 @@ export default function Predictions() {
       existing[item.fixture_id] = item.selected_outcome;
     });
     setSelectedOutcomes(previous => ({ ...existing, ...previous }));
+    return data;
   }, []);
 
   const handleAccess = async event => {
@@ -141,7 +160,8 @@ export default function Predictions() {
     setError('');
     setSuccess('');
     try {
-      await refreshHistory(credentials);
+      const data = await refreshHistory(credentials);
+      setPasswordUpdateRequired(data.predictor?.needs_password_update === true);
       setSuccess('Your predictions have been loaded.');
       setRegistrationOpen(false);
     } catch (accessError) {
@@ -160,13 +180,18 @@ export default function Predictions() {
       const result = await predictionsApi.register(registration);
       const issuedCredentials = {
         predictor_id: result.predictor_id,
-        access_code: result.access_code
+        access_code: registration.password
       };
       setNewCredentials(result);
       setCredentials(issuedCredentials);
-      setPredictor({ predictor_id: result.predictor_id, display_name: result.display_name });
+      setPredictor({
+        predictor_id: result.predictor_id,
+        display_name: result.display_name,
+        needs_password_update: false
+      });
       setHistory([]);
-      setSuccess('Registration completed successfully. Save your Predictor ID and private access code.');
+      setPasswordUpdateRequired(false);
+      setSuccess('Registration completed. Keep your Predictor ID and password safe.');
       setRegistrationOpen(false);
     } catch (registrationError) {
       setError(registrationError.message || 'Registration could not be completed.');
@@ -175,10 +200,57 @@ export default function Predictions() {
     }
   };
 
-  const handleSubmitPrediction = async fixture => {
-    const selected = selectedOutcomes[fixture.id];
-    if (!selected) {
-      setError('Choose 1, X, or 2 before reviewing your prediction.');
+  const handleRecoveryRequest = async event => {
+    event.preventDefault();
+    setBusy(true);
+    setError('');
+    setSuccess('');
+    try {
+      const result = await predictionsApi.requestRecovery(recovery);
+      setSuccess(result.message);
+      setRecoveryOpen(false);
+      setRecovery({ name: '', phone: '' });
+    } catch (recoveryError) {
+      setError(recoveryError.message || 'We could not submit your recovery request.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handlePasswordUpdate = async event => {
+    event.preventDefault();
+    setBusy(true);
+    setError('');
+    setSuccess('');
+    try {
+      await predictionsApi.setPassword({
+        ...credentials,
+        new_password: newPassword
+      });
+      const nextCredentials = { ...credentials, access_code: newPassword };
+      setCredentials(nextCredentials);
+      setNewPassword('');
+      setPasswordUpdateRequired(false);
+      setPasswordChangeOpen(false);
+      await refreshHistory(nextCredentials);
+      setSuccess('Your password has been updated.');
+    } catch (passwordError) {
+      setError(passwordError.message || 'We could not update your password.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleSubmitBatch = async () => {
+    const submissions = Object.entries(dirtyFixtureIds)
+      .filter(([, dirty]) => dirty)
+      .map(([fixtureId]) => ({
+        fixture_id: fixtureId,
+        selected_outcome: selectedOutcomes[fixtureId]
+      }))
+      .filter(item => item.selected_outcome);
+    if (!submissions.length) {
+      setError('Choose an outcome for at least one match before submitting.');
       return;
     }
     if (!predictor) {
@@ -186,8 +258,12 @@ export default function Predictions() {
       setActiveSection('my');
       return;
     }
-    if (confirmationId !== fixture.id) {
-      setConfirmationId(fixture.id);
+    if (passwordUpdateRequired) {
+      setError('Set a new password before submitting predictions.');
+      return;
+    }
+    if (!batchConfirmation) {
+      setBatchConfirmation(true);
       setError('');
       setSuccess('');
       return;
@@ -196,18 +272,28 @@ export default function Predictions() {
     setError('');
     setSuccess('');
     try {
-      const result = await predictionsApi.submit({
+      const result = await predictionsApi.submitBatch({
         ...credentials,
-        fixture_id: fixture.id,
-        selected_outcome: selected
+        predictions: submissions
       });
-      setSuccess(result.updated
-        ? 'Your prediction was updated successfully.'
-        : 'Your prediction was submitted successfully.');
-      setConfirmationId('');
+      const succeeded = result.results.filter(item => item.success);
+      const failed = result.results.filter(item => !item.success);
+      setDirtyFixtureIds(current => {
+        const remaining = { ...current };
+        succeeded.forEach(item => { delete remaining[item.fixture_id]; });
+        return remaining;
+      });
+      setBatchConfirmation(false);
+      setSuccess(`${succeeded.length} prediction(s) saved${failed.length ? `; ${failed.length} need attention` : ''}.`);
+      if (failed.length) {
+        setError(failed.map(item => {
+          const match = fixtures.find(fixture => fixture.id === item.fixture_id);
+          return `${match ? `${match.home_team_name} vs ${match.away_team_name}` : item.fixture_id}: ${item.error}`;
+        }).join(' '));
+      }
       await Promise.all([refreshHistory(credentials), loadPublicData()]);
     } catch (submitError) {
-      setError(submitError.message || 'We could not save your prediction. Please try again.');
+      setError(submitError.message || 'We could not save the selected predictions. Please try again.');
     } finally {
       setBusy(false);
     }
@@ -217,9 +303,26 @@ export default function Predictions() {
     historyFilter === 'all' || predictionHistoryStatus(item) === historyFilter
   ), [history, historyFilter]);
 
+  const filteredFixtures = useMemo(() => fixtures
+    .filter(fixture =>
+      (!selectedCategory || fixture.competition_category === selectedCategory) &&
+      (!fixtureDateFrom || fixture.match_date >= fixtureDateFrom) &&
+      (!fixtureDateTo || fixture.match_date <= fixtureDateTo)
+    )
+    .sort((left, right) =>
+      String(left.match_date).localeCompare(String(right.match_date)) ||
+      String(left.kickoff_time).localeCompare(String(right.kickoff_time))
+    ), [fixtures, selectedCategory, fixtureDateFrom, fixtureDateTo]);
+  const visibleFixtures = filteredFixtures.slice((fixturePage - 1) * 12, fixturePage * 12);
+  const visibleHistory = filteredHistory.slice((historyPage - 1) * 10, historyPage * 10);
+  const visibleLeaderboard = leaderboard.slice((leaderboardPage - 1) * 20, leaderboardPage * 20);
+
   const setFilter = (setter, field, value) => {
     setter(value);
     if (field === 'season') setSelectedCategory('');
+    setFixturePage(1);
+    setHistoryPage(1);
+    setLeaderboardPage(1);
   };
 
   if (loading && !configuration) {
@@ -244,7 +347,7 @@ export default function Predictions() {
             <section className="predictions-panel predictions-access" aria-label="Predictor access">
               <div>
                 <h2>{predictor ? `Welcome, ${predictor.display_name}` : 'Your Predictor ID'}</h2>
-                <p>Use your Predictor ID and private access code to view your history and update predictions before kickoff.</p>
+                <p>Use your Predictor ID and password to view your history and update predictions before kickoff.</p>
               </div>
               {predictor && (
                 <div className="predictions-id-badge">
@@ -254,8 +357,8 @@ export default function Predictions() {
               )}
               {newCredentials && (
                 <div className="predictions-code-notice" role="alert">
-                  <strong>Save your private access code now. It is shown only once.</strong>
-                  <span>{newCredentials.access_code}</span>
+                  <strong>Your Predictor ID is {newCredentials.predictor_id}. Your password is the one you chose during registration.</strong>
+                  <span>We never display or send your password.</span>
                 </div>
               )}
               <div className="predictions-access-actions">
@@ -265,6 +368,11 @@ export default function Predictions() {
                 {configuration?.registration_enabled && (
                   <button type="button" className="predictions-button predictions-button--secondary" onClick={() => setRegistrationOpen(value => !value)}>
                     {registrationOpen ? 'Close registration' : 'Register'}
+                  </button>
+                )}
+                {predictor && !passwordUpdateRequired && (
+                  <button type="button" className="predictions-button predictions-button--secondary" onClick={() => setPasswordChangeOpen(value => !value)}>
+                    {passwordChangeOpen ? 'Cancel password change' : 'Change password'}
                   </button>
                 )}
               </div>
@@ -280,16 +388,34 @@ export default function Predictions() {
                     />
                   </label>
                   <label>
-                    Private access code
+                    Password or temporary recovery code
                     <input
+                      type="password"
                       autoComplete="current-password"
                       value={credentials.access_code}
-                      onChange={event => setCredentials(value => ({ ...value, access_code: event.target.value.toUpperCase() }))}
+                      onChange={event => setCredentials(value => ({ ...value, access_code: event.target.value }))}
                       required
                     />
                   </label>
                   <button className="predictions-button" disabled={busy}>Load my predictions</button>
-                  <small>Lost your access code? Contact a competition administrator to reset it securely.</small>
+                  <button type="button" className="predictions-text-button" onClick={() => setRecoveryOpen(value => !value)}>
+                    {recoveryOpen ? 'Close account recovery' : 'Forgot Predictor ID or password?'}
+                  </button>
+                </form>
+              )}
+              {recoveryOpen && activeSection === 'my' && !predictor && (
+                <form className="predictions-inline-form" onSubmit={handleRecoveryRequest}>
+                  <label>Full name used when registering<input autoComplete="name" value={recovery.name} onChange={event => setRecovery(value => ({ ...value, name: event.target.value }))} required maxLength={80} /></label>
+                  <label>WhatsApp number used when registering<input type="tel" autoComplete="tel" value={recovery.phone} onChange={event => setRecovery(value => ({ ...value, phone: event.target.value }))} required /></label>
+                  <p className="predictions-privacy-note">An administrator will check your details and contact you on the registered WhatsApp number. Recovery requests do not reveal whether an account exists.</p>
+                  <button className="predictions-button" disabled={busy}>Request account recovery</button>
+                </form>
+              )}
+              {(passwordUpdateRequired || passwordChangeOpen) && predictor && (
+                <form className="predictions-inline-form" onSubmit={handlePasswordUpdate}>
+                  {passwordUpdateRequired && <p className="predictions-privacy-note">For your security, this temporary recovery code can only be used to set a new password.</p>}
+                  <label>Create a new password<input type="password" autoComplete="new-password" value={newPassword} onChange={event => setNewPassword(event.target.value)} minLength={12} maxLength={128} required /></label>
+                  <button className="predictions-button" disabled={busy}>{passwordUpdateRequired ? 'Save new password' : 'Update password'}</button>
                 </form>
               )}
               {registrationOpen && (
@@ -298,7 +424,8 @@ export default function Predictions() {
                   <label>Surname<input value={registration.surname} onChange={event => setRegistration(value => ({ ...value, surname: event.target.value }))} required maxLength={80} /></label>
                   <label>Third name (optional)<input value={registration.third_name} onChange={event => setRegistration(value => ({ ...value, third_name: event.target.value }))} maxLength={80} /></label>
                   <label>Mobile phone number<input type="tel" autoComplete="tel" value={registration.phone} onChange={event => setRegistration(value => ({ ...value, phone: event.target.value }))} required /></label>
-                  <p className="predictions-privacy-note">Your phone number is kept private. The access code is not a password reset service; keep it safe.</p>
+                  <label>Create a password<input type="password" autoComplete="new-password" value={registration.password} onChange={event => setRegistration(value => ({ ...value, password: event.target.value }))} minLength={12} maxLength={128} required /></label>
+                  <p className="predictions-privacy-note">Use a memorable passphrase of at least 12 characters. Recovery is reviewed by an administrator and sent to your registered WhatsApp number.</p>
                   <button className="predictions-button" disabled={busy}>Create Predictor ID</button>
                 </form>
               )}
@@ -323,11 +450,52 @@ export default function Predictions() {
                   <div><span className="predictions-eyebrow">Upcoming fixtures</span><h2>Make Predictions</h2></div>
                   <button type="button" className="predictions-button predictions-button--secondary" onClick={loadPublicData} disabled={loading}>Refresh fixtures</button>
                 </div>
-                {!fixtures.length ? (
+                <div className="predictions-fixture-filters" aria-label="Filter fixtures">
+                  <label>
+                    Category
+                    <select value={selectedCategory} onChange={event => {
+                      setSelectedCategory(event.target.value);
+                      setFixturePage(1);
+                    }}>
+                      <option value="">All categories</option>
+                      {availableCategories.map(category => <option key={category} value={category}>{formatCategory(category)}</option>)}
+                    </select>
+                  </label>
+                  <label>From date<input type="date" value={fixtureDateFrom} onChange={event => { setFixtureDateFrom(event.target.value); setFixturePage(1); }} /></label>
+                  <label>To date<input type="date" value={fixtureDateTo} min={fixtureDateFrom || undefined} onChange={event => { setFixtureDateTo(event.target.value); setFixturePage(1); }} /></label>
+                  {(selectedCategory || fixtureDateFrom || fixtureDateTo) && (
+                    <button type="button" className="predictions-text-button" onClick={() => {
+                      setSelectedCategory('');
+                      setFixtureDateFrom('');
+                      setFixtureDateTo('');
+                      setFixturePage(1);
+                    }}>Clear filters</button>
+                  )}
+                </div>
+                {predictor && !passwordUpdateRequired && (
+                  <div className="predictions-batch-bar">
+                    <span>{Object.values(dirtyFixtureIds).filter(Boolean).length} match(es) selected to save</span>
+                    {!batchConfirmation && (
+                      <button type="button" className="predictions-button" disabled={busy || !Object.values(dirtyFixtureIds).some(Boolean)} onClick={handleSubmitBatch}>
+                        Review and submit all
+                      </button>
+                    )}
+                    {batchConfirmation && (
+                      <div className="predictions-confirmation predictions-batch-confirmation" role="region" aria-label="Batch prediction confirmation">
+                        <p>Submit {Object.values(dirtyFixtureIds).filter(Boolean).length} selected prediction(s) for {predictor.display_name} ({predictor.predictor_id})? Each match will be checked against its own kickoff deadline.</p>
+                        <button type="button" className="predictions-button" disabled={busy} onClick={handleSubmitBatch}>Confirm and submit all</button>
+                        <button type="button" className="predictions-text-button" onClick={() => setBatchConfirmation(false)}>Cancel</button>
+                      </div>
+                    )}
+                  </div>
+                )}
+                {!filteredFixtures.length ? (
                   <div className="predictions-empty">There are no eligible upcoming fixtures right now.</div>
                 ) : (
-                  <div className="predictions-fixture-grid">
-                    {fixtures.map(fixture => (
+                  <>
+                    <p className="predictions-list-summary">{filteredFixtures.length} upcoming fixture(s) match your filters.</p>
+                    <div className="predictions-fixture-grid">
+                    {visibleFixtures.map(fixture => (
                       <article className="predictions-fixture-card" key={fixture.id}>
                         <div className="predictions-fixture-meta">
                           <span>{fixture.season_name} · {fixture.stage || 'Fixture'}</span>
@@ -348,34 +516,23 @@ export default function Predictions() {
                               className={selectedOutcomes[fixture.id] === option.value ? 'is-selected' : ''}
                               onClick={() => {
                                 setSelectedOutcomes(current => ({ ...current, [fixture.id]: option.value }));
-                                setConfirmationId('');
+                                setDirtyFixtureIds(current => ({ ...current, [fixture.id]: true }));
+                                setBatchConfirmation(false);
                               }}
                             >
                               <b>{option.value}</b><span>{option.label}</span>
                             </button>
                           ))}
                         </div>
-                        {confirmationId === fixture.id && (
-                          <div className="predictions-confirmation" role="region" aria-label="Prediction confirmation">
-                            <p><strong>Confirm prediction:</strong> {predictor?.display_name || 'Predictor'} ({predictor?.predictor_id})</p>
-                            <p>{fixture.home_team_name} vs {fixture.away_team_name}: <strong>{selectedOutcomes[fixture.id]} - {outcomeLabel(selectedOutcomes[fixture.id])}</strong></p>
-                            <button type="button" className="predictions-button" disabled={busy} onClick={() => handleSubmitPrediction(fixture)}>Confirm and submit</button>
-                            <button type="button" className="predictions-text-button" onClick={() => setConfirmationId('')}>Cancel</button>
-                          </div>
-                        )}
-                        {confirmationId !== fixture.id && (
-                          <button
-                            type="button"
-                            className="predictions-button predictions-submit"
-                            disabled={busy || !selectedOutcomes[fixture.id]}
-                            onClick={() => handleSubmitPrediction(fixture)}
-                          >
-                            {history.some(item => item.fixture_id === fixture.id) ? 'Review / update prediction' : 'Review prediction'}
-                          </button>
-                        )}
+                        {history.some(item => item.fixture_id === fixture.id) &&
+                          <p className="predictions-saved-pick">Saved pick: {outcomeLabel(history.find(item => item.fixture_id === fixture.id).selected_outcome)}</p>}
+                        {dirtyFixtureIds[fixture.id] &&
+                          <p className="predictions-unsaved-pick">Changed — included in the batch save</p>}
                       </article>
                     ))}
-                  </div>
+                    </div>
+                    <Pagination page={fixturePage} pageSize={12} total={filteredFixtures.length} onPageChange={setFixturePage} label="Upcoming fixtures" />
+                  </>
                 )}
               </section>
             )}
@@ -389,14 +546,15 @@ export default function Predictions() {
                   <>
                     <div className="predictions-filter-row" role="group" aria-label="Filter my predictions">
                       {HISTORY_FILTERS.map(([value, label]) => (
-                        <button type="button" key={value} className={historyFilter === value ? 'is-active' : ''} aria-pressed={historyFilter === value} onClick={() => setHistoryFilter(value)}>{label}</button>
+                        <button type="button" key={value} className={historyFilter === value ? 'is-active' : ''} aria-pressed={historyFilter === value} onClick={() => { setHistoryFilter(value); setHistoryPage(1); }}>{label}</button>
                       ))}
                     </div>
                     {!filteredHistory.length ? (
                       <div className="predictions-empty">No predictions match this filter.</div>
                     ) : (
+                      <>
                       <div className="predictions-history-list">
-                        {filteredHistory.map(item => (
+                        {visibleHistory.map(item => (
                           <article className="predictions-history-card" key={item.prediction_id}>
                             <div><strong>{item.home_team_name} vs {item.away_team_name}</strong><span>{formatKickoff(item.match_date, item.kickoff_time)} WAT · {item.stage}</span></div>
                             <div><span>Your pick</span><strong>{item.selected_outcome} - {outcomeLabel(item.selected_outcome)}</strong></div>
@@ -405,6 +563,8 @@ export default function Predictions() {
                           </article>
                         ))}
                       </div>
+                      <Pagination page={historyPage} pageSize={10} total={filteredHistory.length} onPageChange={setHistoryPage} label="Prediction history" />
+                      </>
                     )}
                   </>
                 )}
@@ -424,7 +584,7 @@ export default function Predictions() {
                   Category
                   <select value={selectedCategory} onChange={event => setSelectedCategory(event.target.value)}>
                     <option value="">All categories</option>
-                    {availableCategories.map(category => <option key={category} value={category}>{category.replace(/_/g, ' ')}</option>)}
+                    {availableCategories.map(category => <option key={category} value={category}>{formatCategory(category)}</option>)}
                   </select>
                 </label>
               </div>
@@ -437,13 +597,14 @@ export default function Predictions() {
                   <div className="predictions-table-wrap">
                     <table className="predictions-table">
                       <thead><tr><th>Rank</th><th>Predictor</th><th>Points</th><th>Predictions</th><th>Correct</th><th>Accuracy</th></tr></thead>
-                      <tbody>{leaderboard.map(item => (
+                      <tbody>{visibleLeaderboard.map(item => (
                         <tr key={item.predictor_id}>
                           <td>{item.rank}</td><td>{item.display_name}</td><td>{item.total_points}</td>
                           <td>{item.total_predictions}</td><td>{item.correct_predictions}</td><td>{item.accuracy_percentage}%</td>
                         </tr>
                       ))}</tbody>
                     </table>
+                    <Pagination page={leaderboardPage} pageSize={20} total={leaderboard.length} onPageChange={setLeaderboardPage} label="Leaderboard" />
                   </div>
                 )}
               </section>
