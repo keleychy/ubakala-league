@@ -1392,7 +1392,7 @@ function getPredictionAdminOverview_(seasonId, category) {
   });
   return {
     fixtures: fixtures,
-    pending_settlements: pending.slice(0, 100),
+    pending_settlements: pending,
     pending_settlements_total: pending.length
   };
 }
@@ -1450,7 +1450,6 @@ function getPredictorRecoveryRequests_() {
     .sort((left, right) =>
       String(right.submitted_at || '').localeCompare(String(left.submitted_at || ''))
     )
-    .slice(0, 100)
     .map(record => ({
       request_id: String(record.request_id || ''),
       predictor_id: String(record.predictor_id || ''),
@@ -1556,7 +1555,6 @@ function getPredictionAuditHistory_() {
         .includes(String(record.entity_type || ''))
     )
     .sort((left, right) => String(right.timestamp || '').localeCompare(String(left.timestamp || '')))
-    .slice(0, 100)
     .map(record => ({
       timestamp: String(record.timestamp || ''),
       user_email: String(record.user_email || ''),

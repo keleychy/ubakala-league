@@ -122,8 +122,9 @@ test('sends an account recovery request using the registered WhatsApp details', 
       phone: '08012345678'
     });
   });
+});
 
-  test('filters fixtures by category and date and paginates the result list', async () => {
+test('filters fixtures by category and date and paginates the result list', async () => {
     const manyFixtures = Array.from({ length: 14 }, (_, index) => ({
       ...fixture,
       id: `fixture-${index}`,
@@ -157,5 +158,4 @@ test('sends an account recovery request using the registered WhatsApp details', 
     fireEvent.change(screen.getByLabelText('From date'), { target: { value: '2026-11-10' } });
     fireEvent.change(screen.getByLabelText('To date'), { target: { value: '2026-11-10' } });
     expect(await screen.findByText('13 upcoming fixture(s) match your filters.')).toBeInTheDocument();
-  });
 });

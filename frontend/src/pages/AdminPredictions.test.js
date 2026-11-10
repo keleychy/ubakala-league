@@ -105,15 +105,20 @@ beforeEach(() => {
 test('shows fixture activity, pending settlement, and audit history', async () => {
   render(<AdminPredictions />);
 
+  await screen.findByRole('heading', { name: 'Service overview' });
+  fireEvent.click(screen.getByRole('button', { name: 'Fixtures & results' }));
   expect(await screen.findAllByText('Eagle FC vs Rangers FC')).toHaveLength(2);
   expect(screen.getByText('1 / 1 / 0')).toBeInTheDocument();
   expect(screen.getByText('Ready to settle')).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Audit history' }));
   expect(screen.getByText('prediction.result.settled')).toBeInTheDocument();
 });
 
 test('loads prediction history for a selected predictor', async () => {
   render(<AdminPredictions />);
 
+  await screen.findByRole('heading', { name: 'Service overview' });
+  fireEvent.click(screen.getByRole('button', { name: 'Predictors' }));
   const search = await screen.findByRole('textbox', { name: 'Search predictor ID or name' });
   fireEvent.change(search, { target: { value: 'EAG-123' } });
   fireEvent.click(screen.getByRole('button', { name: 'Search' }));
@@ -125,7 +130,7 @@ test('loads prediction history for a selected predictor', async () => {
     expect(predictionsAdminApi.getPredictorHistory).toHaveBeenCalledWith('EAG-123');
   });
   expect(await screen.findByRole('heading', { name: 'Alex Eagle · EAG-123' })).toBeInTheDocument();
-  expect(await screen.findAllByText('Eagle FC vs Rangers FC')).toHaveLength(3);
+  expect(await screen.findAllByText('Eagle FC vs Rangers FC')).toHaveLength(1);
 });
 
 test('requires a review note and prepares a temporary WhatsApp recovery code', async () => {
@@ -138,6 +143,8 @@ test('requires a review note and prepares a temporary WhatsApp recovery code', a
     whatsapp_message: 'Use temporary code TEMP-123 and create a new password.'
   });
   render(<AdminPredictions />);
+  await screen.findByRole('heading', { name: 'Service overview' });
+  fireEvent.click(screen.getByRole('button', { name: /Recovery/ }));
   const approval = await screen.findByRole('button', { name: 'Verify & approve' });
   fireEvent.click(approval);
 

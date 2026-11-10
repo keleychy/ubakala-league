@@ -69,6 +69,9 @@ export default function Predictions() {
   const [batchConfirmation, setBatchConfirmation] = useState(false);
   const [fixtureDateFrom, setFixtureDateFrom] = useState('');
   const [fixtureDateTo, setFixtureDateTo] = useState('');
+  const [historyCategory, setHistoryCategory] = useState('');
+  const [historyDateFrom, setHistoryDateFrom] = useState('');
+  const [historyDateTo, setHistoryDateTo] = useState('');
   const [fixturePage, setFixturePage] = useState(1);
   const [historyPage, setHistoryPage] = useState(1);
   const [leaderboardPage, setLeaderboardPage] = useState(1);
@@ -300,8 +303,11 @@ export default function Predictions() {
   };
 
   const filteredHistory = useMemo(() => history.filter(item =>
-    historyFilter === 'all' || predictionHistoryStatus(item) === historyFilter
-  ), [history, historyFilter]);
+    (historyFilter === 'all' || predictionHistoryStatus(item) === historyFilter) &&
+    (!historyCategory || item.competition_category === historyCategory) &&
+    (!historyDateFrom || item.match_date >= historyDateFrom) &&
+    (!historyDateTo || item.match_date <= historyDateTo)
+  ), [history, historyFilter, historyCategory, historyDateFrom, historyDateTo]);
 
   const filteredFixtures = useMemo(() => fixtures
     .filter(fixture =>
@@ -548,6 +554,24 @@ export default function Predictions() {
                       {HISTORY_FILTERS.map(([value, label]) => (
                         <button type="button" key={value} className={historyFilter === value ? 'is-active' : ''} aria-pressed={historyFilter === value} onClick={() => { setHistoryFilter(value); setHistoryPage(1); }}>{label}</button>
                       ))}
+                    </div>
+                    <div className="predictions-fixture-filters predictions-history-filters" aria-label="Filter history by category and date">
+                      <label>Category
+                        <select value={historyCategory} onChange={event => { setHistoryCategory(event.target.value); setHistoryPage(1); }}>
+                          <option value="">All categories</option>
+                          {availableCategories.map(category => <option key={category} value={category}>{formatCategory(category)}</option>)}
+                        </select>
+                      </label>
+                      <label>From date<input type="date" value={historyDateFrom} onChange={event => { setHistoryDateFrom(event.target.value); setHistoryPage(1); }} /></label>
+                      <label>To date<input type="date" value={historyDateTo} min={historyDateFrom || undefined} onChange={event => { setHistoryDateTo(event.target.value); setHistoryPage(1); }} /></label>
+                      {(historyCategory || historyDateFrom || historyDateTo) && (
+                        <button type="button" className="predictions-text-button" onClick={() => {
+                          setHistoryCategory('');
+                          setHistoryDateFrom('');
+                          setHistoryDateTo('');
+                          setHistoryPage(1);
+                        }}>Clear filters</button>
+                      )}
                     </div>
                     {!filteredHistory.length ? (
                       <div className="predictions-empty">No predictions match this filter.</div>

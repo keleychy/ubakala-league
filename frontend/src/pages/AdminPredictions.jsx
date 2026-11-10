@@ -364,8 +364,6 @@ export default function AdminPredictions() {
                     ))}</tbody>
                   </table>
                   <Pagination page={pendingPage} pageSize={10} total={overview.pending_settlements.length} onPageChange={setPendingPage} label="Pending settlements" />
-                  {overview.pending_settlements_total > overview.pending_settlements.length &&
-                    <p>Showing the first {overview.pending_settlements.length} of {overview.pending_settlements_total} pending records.</p>}
                 </div>
               )}
             </section>
