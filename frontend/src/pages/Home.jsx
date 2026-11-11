@@ -300,6 +300,12 @@ export default function Home() {
             <Link className="home-nav-link" to="/history">
               Competition History
             </Link>
+            <Link className="home-nav-link" to="/predictions">
+              Predictions
+            </Link>
+            <Link className="home-nav-link" to="/rules-regulations">
+              Rules &amp; Regulations
+            </Link>
             <Link className="home-nav-link" to="/news">
               Latest News
             </Link>

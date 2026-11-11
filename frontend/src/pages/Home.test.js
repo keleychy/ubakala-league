@@ -60,3 +60,12 @@ test('homepage keeps the full-time label for normally finished matches', async (
   expect(card).toHaveTextContent('Full Time');
   expect(card).not.toHaveTextContent('Match Complete');
 });
+
+test('homepage provides direct links to Predictions and Rules & Regulations', async () => {
+  renderHomeWithStatus('FINISHED');
+
+  expect(await screen.findByRole('link', { name: 'Predictions' }))
+    .toHaveAttribute('href', '/predictions');
+  expect(screen.getByRole('link', { name: 'Rules & Regulations' }))
+    .toHaveAttribute('href', '/rules-regulations');
+});

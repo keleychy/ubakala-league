@@ -728,58 +728,106 @@
 
 @media (max-width: 600px) {
   .home-page {
-    padding-bottom: 14px;
+    padding-bottom: 20px;
   }
 
   .home-page .home-hero {
     min-height: auto;
-    padding: 39px 17px 33px;
+    padding: 34px 16px 27px;
+    background:
+      radial-gradient(circle at 95% 0%, rgba(195, 154, 69, 0.2), transparent 34%),
+      linear-gradient(145deg, #10271f 0%, #1b4c35 100%);
+  }
+
+  .home-hero::before {
+    right: -155px;
+    bottom: -240px;
+    width: 380px;
+    height: 380px;
+  }
+
+  .home-hero::after {
+    right: -100px;
+    bottom: -190px;
+    width: 270px;
+    height: 270px;
   }
 
   .home-page .home-competition-label {
+    margin-bottom: 9px;
+    color: #e6ca82;
     font-size: 9px;
-    letter-spacing: 2px;
+    letter-spacing: 1.7px;
   }
 
   .home-page .home-hero h1 {
-    font-size: clamp(27px, 8vw, 39px);
-    letter-spacing: 0.4px;
+    max-width: 360px;
+    margin: 0 auto;
+    font-size: clamp(29px, 8vw, 37px);
+    letter-spacing: 0;
+    line-height: 1.08;
   }
 
   .home-page .home-hero-description {
     max-width: 360px;
     font-size: 13px;
+    line-height: 1.6;
   }
 
   .home-navigation {
-    gap: 7px;
-    margin-top: 23px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 9px;
+    max-width: 430px;
+    margin: 22px auto 0;
   }
 
   .home-page .home-nav-link {
-    min-height: 38px;
-    padding: 9px 11px;
+    min-width: 0;
+    min-height: 46px;
+    padding: 10px 8px;
+    border-color: rgba(255, 255, 255, 0.17);
+    border-radius: 9px;
+    background: rgba(255, 255, 255, 0.075);
     font-size: 11px;
+    line-height: 1.25;
+    text-align: center;
+    overflow-wrap: anywhere;
+  }
+
+  .home-page .home-nav-primary {
+    grid-column: 1 / -1;
+    border-color: #3d895b;
+    background: #287348;
+  }
+
+  .home-page .home-nav-admin {
+    border-color: rgba(230, 202, 130, 0.55);
+    background: rgba(195, 154, 69, 0.12);
   }
 
   .home-content {
-    width: calc(100% - 22px);
+    width: calc(100% - 24px);
+    max-width: 480px;
   }
 
   .home-page .home-section {
-    margin-top: 13px;
-    padding: 17px 13px;
+    margin-top: 15px;
+    padding: 19px 14px;
+    border-color: #e2e9e1;
+    border-radius: 12px;
+    box-shadow: 0 5px 16px rgba(24, 44, 31, 0.055);
   }
 
   .home-section-heading {
-    align-items: flex-start;
-    gap: 10px;
-    margin-bottom: 17px;
-    padding-bottom: 13px;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 15px;
+    padding-bottom: 12px;
   }
 
   .home-page .home-section-heading h2 {
-    font-size: 21px;
+    font-size: 20px;
   }
 
   .home-page .home-eyebrow {
@@ -788,26 +836,53 @@
   }
 
   .home-page .home-text-link {
-    margin-top: 20px;
+    margin-top: 12px;
     font-size: 11px;
   }
 
   .home-match-grid {
     grid-template-columns: minmax(0, 1fr);
-    gap: 12px;
+    gap: 11px;
+  }
+
+  .home-page .home-match-card {
+    border-radius: 10px;
+    box-shadow: 0 3px 10px rgba(25, 48, 34, 0.055);
+  }
+
+  .home-match-topline {
+    min-height: 38px;
+    padding: 9px 13px;
   }
 
   .home-scoreboard {
-    min-height: 130px;
-    padding: 19px 15px 15px;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    min-height: 118px;
+    padding: 15px 11px 13px;
+  }
+
+  .home-score-centre {
+    min-width: 72px;
   }
 
   .home-page .home-team-name {
-    font-size: 14px;
+    font-size: 13px;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+  }
+
+  .home-team-side-label {
+    font-size: 8px;
+    letter-spacing: 1px;
   }
 
   .home-score-numbers {
-    font-size: 30px;
+    font-size: 29px;
+  }
+
+  .home-match-details {
+    gap: 12px;
+    padding: 12px 13px;
   }
 
   .home-teams-grid {
@@ -816,13 +891,19 @@
   }
 
   .home-page .home-team-card {
-    min-height: 115px;
-    padding: 14px 8px 12px;
+    min-height: 108px;
+    padding: 13px 8px 11px;
+    border-radius: 10px;
   }
 
   .home-page .home-footer {
-    margin-top: 15px;
-    padding-top: 19px;
+    align-items: flex-start;
+    margin-top: 18px;
+    padding: 17px 7px 8px;
+  }
+
+  .home-footer-mark {
+    border-radius: 10px;
   }
 }
 
