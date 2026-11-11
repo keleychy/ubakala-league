@@ -974,6 +974,27 @@ const Standings = () => {
     fetchGroupedRef.current();
   };
 
+  const handleRetry = async () => {
+    if (selectedSeason) {
+      handleRefresh();
+      return;
+    }
+
+    setLoading(true);
+    setRefreshing(true);
+    setError(null);
+    try {
+      const data = await api.getSeasons(category);
+      setSeasons(data);
+      if (data?.length) setSelectedSeason(String(data[0].id));
+    } catch (retryError) {
+      setError(retryError.message || 'Failed to load seasons');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
   const visibleGroups = standings.filter((gblock) => (
     selectedGroup === null || String(selectedGroup) === String(gblock.group.id)
   ));
@@ -1057,8 +1078,8 @@ const Standings = () => {
               <span>{error}</span>
               <button
                 type="button"
-                onClick={handleRefresh}
-                disabled={!selectedSeason || loading || refreshing}
+                onClick={handleRetry}
+                disabled={loading || refreshing}
               >
                 {refreshing ? 'Retrying…' : 'Try again'}
               </button>
@@ -1146,16 +1167,16 @@ const Standings = () => {
                         <table className="standings-table">
                           <thead>
                             <tr>
-                              <th title="Position">#</th>
-                              <th>Team</th>
-                              <th title="Played">P</th>
-                              <th title="Won">W</th>
-                              <th title="Drawn">D</th>
-                              <th title="Lost">L</th>
-                              <th title="Goals For">GF</th>
-                              <th title="Goals Against">GA</th>
-                              <th title="Goal Difference">GD</th>
-                              <th title="Points">PTS</th>
+                              <th scope="col" title="Position">#</th>
+                              <th scope="col">Team</th>
+                              <th scope="col" title="Played">P</th>
+                              <th scope="col" title="Won">W</th>
+                              <th scope="col" title="Drawn">D</th>
+                              <th scope="col" title="Lost">L</th>
+                              <th scope="col" title="Goals For">GF</th>
+                              <th scope="col" title="Goals Against">GA</th>
+                              <th scope="col" title="Goal Difference">GD</th>
+                              <th scope="col" title="Points">PTS</th>
                             </tr>
                           </thead>
 

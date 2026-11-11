@@ -22,7 +22,7 @@ test('signed-in users have a dashboard shortcut in desktop and mobile navigation
     return jest.fn();
   });
 
-  render(
+  const { container } = render(
     <MemoryRouter>
       <Header />
     </MemoryRouter>
@@ -31,6 +31,13 @@ test('signed-in users have a dashboard shortcut in desktop and mobile navigation
   const dashboardLinks = await screen.findAllByRole('link', { name: 'Dashboard' });
   expect(dashboardLinks).toHaveLength(2);
   dashboardLinks.forEach(link => expect(link).toHaveAttribute('href', '/admin-dashboard'));
+  expect(container.querySelector('.header-container')).toHaveClass('header-container--signed-in');
+  expect(container.querySelector('.nav-desktop .nav-primary-links')).toContainElement(
+    screen.getAllByRole('link', { name: 'Standings' })[0]
+  );
+  expect(container.querySelector('.nav-desktop .nav-account-links')).toContainElement(
+    screen.getByRole('button', { name: 'Logout' })
+  );
 });
 
 test('marks the current page in both desktop and mobile navigation', () => {

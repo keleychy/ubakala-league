@@ -157,13 +157,13 @@ test('public results paginate the already-loaded match list on the client', asyn
 
   render(<Results />);
 
-  await screen.findByText('Home 1', { selector: '.results-team.home' });
+  await screen.findByText('Home 13', { selector: '.results-team.home' });
   expect(document.querySelectorAll('.results-match-card')).toHaveLength(12);
   expect(screen.getByText(/Page 1 of 2/)).toBeInTheDocument();
 
   fireEvent.click(screen.getByRole('button', { name: 'Next' }));
 
-  expect(await screen.findByText('Home 13', { selector: '.results-team.home' })).toBeInTheDocument();
+  expect(await screen.findByText('Home 1', { selector: '.results-team.home' })).toBeInTheDocument();
   expect(document.querySelectorAll('.results-match-card')).toHaveLength(1);
   expect(api.getMatches).toHaveBeenCalledTimes(1);
 });

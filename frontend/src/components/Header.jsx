@@ -38,7 +38,7 @@ export default function Header() {
 
   return (
     <header className="site-header">
-      <div className="header-container">
+      <div className={`header-container${username ? ' header-container--signed-in' : ''}`}>
         {logoutError && (
           <div className="header-auth-error" role="alert">{logoutError}</div>
         )}
@@ -95,40 +95,48 @@ export default function Header() {
           className="nav-desktop"
           aria-label="Main navigation"
         >
-          <NavLink to="/" end className="nav-link">
-            Home
-          </NavLink>
+          <div className="nav-primary-links">
+            <NavLink to="/" end className="nav-link">
+              Home
+            </NavLink>
 
-          <NavLink to="/results" className="nav-link">
-            Results
-          </NavLink>
+            <NavLink to="/results" className="nav-link">
+              Results
+            </NavLink>
 
-          <NavLink to="/bracket" className="nav-link">
-            Bracket
-          </NavLink>
+            <NavLink to="/bracket" className="nav-link">
+              Bracket
+            </NavLink>
 
-          <NavLink to="/standings" className="nav-link">
-            Standings
-          </NavLink>
+            <NavLink to="/standings" className="nav-link">
+              Standings
+            </NavLink>
 
-          <NavLink to="/news" className="nav-link">
-            News
-          </NavLink>
+            <NavLink to="/news" className="nav-link">
+              News
+            </NavLink>
 
-          <NavLink to="/history" className="nav-link">
-            History
-          </NavLink>
+            <NavLink to="/history" className="nav-link">
+              History
+            </NavLink>
 
-          <NavLink to="/rules-regulations" className="nav-link">
-            Rules &amp; Regulations
-          </NavLink>
+            <NavLink to="/rules-regulations" className="nav-link">
+              Rules &amp; Regulations
+            </NavLink>
 
-          <NavLink to="/predictions" className="nav-link">
-            Predictions
-          </NavLink>
+            <NavLink to="/predictions" className="nav-link">
+              Predictions
+            </NavLink>
 
-          {username ? (
-            <>
+            {!username && (
+              <Link to="/admin" className="admin-button">
+                Admin
+              </Link>
+            )}
+          </div>
+
+          {username && (
+            <div className="nav-account-links">
               <span className="header-username">
                 {username}
               </span>
@@ -144,11 +152,7 @@ export default function Header() {
               >
                 Logout
               </button>
-            </>
-          ) : (
-            <Link to="/admin" className="admin-button">
-              Admin
-            </Link>
+            </div>
           )}
         </nav>
 

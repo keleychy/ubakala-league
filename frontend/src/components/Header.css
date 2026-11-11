@@ -134,6 +134,11 @@
   gap: 5px;
 }
 
+.site-header .nav-primary-links,
+.site-header .nav-account-links {
+  display: contents;
+}
+
 .site-header .nav-link {
   display: inline-flex;
   align-items: center;
@@ -376,6 +381,69 @@
   }
 
   .site-header .header-back {
+    display: inline-flex;
+  }
+
+  .site-header .header-container--signed-in {
+    flex-wrap: wrap;
+    row-gap: 8px;
+    padding-bottom: 0;
+  }
+
+  .site-header .header-container--signed-in .nav-desktop {
+    display: flex;
+    flex: 1 0 100%;
+    order: 3;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: center;
+    gap: 7px;
+    padding: 9px 0 8px;
+    border-top: 1px solid rgba(255, 255, 255, 0.18);
+  }
+
+  .site-header .header-container--signed-in .nav-primary-links {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 2px;
+  }
+
+  .site-header .header-container--signed-in .nav-primary-links .nav-link {
+    padding: 8px 9px;
+    font-size: 10px;
+  }
+
+  .site-header .header-container--signed-in .nav-account-links {
+    position: absolute;
+    top: 14px;
+    right: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .site-header .header-container--signed-in .header-username {
+    max-width: 155px;
+    margin: 0;
+  }
+
+  .site-header .header-container--signed-in .nav-account-links .admin-button {
+    min-height: 34px;
+    padding: 7px 11px;
+  }
+
+  .site-header .header-container--signed-in .hamburger-btn {
+    display: none;
+  }
+}
+
+@media (max-width: 850px) {
+  .site-header .header-container--signed-in .nav-desktop {
+    display: none;
+  }
+
+  .site-header .header-container--signed-in .hamburger-btn {
     display: inline-flex;
   }
 }

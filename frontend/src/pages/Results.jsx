@@ -877,6 +877,7 @@ const Results = () => {
   const [flashMap, setFlashMap] = useState({});
 
   const prevMatchesRef = useRef({});
+  const seasonLoadFailedRef = useRef(false);
   const timeoutRef = useRef(null);
   const highlightTimeoutRef = useRef(null);
 
@@ -891,6 +892,7 @@ const Results = () => {
         if (cancelled) return;
 
         const seasonList = extractList(data);
+        seasonLoadFailedRef.current = false;
         setSeasons(seasonList);
 
         if (seasonList.length > 0) {
@@ -910,6 +912,7 @@ const Results = () => {
         }
       } catch (err) {
         if (!cancelled) {
+          seasonLoadFailedRef.current = true;
           console.error('Failed to load seasons:', err);
           setError(err?.message || 'Failed to load seasons');
           setLoading(false);
@@ -999,7 +1002,7 @@ const Results = () => {
 
       setMatches(incoming);
       setLastUpdated(new Date());
-      setError(null);
+      if (!seasonLoadFailedRef.current) setError(null);
     } catch (err) {
       console.error('Failed to fetch match results:', err);
       setError(err?.message || 'Unable to load match results');
@@ -1008,6 +1011,38 @@ const Results = () => {
       setRefreshing(false);
     }
   }, []);
+
+  const handleRetry = async () => {
+    if (!seasonLoadFailedRef.current) {
+      setRefreshing(true);
+      fetchScores();
+      return;
+    }
+
+    setLoading(true);
+    setRefreshing(true);
+    setError(null);
+    try {
+      const seasonList = extractList(await api.getSeasons());
+      seasonLoadFailedRef.current = false;
+      setSeasons(seasonList);
+      if (seasonList.length) {
+        setSelectedCategory(getMatchCategory({ season: seasonList[0] }) || 'all');
+        const seasonId = getSeasonId(seasonList[0]);
+        setSelectedSeason(seasonId === null || seasonId === undefined ? 'all' : String(seasonId));
+      } else {
+        setSelectedCategory('all');
+        setSelectedSeason('');
+      }
+      await fetchScores();
+    } catch (retryError) {
+      seasonLoadFailedRef.current = true;
+      setError(retryError.message || 'Failed to load seasons');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
 
   useEffect(() => {
     fetchScores();
@@ -1475,6 +1510,7 @@ const Results = () => {
               id="results-date-from"
               type="date"
               value={dateFrom}
+              max={dateTo || undefined}
               onChange={event => setDateFrom(event.target.value)}
             />
           </div>
@@ -1506,10 +1542,7 @@ const Results = () => {
           <button
             className="results-refresh"
             type="button"
-            onClick={() => {
-              setRefreshing(true);
-              fetchScores();
-            }}
+            onClick={handleRetry}
             disabled={loading || refreshing}
           >
             {refreshing ? 'Refreshing…' : 'Refresh results'}
