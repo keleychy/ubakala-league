@@ -339,21 +339,12 @@
     padding-left: 16px;
   }
 
-  .site-header .nav-desktop {
-    gap: 1px;
-  }
-
-  .site-header .nav-desktop .nav-link {
-    padding: 9px 7px;
-    font-size: 10px;
-  }
-
   .site-header .header-brand-name {
     font-size: 16px;
   }
 }
 
-@media (max-width: 850px) {
+@media (max-width: 1280px) {
   .site-header .header-container {
     min-height: 68px;
   }
