@@ -36,7 +36,7 @@ test('signed-in users have a dashboard shortcut in desktop and mobile navigation
     screen.getAllByRole('link', { name: 'Standings' })[0]
   );
   expect(container.querySelector('.header-top-row .nav-account-links')).toContainElement(
-    screen.getByRole('button', { name: 'Logout' })
+    screen.getAllByRole('button', { name: 'Logout' })[0]
   );
   expect(container.querySelector('.header-top-row')).toContainElement(
     container.querySelector('.nav-account-links')
