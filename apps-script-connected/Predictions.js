@@ -353,17 +353,12 @@ function hashPredictorPassword_(password) {
   const iterations = 50000;
   const salt = Utilities.getUuid().replace(/-/g, '');
   const saltBytes = Utilities.newBlob(salt).getBytes();
+  const passwordBytes = Utilities.newBlob(password).getBytes();
   const block = saltBytes.concat([0, 0, 0, 1]);
-  let current = Utilities.computeHmacSha256SignatureForBlob(
-    Utilities.newBlob(block),
-    password
-  );
+  let current = Utilities.computeHmacSha256Signature(block, passwordBytes);
   const derived = current.slice();
   for (let iteration = 1; iteration < iterations; iteration += 1) {
-    current = Utilities.computeHmacSha256SignatureForBlob(
-      Utilities.newBlob(current),
-      password
-    );
+    current = Utilities.computeHmacSha256Signature(current, passwordBytes);
     for (let index = 0; index < derived.length; index += 1) {
       derived[index] ^= current[index];
     }
@@ -378,17 +373,12 @@ function verifyPredictorCredential_(storedHash, credential) {
     const parts = stored.split('$');
     if (parts.length !== 4 || Number(parts[1]) !== 50000) return false;
     const saltBytes = Utilities.newBlob(parts[2]).getBytes();
+    const credentialBytes = Utilities.newBlob(credential).getBytes();
     const currentInput = saltBytes.concat([0, 0, 0, 1]);
-    let current = Utilities.computeHmacSha256SignatureForBlob(
-      Utilities.newBlob(currentInput),
-      credential
-    );
+    let current = Utilities.computeHmacSha256Signature(currentInput, credentialBytes);
     const derived = current.slice();
     for (let iteration = 1; iteration < 50000; iteration += 1) {
-      current = Utilities.computeHmacSha256SignatureForBlob(
-        Utilities.newBlob(current),
-        credential
-      );
+      current = Utilities.computeHmacSha256Signature(current, credentialBytes);
       for (let index = 0; index < derived.length; index += 1) {
         derived[index] ^= current[index];
       }
@@ -457,14 +447,12 @@ function submitPredictorRecoveryRequest_(body) {
     throw apiError_('Recovery requests are busy; please try again shortly');
   }
   try {
-    const normalizedName = submittedName.toLowerCase().replace(/\s+/g, ' ');
-    const predictor = getSheetRecords('Predictors').find(record =>
-      normalizePredictorPhone_(record.normalized_phone) === submittedPhone &&
-      String(record.display_name || '').toLowerCase().replace(/\s+/g, ' ') === normalizedName
-    );
+    const match = findPredictorForRecovery_(submittedName, submittedPhone);
+    const predictor = match ? match.predictor : null;
     const request = {
       request_id: Utilities.getUuid(),
       predictor_id: predictor ? String(predictor.predictor_id) : '',
+      account_name_match: Boolean(match && match.nameMatch),
       submitted_name: submittedName,
       submitted_phone: submittedPhone,
       status: 'PENDING',
@@ -487,6 +475,36 @@ function submitPredictorRecoveryRequest_(body) {
   return {
     submitted: true,
     message: 'Your request was sent for administrator review. We will contact you on the WhatsApp number associated with your account after checking the details.'
+  };
+}
+
+function normalizeRecoveryNameTokens_(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+}
+
+function findPredictorForRecovery_(submittedName, submittedPhone) {
+  const submittedTokens = normalizeRecoveryNameTokens_(submittedName);
+  const phoneMatches = getSheetRecords('Predictors').filter(record =>
+    String(record.normalized_phone || '').trim() === submittedPhone
+  );
+  if (phoneMatches.length !== 1) return null;
+  const predictor = phoneMatches[0];
+  const registeredTokens = normalizeRecoveryNameTokens_([
+    predictor.first_name,
+    predictor.third_name,
+    predictor.surname,
+    predictor.display_name
+  ].filter(Boolean).join(' '));
+  const registeredTokenSet = new Set(registeredTokens);
+  return {
+    predictor: predictor,
+    nameMatch: submittedTokens.length >= 2 &&
+      submittedTokens.every(token => registeredTokenSet.has(token))
   };
 }
 
@@ -1450,17 +1468,25 @@ function getPredictorRecoveryRequests_() {
     .sort((left, right) =>
       String(right.submitted_at || '').localeCompare(String(left.submitted_at || ''))
     )
-    .map(record => ({
-      request_id: String(record.request_id || ''),
-      predictor_id: String(record.predictor_id || ''),
-      submitted_name: String(record.submitted_name || ''),
-      submitted_phone: String(record.submitted_phone || ''),
-      status: String(record.status || ''),
-      submitted_at: String(record.submitted_at || ''),
-      reviewed_at: String(record.reviewed_at || ''),
-      reviewed_by: String(record.reviewed_by || ''),
-      admin_note: String(record.admin_note || '')
-    }));
+    .map(record => {
+      const match = findPredictorForRecovery_(
+        String(record.submitted_name || ''),
+        String(record.submitted_phone || '')
+      );
+      return {
+        request_id: String(record.request_id || ''),
+        predictor_id: match ? String(match.predictor.predictor_id || '') : '',
+        account_name: match ? String(match.predictor.display_name || '') : '',
+        name_match: Boolean(match && match.nameMatch),
+        submitted_name: String(record.submitted_name || ''),
+        submitted_phone: String(record.submitted_phone || ''),
+        status: String(record.status || ''),
+        submitted_at: String(record.submitted_at || ''),
+        reviewed_at: String(record.reviewed_at || ''),
+        reviewed_by: String(record.reviewed_by || ''),
+        admin_note: String(record.admin_note || '')
+      };
+    });
 }
 
 function reviewPredictorRecoveryRequest_(body, user) {
@@ -1484,7 +1510,11 @@ function reviewPredictorRecoveryRequest_(body, user) {
     }
 
     let temporaryCode = '';
-    let predictorId = String(request.predictor_id || '');
+    const match = findPredictorForRecovery_(
+      String(request.submitted_name || ''),
+      String(request.submitted_phone || '')
+    );
+    let predictorId = match ? String(match.predictor.predictor_id || '') : '';
     let status = 'REJECTED';
     if (decision === 'APPROVE') {
       if (!predictorId) {

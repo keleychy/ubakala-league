@@ -196,7 +196,7 @@ export default function AdminPredictions() {
 
   const handleRecoveryReview = async (request, decision) => {
     const prompt = decision === 'APPROVE'
-      ? `Confirm how you verified ${request.submitted_name}'s identity:`
+      ? `Explain how you verified ${request.submitted_name}'s identity and registered WhatsApp number:`
       : `Reason to reject ${request.submitted_name}'s recovery request:`;
     const note = window.prompt(prompt);
     if (!note || !note.trim()) return;
@@ -283,7 +283,7 @@ export default function AdminPredictions() {
                 <div><span className="predictions-eyebrow">Account support</span><h2>WhatsApp recovery requests</h2></div>
                 <span>{recoveryRequests.filter(request => request.status === 'PENDING').length} awaiting review</span>
               </div>
-              <p>Verify the predictor’s name and registered WhatsApp number before approving. Recovery messages are prepared here; send them manually to the registered number.</p>
+              <p>Confirm the registered WhatsApp account belongs to the requester before approving. Phone-matched requests with a name mismatch require manual identity verification and a review note. Recovery messages are prepared here; send them manually to the registered number.</p>
               {recoveryMessage && (
                 <div className="predictions-code-notice" role="status">
                   <strong>{recoveryMessage.status === 'APPROVED' ? 'Send this temporary code only to the registered WhatsApp number.' : 'Prepared rejection note for manual WhatsApp delivery.'}</strong>
@@ -301,12 +301,16 @@ export default function AdminPredictions() {
                         <td>{request.submitted_at}</td>
                         <td>{request.submitted_name}</td>
                         <td>{request.submitted_phone}</td>
-                        <td>{request.predictor_id ? request.predictor_id : 'No exact match'}</td>
+                        <td>{request.predictor_id
+                          ? <>{request.predictor_id} · {request.account_name || 'Account found'}<br />{request.name_match ? 'Name and WhatsApp match' : 'WhatsApp match · verify name manually'}</>
+                          : 'No account matches this WhatsApp number'}</td>
                         <td>{request.status}</td>
                         <td className="predictions-row-actions">
                           {request.status === 'PENDING' && (
                             <>
-                              <button type="button" disabled={busy || !request.predictor_id} onClick={() => handleRecoveryReview(request, 'APPROVE')}>Verify & approve</button>
+                              <button type="button" disabled={busy || !request.predictor_id} onClick={() => handleRecoveryReview(request, 'APPROVE')}>
+                                {request.name_match === false ? 'Manually verify & approve' : 'Verify & approve'}
+                              </button>
                               <button type="button" disabled={busy} onClick={() => handleRecoveryReview(request, 'REJECT')}>Reject</button>
                             </>
                           )}

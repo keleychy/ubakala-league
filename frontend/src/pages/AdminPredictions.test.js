@@ -71,6 +71,8 @@ beforeEach(() => {
   predictionsAdminApi.getRecoveryRequests.mockResolvedValue([{
     request_id: 'recovery-1',
     predictor_id: 'EAG-123',
+    account_name: 'Alex Eagle',
+    name_match: false,
     submitted_name: 'Recovery Applicant',
     submitted_phone: '+2348012345678',
     status: 'PENDING',
@@ -145,7 +147,7 @@ test('requires a review note and prepares a temporary WhatsApp recovery code', a
   render(<AdminPredictions />);
   await screen.findByRole('heading', { name: 'Service overview' });
   fireEvent.click(screen.getByRole('button', { name: /Recovery/ }));
-  const approval = await screen.findByRole('button', { name: 'Verify & approve' });
+  const approval = await screen.findByRole('button', { name: 'Manually verify & approve' });
   fireEvent.click(approval);
 
   await waitFor(() => {
