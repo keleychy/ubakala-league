@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api/api';
 import './LeaguePolish.css';
@@ -29,20 +29,28 @@ const News = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const mountedRef = useRef(false);
+
+  const loadNews = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await api.getNews();
+      if (!mountedRef.current) return;
+      setNewsItems(Array.isArray(data) ? data : []);
+    } catch (err) {
+      if (!mountedRef.current) return;
+      setError(err.message || 'Failed to load news');
+    } finally {
+      if (mountedRef.current) setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    let mounted = true;
-    api.getNews().then((data) => {
-      if (!mounted) return;
-      setNewsItems(Array.isArray(data) ? data : []);
-      setLoading(false);
-    }).catch((err) => {
-      if (!mounted) return;
-      setError(err.message || 'Failed to load news');
-      setLoading(false);
-    });
-    return () => { mounted = false; };
-  }, []);
+    mountedRef.current = true;
+    loadNews();
+    return () => { mountedRef.current = false; };
+  }, [loadNews]);
 
   const pageCount = Math.ceil(newsItems.length / NEWS_PER_PAGE);
   const visibleNews = newsItems.slice(
@@ -68,7 +76,10 @@ const News = () => {
         )}
         {error && (
           <div className="league-page-status league-page-status--error" role="alert">
-            Error: {error}
+            <p>Error: {error}</p>
+            <button type="button" onClick={loadNews} disabled={loading}>
+              {loading ? 'Retrying…' : 'Try again'}
+            </button>
           </div>
         )}
 

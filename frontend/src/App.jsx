@@ -21,6 +21,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 import GroupManager from './pages/GroupManager';
 import Predictions from './pages/Predictions';
 import AdminPredictions from './pages/AdminPredictions';
+import NotFound from './pages/NotFound';
 
 // 1. IMPORT ANALYTICS LIBRARIES
 import { Analytics } from '@vercel/analytics/react';
@@ -112,6 +113,7 @@ export default function App() {
                     <AdminPredictions />
                   </RequireAuth>
                 } />
+                <Route path="*" element={<NotFound />} />
               </Routes>
             </main>
             <Footer />

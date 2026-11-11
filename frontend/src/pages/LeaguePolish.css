@@ -184,6 +184,22 @@
   color: #a52a2a;
 }
 
+.league-page-status--error button {
+  min-height: 40px;
+  margin: 10px 0 0;
+  padding: 0 13px;
+  border: 1px solid #a52a2a;
+  border-radius: 7px;
+  background: #fff;
+  color: #8f2020;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.league-page-status--error button:hover:not(:disabled) {
+  background: #fff0f0;
+}
+
 .league-page-empty {
   padding: 28px 20px;
   border: 1px dashed #cbd6e4;

@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, NavLink, useNavigate } from 'react-router-dom';
 import './Header.css';
 import { onAuthStateChanged } from 'firebase/auth';
 import { getFirebaseAuth } from '../api/firebaseClient';
@@ -95,37 +95,37 @@ export default function Header() {
           className="nav-desktop"
           aria-label="Main navigation"
         >
-          <Link to="/" className="nav-link">
+          <NavLink to="/" end className="nav-link">
             Home
-          </Link>
+          </NavLink>
 
-          <Link to="/results" className="nav-link">
+          <NavLink to="/results" className="nav-link">
             Results
-          </Link>
+          </NavLink>
 
-          <Link to="/bracket" className="nav-link">
+          <NavLink to="/bracket" className="nav-link">
             Bracket
-          </Link>
+          </NavLink>
 
-          <Link to="/standings" className="nav-link">
+          <NavLink to="/standings" className="nav-link">
             Standings
-          </Link>
+          </NavLink>
 
-          <Link to="/news" className="nav-link">
+          <NavLink to="/news" className="nav-link">
             News
-          </Link>
+          </NavLink>
 
-          <Link to="/history" className="nav-link">
+          <NavLink to="/history" className="nav-link">
             History
-          </Link>
+          </NavLink>
 
-          <Link to="/rules-regulations" className="nav-link">
+          <NavLink to="/rules-regulations" className="nav-link">
             Rules &amp; Regulations
-          </Link>
+          </NavLink>
 
-          <Link to="/predictions" className="nav-link">
+          <NavLink to="/predictions" className="nav-link">
             Predictions
-          </Link>
+          </NavLink>
 
           {username ? (
             <>
@@ -133,9 +133,9 @@ export default function Header() {
                 {username}
               </span>
 
-              <Link to="/admin-dashboard" className="admin-button">
+              <NavLink to="/admin-dashboard" className="admin-button">
                 Dashboard
-              </Link>
+              </NavLink>
 
               <button
                 type="button"
@@ -183,37 +183,37 @@ export default function Header() {
             <span className="mobile-nav-line"></span>
           </div>
 
-          <Link to="/" className="nav-link" onClick={closeMenu}>
+          <NavLink to="/" end className="nav-link" onClick={closeMenu}>
             Home
-          </Link>
+          </NavLink>
 
-          <Link to="/results" className="nav-link" onClick={closeMenu}>
+          <NavLink to="/results" className="nav-link" onClick={closeMenu}>
             Results
-          </Link>
+          </NavLink>
 
-          <Link to="/bracket" className="nav-link" onClick={closeMenu}>
+          <NavLink to="/bracket" className="nav-link" onClick={closeMenu}>
             Bracket
-          </Link>
+          </NavLink>
 
-          <Link to="/standings" className="nav-link" onClick={closeMenu}>
+          <NavLink to="/standings" className="nav-link" onClick={closeMenu}>
             Standings
-          </Link>
+          </NavLink>
 
-          <Link to="/news" className="nav-link" onClick={closeMenu}>
+          <NavLink to="/news" className="nav-link" onClick={closeMenu}>
             News
-          </Link>
+          </NavLink>
 
-          <Link to="/history" className="nav-link" onClick={closeMenu}>
+          <NavLink to="/history" className="nav-link" onClick={closeMenu}>
             History
-          </Link>
+          </NavLink>
 
-          <Link to="/rules-regulations" className="nav-link" onClick={closeMenu}>
+          <NavLink to="/rules-regulations" className="nav-link" onClick={closeMenu}>
             Rules &amp; Regulations
-          </Link>
+          </NavLink>
 
-          <Link to="/predictions" className="nav-link" onClick={closeMenu}>
+          <NavLink to="/predictions" className="nav-link" onClick={closeMenu}>
             Predictions
-          </Link>
+          </NavLink>
 
           {username ? (
             <div className="mobile-admin-section">
@@ -221,13 +221,13 @@ export default function Header() {
                 Signed in as {username}
               </span>
 
-              <Link
+              <NavLink
                 to="/admin-dashboard"
                 className="admin-button"
                 onClick={closeMenu}
               >
                 Dashboard
-              </Link>
+              </NavLink>
 
               <button
                 type="button"

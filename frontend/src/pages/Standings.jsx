@@ -172,6 +172,12 @@ const styles = `
     font-size: 12px;
   }
 
+  .standings-updated {
+    display: block;
+    margin-top: 5px;
+    font-size: 11px;
+  }
+
   /* Group navigation */
   .standings-group-nav {
     display: flex;
@@ -461,6 +467,19 @@ const styles = `
     color: #b42323;
   }
 
+  .standings-error button {
+    display: block;
+    min-height: 40px;
+    margin: 8px 0 0;
+    padding: 0 12px;
+    border: 1px solid #b42323;
+    border-radius: 7px;
+    background: #fff;
+    color: #9e1d1d;
+    font-weight: 750;
+    cursor: pointer;
+  }
+
   /* Score update animation */
   .score-flash {
     animation: scoreFlash ${FLASH_DURATION}ms ease-in-out;
@@ -539,6 +558,7 @@ const Standings = () => {
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
+  const [lastUpdated, setLastUpdated] = useState(null);
 
   const standingsLoadedOnceRef = useRef({});
   const timeoutRef = useRef(null);
@@ -788,6 +808,7 @@ const Standings = () => {
           }, FLASH_DURATION);
         }
       }
+      setLastUpdated(new Date());
     } catch (err) {
       setError(err?.message || 'Failed to load grouped standings');
     } finally {
@@ -1032,7 +1053,16 @@ const Standings = () => {
         {error && (
           <div className="standings-alert standings-error" role="alert">
             <span aria-hidden="true">!</span>
-            <span>{error}</span>
+            <div>
+              <span>{error}</span>
+              <button
+                type="button"
+                onClick={handleRefresh}
+                disabled={!selectedSeason || loading || refreshing}
+              >
+                {refreshing ? 'Retrying…' : 'Try again'}
+              </button>
+            </div>
           </div>
         )}
 
@@ -1053,6 +1083,11 @@ const Standings = () => {
 
                 <p className="standings-section-caption">
                   Team positions and performance in the group stage.
+                  {lastUpdated && (
+                    <span className="standings-updated">
+                      Last updated {lastUpdated.toLocaleString()}
+                    </span>
+                  )}
                 </p>
               </div>
             </div>

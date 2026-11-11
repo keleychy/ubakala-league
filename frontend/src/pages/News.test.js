@@ -40,3 +40,25 @@ test('news cards show views and paginate nine stories at a time', async () => {
   expect(await screen.findByRole('link', { name: 'Read Story 10' })).toBeInTheDocument();
   expect(screen.queryByRole('link', { name: 'Read Story 1' })).not.toBeInTheDocument();
 });
+
+test('news loading errors provide a retry action', async () => {
+  api.getNews
+    .mockRejectedValueOnce(new Error('Network unavailable'))
+    .mockResolvedValueOnce([{
+      id: 'recovered-story',
+      title: 'Recovered story',
+      content: 'The service is back.'
+    }]);
+
+  render(
+    <MemoryRouter>
+      <News />
+    </MemoryRouter>
+  );
+
+  expect(await screen.findByRole('alert')).toHaveTextContent('Network unavailable');
+  fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+
+  expect(await screen.findByRole('link', { name: 'Read Recovered story' })).toBeInTheDocument();
+  expect(api.getNews).toHaveBeenCalledTimes(2);
+});

@@ -125,3 +125,45 @@ test('public knockout results show penalties and mark the penalty winner', async
     .not.toHaveClass('winner');
   expect(bracket.querySelector('.results-bracket-penalties')).toHaveTextContent('Penalties: 4 - 3');
 });
+
+test('public results can be filtered by kickoff date without another API request', async () => {
+  render(<Results />);
+  await screen.findByText('Senior Eagles', { selector: '.results-team.home' });
+
+  fireEvent.change(screen.getByLabelText('Competition category'), {
+    target: { value: 'all' }
+  });
+  fireEvent.change(screen.getByLabelText('From date'), {
+    target: { value: '2026-10-02' }
+  });
+
+  expect(await screen.findByText('Girls United', { selector: '.results-team.home' })).toBeInTheDocument();
+  expect(screen.queryByText('Senior Eagles', { selector: '.results-team.home' })).not.toBeInTheDocument();
+  expect(api.getMatches).toHaveBeenCalledTimes(1);
+});
+
+test('public results paginate the already-loaded match list on the client', async () => {
+  api.getMatches.mockResolvedValue(Array.from({ length: 13 }, (_, index) => ({
+    id: `match-${index + 1}`,
+    season: { id: 'senior-season', category: 'senior_boys' },
+    stage: 'GROUP',
+    status: 'FINISHED',
+    home_team: { name: `Home ${index + 1}` },
+    away_team: { name: `Away ${index + 1}` },
+    home_score: 1,
+    away_score: 0,
+    match_date: `2026-10-${String(index + 1).padStart(2, '0')}`
+  })));
+
+  render(<Results />);
+
+  await screen.findByText('Home 1', { selector: '.results-team.home' });
+  expect(document.querySelectorAll('.results-match-card')).toHaveLength(12);
+  expect(screen.getByText(/Page 1 of 2/)).toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+
+  expect(await screen.findByText('Home 13', { selector: '.results-team.home' })).toBeInTheDocument();
+  expect(document.querySelectorAll('.results-match-card')).toHaveLength(1);
+  expect(api.getMatches).toHaveBeenCalledTimes(1);
+});

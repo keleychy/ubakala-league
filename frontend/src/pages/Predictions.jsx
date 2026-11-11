@@ -532,8 +532,12 @@ export default function Predictions() {
                   )}
                 </div>
                 {predictor && !passwordUpdateRequired && (
-                  <div className="predictions-batch-bar">
-                    <span>{Object.values(dirtyFixtureIds).filter(Boolean).length} match(es) selected to save</span>
+                  <div className="predictions-batch-bar" aria-busy={busy}>
+                    <span role="status" aria-live="polite">
+                      {busy
+                        ? 'Saving your selected predictions…'
+                        : `${Object.values(dirtyFixtureIds).filter(Boolean).length} unsaved pick(s)`}
+                    </span>
                     {!batchConfirmation && (
                       <button type="button" className="predictions-button" disabled={busy || !Object.values(dirtyFixtureIds).some(Boolean)} onClick={handleSubmitBatch}>
                         Review and submit all

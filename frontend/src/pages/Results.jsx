@@ -135,7 +135,24 @@ const styles = `
     cursor: pointer;
   }
 
+  .results-filter input {
+    width: 100%;
+    min-height: 44px;
+    padding: 0 12px;
+    border: 1px solid #dce3ed;
+    border-radius: 8px;
+    background: #fbfcfe;
+    color: var(--rs-primary-dark);
+    font: inherit;
+    font-size: 14px;
+  }
+
   .results-filter select:focus {
+    border-color: #5276a7;
+    box-shadow: 0 0 0 3px rgba(82, 118, 167, .12);
+  }
+
+  .results-filter input:focus {
     border-color: #5276a7;
     box-shadow: 0 0 0 3px rgba(82, 118, 167, .12);
   }
@@ -593,6 +610,52 @@ const styles = `
     line-height: 1.5;
   }
 
+  .results-error button {
+    min-height: 40px;
+    margin: 10px 0 0;
+    padding: 0 13px;
+    border: 1px solid #b42323;
+    border-radius: 7px;
+    background: #fff;
+    color: #9e1d1d;
+    font-weight: 750;
+    cursor: pointer;
+  }
+
+  .results-pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin: 24px 0 12px;
+    color: #536780;
+    font-size: 13px;
+    font-weight: 650;
+  }
+
+  .results-pagination button {
+    min-width: 90px;
+    min-height: 42px;
+    border: 1px solid #cad5e3;
+    border-radius: 8px;
+    background: #fff;
+    color: var(--rs-primary);
+    font-weight: 750;
+    cursor: pointer;
+  }
+
+  .results-pagination button:disabled {
+    cursor: not-allowed;
+    opacity: .5;
+  }
+
+  .results-updated {
+    margin-top: 6px;
+    color: var(--rs-muted);
+    font-size: 11px;
+  }
+
   @media (max-width: 650px) {
     .results-page {
       padding: 27px 13px 45px;
@@ -804,9 +867,13 @@ const Results = () => {
   const [seasons, setSeasons] = useState([]);
   const [selectedSeason, setSelectedSeason] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
+  const [lastUpdated, setLastUpdated] = useState(null);
   const [flashMap, setFlashMap] = useState({});
 
   const prevMatchesRef = useRef({});
@@ -931,6 +998,7 @@ const Results = () => {
       prevMatchesRef.current = nextPrevious;
 
       setMatches(incoming);
+      setLastUpdated(new Date());
       setError(null);
     } catch (err) {
       console.error('Failed to fetch match results:', err);
@@ -978,6 +1046,14 @@ const Results = () => {
       });
     }
 
+    if (dateFrom) {
+      result = result.filter(match => String(getMatchDate(match) || '').slice(0, 10) >= dateFrom);
+    }
+
+    if (dateTo) {
+      result = result.filter(match => String(getMatchDate(match) || '').slice(0, 10) <= dateTo);
+    }
+
     return [...result].sort((a, b) => {
       const dateA = getMatchDate(a)
         ? new Date(getMatchDate(a)).getTime()
@@ -989,7 +1065,15 @@ const Results = () => {
 
       return dateB - dateA;
     });
-  }, [matches, selectedCategory, selectedSeason]);
+  }, [matches, selectedCategory, selectedSeason, dateFrom, dateTo]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [selectedCategory, selectedSeason, dateFrom, dateTo]);
+
+  const pageCount = Math.ceil(filteredMatches.length / 12);
+  const currentPage = Math.min(page, Math.max(pageCount, 1));
+  const visibleMatches = filteredMatches.slice((currentPage - 1) * 12, currentPage * 12);
 
   const availableCategories = useMemo(() => {
     const categoryValues = new Set(
@@ -1012,7 +1096,7 @@ const Results = () => {
   const groupedMatches = useMemo(() => {
     const groups = {};
 
-    filteredMatches.forEach((match) => {
+    visibleMatches.forEach((match) => {
       const stage = getStageName(match);
 
       if (!groups[stage]) {
@@ -1046,7 +1130,7 @@ const Results = () => {
 
       return ai - bi;
     });
-  }, [filteredMatches]);
+  }, [visibleMatches]);
 
   /* Identify knockout matches for the overview. */
   const bracketStages = [
@@ -1385,6 +1469,40 @@ const Results = () => {
             </select>
           </div>
 
+          <div className="results-filter">
+            <label htmlFor="results-date-from">From date</label>
+            <input
+              id="results-date-from"
+              type="date"
+              value={dateFrom}
+              onChange={event => setDateFrom(event.target.value)}
+            />
+          </div>
+
+          <div className="results-filter">
+            <label htmlFor="results-date-to">To date</label>
+            <input
+              id="results-date-to"
+              type="date"
+              value={dateTo}
+              min={dateFrom || undefined}
+              onChange={event => setDateTo(event.target.value)}
+            />
+          </div>
+
+          {(dateFrom || dateTo) && (
+            <button
+              className="results-refresh"
+              type="button"
+              onClick={() => {
+                setDateFrom('');
+                setDateTo('');
+              }}
+            >
+              Clear dates
+            </button>
+          )}
+
           <button
             className="results-refresh"
             type="button"
@@ -1401,6 +1519,18 @@ const Results = () => {
         {error && (
           <div className="results-error" role="alert">
             {error}
+            <div>
+              <button
+                type="button"
+                onClick={() => {
+                  setRefreshing(true);
+                  fetchScores();
+                }}
+                disabled={loading || refreshing}
+              >
+                {refreshing ? 'Retrying…' : 'Try again'}
+              </button>
+            </div>
           </div>
         )}
 
@@ -1421,6 +1551,11 @@ const Results = () => {
 
                 <p className="results-section-caption">
                   Match scores, fixtures and competition progress.
+                  {lastUpdated && (
+                    <span className="results-updated">
+                      {' '}Last updated {lastUpdated.toLocaleString()}
+                    </span>
+                  )}
                 </p>
               </div>
 
@@ -1484,6 +1619,29 @@ const Results = () => {
                   </section>
                 ))}
               </div>
+            )}
+            {pageCount > 1 && (
+              <nav className="results-pagination" aria-label="Results pages">
+                <button
+                  type="button"
+                  onClick={() => setPage(currentPage - 1)}
+                  disabled={currentPage === 1}
+                >
+                  Previous
+                </button>
+                <span aria-live="polite">
+                  Showing {(currentPage - 1) * 12 + 1}-
+                  {Math.min(currentPage * 12, filteredMatches.length)} of {filteredMatches.length}
+                  {' · '}Page {currentPage} of {pageCount}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setPage(currentPage + 1)}
+                  disabled={currentPage === pageCount}
+                >
+                  Next
+                </button>
+              </nav>
             )}
           </>
         )}

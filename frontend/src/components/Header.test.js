@@ -32,3 +32,20 @@ test('signed-in users have a dashboard shortcut in desktop and mobile navigation
   expect(dashboardLinks).toHaveLength(2);
   dashboardLinks.forEach(link => expect(link).toHaveAttribute('href', '/admin-dashboard'));
 });
+
+test('marks the current page in both desktop and mobile navigation', () => {
+  onAuthStateChanged.mockImplementation((auth, callback) => {
+    callback(null);
+    return jest.fn();
+  });
+
+  render(
+    <MemoryRouter initialEntries={['/standings']}>
+      <Header />
+    </MemoryRouter>
+  );
+
+  const activeLinks = screen.getAllByRole('link', { name: 'Standings' });
+  expect(activeLinks).toHaveLength(2);
+  activeLinks.forEach(link => expect(link).toHaveAttribute('aria-current', 'page'));
+});
