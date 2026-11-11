@@ -33,7 +33,7 @@ function renderHomeWithStatus(status) {
     match_date: getLagosDateKey()
   }]);
 
-  render(
+  return render(
     <MemoryRouter>
       <Home />
     </MemoryRouter>
@@ -68,4 +68,16 @@ test('homepage provides direct links to Predictions and Rules & Regulations', as
     .toHaveAttribute('href', '/predictions');
   expect(screen.getByRole('link', { name: 'Rules & Regulations' }))
     .toHaveAttribute('href', '/rules-regulations');
+});
+
+test('homepage highlights Predictions as new during its one-week announcement', () => {
+  jest.useFakeTimers();
+  jest.setSystemTime(new Date('2026-11-12T13:18:19.960+01:00'));
+  const { unmount } = renderHomeWithStatus('FINISHED');
+
+  const predictionsLink = screen.getByRole('link', { name: 'Predictions' });
+  expect(predictionsLink.querySelector('.new-feature-badge')).toHaveTextContent('NEW');
+
+  unmount();
+  jest.useRealTimers();
 });

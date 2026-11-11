@@ -163,6 +163,18 @@
   background: #318256;
 }
 
+.home-page .home-nav-link--announced {
+  gap: 8px;
+  border-color: #d9bd7d;
+  background: rgba(195, 154, 69, 0.16);
+}
+
+.home-page .new-feature-badge {
+  border-color: #f1d58a;
+  background: #f1d58a;
+  color: #142b24;
+}
+
 .home-page .home-nav-admin {
   border-color: rgba(217, 189, 125, 0.65);
   color: #e6d3a6;

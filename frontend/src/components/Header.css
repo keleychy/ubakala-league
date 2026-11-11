@@ -230,6 +230,27 @@
   box-shadow: inset 0 -2px 0 #d6a83d;
 }
 
+.site-header .nav-link--announced {
+  gap: 6px;
+}
+
+.new-feature-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 18px;
+  padding: 2px 6px;
+  border: 1px solid #f8d876;
+  border-radius: 999px;
+  background: #f8d876;
+  color: #102b50;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.55px;
+  line-height: 1;
+  vertical-align: middle;
+}
+
 .site-header .nav-mobile .nav-link[aria-current="page"] {
   color: #102b50;
   background: #fff8e6;

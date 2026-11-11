@@ -5,10 +5,12 @@ import './Header.css';
 import { onAuthStateChanged } from 'firebase/auth';
 import { getFirebaseAuth } from '../api/firebaseClient';
 import { signOutAdmin } from '../api/firebaseAuth';
+import { usePredictionsAnnouncement } from '../utils/featureAnnouncements';
 
 export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
   const navigate = useNavigate();
+  const predictionsAnnouncementActive = usePredictionsAnnouncement();
   const [username, setUsername] = useState(null);
   const [logoutError, setLogoutError] = useState('');
 
@@ -165,8 +167,12 @@ export default function Header() {
               Rules &amp; Regulations
             </NavLink>
 
-            <NavLink to="/predictions" className="nav-link">
+            <NavLink
+              to="/predictions"
+              className={`nav-link${predictionsAnnouncementActive ? ' nav-link--announced' : ''}`}
+            >
               Predictions
+              {predictionsAnnouncementActive && <span className="new-feature-badge" aria-hidden="true">NEW</span>}
             </NavLink>
 
             {!username && (
@@ -217,8 +223,13 @@ export default function Header() {
             Rules &amp; Regulations
           </NavLink>
 
-          <NavLink to="/predictions" className="nav-link" onClick={closeMenu}>
+          <NavLink
+            to="/predictions"
+            className={`nav-link${predictionsAnnouncementActive ? ' nav-link--announced' : ''}`}
+            onClick={closeMenu}
+          >
             Predictions
+            {predictionsAnnouncementActive && <span className="new-feature-badge" aria-hidden="true">NEW</span>}
           </NavLink>
 
           {username ? (
