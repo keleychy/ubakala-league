@@ -139,6 +139,68 @@
   display: contents;
 }
 
+.site-header .header-top-row {
+  display: contents;
+}
+
+.site-header .header-container--signed-in {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  padding-top: 8px;
+  padding-bottom: 0;
+}
+
+.site-header .header-container--signed-in .header-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  min-height: 56px;
+}
+
+.site-header .header-container--signed-in .nav-desktop {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  gap: 4px;
+  width: 100%;
+  padding: 8px 0 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.site-header .header-container--signed-in .nav-primary-links {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+
+.site-header .header-container--signed-in .nav-account-links {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex: 0 1 auto;
+  gap: 10px;
+  min-width: 0;
+}
+
+.site-header .header-container--signed-in .header-username {
+  max-width: 220px;
+  margin: 0;
+}
+
+.site-header .header-container--signed-in .nav-account-links .admin-button {
+  flex-shrink: 0;
+  min-height: 38px;
+}
+
+.site-header .header-container--signed-in .hamburger-btn {
+  display: none;
+}
+
 .site-header .nav-link {
   display: inline-flex;
   align-items: center;
@@ -361,16 +423,32 @@
     padding-left: 16px;
   }
 
+  .site-header .nav-desktop {
+    gap: 1px;
+  }
+
+  .site-header .nav-desktop .nav-link {
+    padding: 9px 7px;
+    font-size: 10px;
+  }
+
   .site-header .header-brand-name {
     font-size: 16px;
   }
 }
 
 @media (max-width: 1280px) {
+  .site-header .header-container--signed-in .header-username {
+    max-width: 180px;
+  }
+}
+
+@media (max-width: 850px) {
   .site-header .header-container {
     min-height: 68px;
   }
 
+  .site-header .header-container--signed-in .nav-desktop,
   .site-header .nav-desktop {
     display: none;
   }
@@ -385,61 +463,14 @@
   }
 
   .site-header .header-container--signed-in {
-    flex-wrap: wrap;
-    row-gap: 8px;
-    padding-bottom: 0;
+    padding-bottom: 8px;
   }
 
-  .site-header .header-container--signed-in .nav-desktop {
-    display: flex;
-    flex: 1 0 100%;
-    order: 3;
-    flex-direction: column;
-    align-items: stretch;
-    justify-content: center;
-    gap: 7px;
-    padding: 9px 0 8px;
-    border-top: 1px solid rgba(255, 255, 255, 0.18);
-  }
-
-  .site-header .header-container--signed-in .nav-primary-links {
-    display: flex;
-    justify-content: center;
-    flex-wrap: wrap;
-    gap: 2px;
-  }
-
-  .site-header .header-container--signed-in .nav-primary-links .nav-link {
-    padding: 8px 9px;
-    font-size: 10px;
+  .site-header .header-container--signed-in .header-top-row {
+    min-height: 52px;
   }
 
   .site-header .header-container--signed-in .nav-account-links {
-    position: absolute;
-    top: 14px;
-    right: 16px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .site-header .header-container--signed-in .header-username {
-    max-width: 155px;
-    margin: 0;
-  }
-
-  .site-header .header-container--signed-in .nav-account-links .admin-button {
-    min-height: 34px;
-    padding: 7px 11px;
-  }
-
-  .site-header .header-container--signed-in .hamburger-btn {
-    display: none;
-  }
-}
-
-@media (max-width: 850px) {
-  .site-header .header-container--signed-in .nav-desktop {
     display: none;
   }
 

@@ -35,9 +35,13 @@ test('signed-in users have a dashboard shortcut in desktop and mobile navigation
   expect(container.querySelector('.nav-desktop .nav-primary-links')).toContainElement(
     screen.getAllByRole('link', { name: 'Standings' })[0]
   );
-  expect(container.querySelector('.nav-desktop .nav-account-links')).toContainElement(
+  expect(container.querySelector('.header-top-row .nav-account-links')).toContainElement(
     screen.getByRole('button', { name: 'Logout' })
   );
+  expect(container.querySelector('.header-top-row')).toContainElement(
+    container.querySelector('.nav-account-links')
+  );
+  expect(container.querySelector('.header-container--signed-in > .nav-desktop')).toBeInTheDocument();
 });
 
 test('marks the current page in both desktop and mobile navigation', () => {

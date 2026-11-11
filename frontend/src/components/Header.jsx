@@ -43,7 +43,8 @@ export default function Header() {
           <div className="header-auth-error" role="alert">{logoutError}</div>
         )}
 
-        <div className="header-brand">
+        <div className="header-top-row">
+          <div className="header-brand">
           <button
             type="button"
             className="header-back"
@@ -88,6 +89,46 @@ export default function Header() {
               </span>
             </span>
           </Link>
+          </div>
+
+          {username && (
+            <div className="nav-account-links">
+              <span className="header-username" title={username}>
+                {username}
+              </span>
+
+              <NavLink to="/admin-dashboard" className="admin-button">
+                Dashboard
+              </NavLink>
+
+              <button
+                type="button"
+                className="admin-button"
+                onClick={handleLogout}
+              >
+                Logout
+              </button>
+            </div>
+          )}
+
+          <button
+            type="button"
+            className="hamburger-btn"
+            onClick={() => setMenuOpen(prev => !prev)}
+            aria-label={menuOpen ? 'Close navigation menu' : 'Open navigation menu'}
+            aria-expanded={menuOpen}
+            aria-controls="mobile-navigation"
+          >
+            {menuOpen ? (
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M6 6l12 12M18 6L6 18" />
+              </svg>
+            ) : (
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4 7h16M4 12h16M4 17h16" />
+              </svg>
+            )}
+          </button>
         </div>
 
         {/* Desktop Navigation */}
@@ -135,46 +176,7 @@ export default function Header() {
             )}
           </div>
 
-          {username && (
-            <div className="nav-account-links">
-              <span className="header-username">
-                {username}
-              </span>
-
-              <NavLink to="/admin-dashboard" className="admin-button">
-                Dashboard
-              </NavLink>
-
-              <button
-                type="button"
-                className="admin-button"
-                onClick={handleLogout}
-              >
-                Logout
-              </button>
-            </div>
-          )}
         </nav>
-
-        {/* Mobile Menu Button */}
-        <button
-          type="button"
-          className="hamburger-btn"
-          onClick={() => setMenuOpen(prev => !prev)}
-          aria-label={menuOpen ? 'Close navigation menu' : 'Open navigation menu'}
-          aria-expanded={menuOpen}
-          aria-controls="mobile-navigation"
-        >
-          {menuOpen ? (
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M6 6l12 12M18 6L6 18" />
-            </svg>
-          ) : (
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M4 7h16M4 12h16M4 17h16" />
-            </svg>
-          )}
-        </button>
 
         {/* Mobile Navigation */}
         <nav
