@@ -48,6 +48,7 @@ const ADMIN_ACTIONS = new Set([
 
 const PUBLIC_POST_ACTIONS = new Set([
   'news.recordView',
+  'predictions.credentialInfo',
   'predictions.register',
   'predictions.history',
   'predictions.setPassword',
@@ -134,6 +135,15 @@ module.exports = async function handler(request, response) {
       return response.status(400).json({
         success: false,
         error: 'predictor_id and access_code are required'
+      });
+    }
+    if (
+      payload.action === 'predictions.credentialInfo' &&
+      typeof payload.predictor_id !== 'string'
+    ) {
+      return response.status(400).json({
+        success: false,
+        error: 'predictor_id is required'
       });
     }
 

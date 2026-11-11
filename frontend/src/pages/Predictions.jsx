@@ -2,6 +2,10 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import './Predictions.css';
 import { predictionsApi } from '../api/predictionsApi';
 import Pagination from '../components/Pagination';
+import {
+  createPredictorPasswordSalt,
+  derivePredictorPasswordVerifier
+} from '../utils/predictorCredentials';
 
 const OUTCOMES = [
   { value: '1', label: 'Home win' },
@@ -145,8 +149,11 @@ export default function Predictions() {
     loadPublicData();
   }, [loadPublicData]);
 
-  const refreshHistory = useCallback(async nextCredentials => {
-    const data = await predictionsApi.getHistory(nextCredentials);
+  const refreshHistory = useCallback(async (nextCredentials, credentialUpgrade) => {
+    const data = await predictionsApi.getHistory({
+      ...nextCredentials,
+      ...(credentialUpgrade ? { credential_upgrade: credentialUpgrade } : {})
+    });
     setPredictor(data.predictor);
     setHistory(data.predictions || []);
     const existing = {};
@@ -163,9 +170,36 @@ export default function Predictions() {
     setError('');
     setSuccess('');
     try {
-      const data = await refreshHistory(credentials);
-      setPasswordUpdateRequired(data.predictor?.needs_password_update === true);
+      const credentialInfo = await predictionsApi.getCredentialInfo(
+        credentials.predictor_id
+      );
+      let accessCode = credentials.access_code;
+      let credentialUpgrade;
+      if (credentialInfo.method === 'pbkdf2_web') {
+        accessCode = await derivePredictorPasswordVerifier(
+          credentials.access_code,
+          credentialInfo.salt,
+          credentialInfo.iterations
+        );
+      } else if (credentialInfo.method === 'legacy') {
+        const salt = createPredictorPasswordSalt();
+        const verifier = await derivePredictorPasswordVerifier(
+          credentials.access_code,
+          salt
+        );
+        credentialUpgrade = { salt, verifier };
+      }
+      const authenticatedCredentials = {
+        ...credentials,
+        access_code: accessCode
+      };
+      const data = await refreshHistory(
+        authenticatedCredentials,
+        credentialUpgrade
+      );
+      setCredentials(authenticatedCredentials);
       setSuccess('Your predictions have been loaded.');
+      setPasswordUpdateRequired(data.predictor?.needs_password_update === true);
       setRegistrationOpen(false);
     } catch (accessError) {
       setError(accessError.message || 'Could not access those predictions.');
@@ -180,10 +214,20 @@ export default function Predictions() {
     setError('');
     setSuccess('');
     try {
-      const result = await predictionsApi.register(registration);
+      const salt = createPredictorPasswordSalt();
+      const verifier = await derivePredictorPasswordVerifier(
+        registration.password,
+        salt
+      );
+      const { password, ...registrationDetails } = registration;
+      const result = await predictionsApi.register({
+        ...registrationDetails,
+        password_salt: salt,
+        password_verifier: verifier
+      });
       const issuedCredentials = {
         predictor_id: result.predictor_id,
-        access_code: registration.password
+        access_code: verifier
       };
       setNewCredentials(result);
       setCredentials(issuedCredentials);
@@ -226,11 +270,14 @@ export default function Predictions() {
     setError('');
     setSuccess('');
     try {
+      const salt = createPredictorPasswordSalt();
+      const verifier = await derivePredictorPasswordVerifier(newPassword, salt);
       await predictionsApi.setPassword({
         ...credentials,
-        new_password: newPassword
+        new_password_salt: salt,
+        new_password_verifier: verifier
       });
-      const nextCredentials = { ...credentials, access_code: newPassword };
+      const nextCredentials = { ...credentials, access_code: verifier };
       setCredentials(nextCredentials);
       setNewPassword('');
       setPasswordUpdateRequired(false);
@@ -294,7 +341,7 @@ export default function Predictions() {
           return `${match ? `${match.home_team_name} vs ${match.away_team_name}` : item.fixture_id}: ${item.error}`;
         }).join(' '));
       }
-      await Promise.all([refreshHistory(credentials), loadPublicData()]);
+      await refreshHistory(credentials);
     } catch (submitError) {
       setError(submitError.message || 'We could not save the selected predictions. Please try again.');
     } finally {
@@ -403,7 +450,9 @@ export default function Predictions() {
                       required
                     />
                   </label>
-                  <button className="predictions-button" disabled={busy}>Load my predictions</button>
+                  <button className="predictions-button" disabled={busy}>
+                    {busy ? 'Signing in securely...' : 'Load my predictions'}
+                  </button>
                   <button type="button" className="predictions-text-button" onClick={() => setRecoveryOpen(value => !value)}>
                     {recoveryOpen ? 'Close account recovery' : 'Forgot Predictor ID or password?'}
                   </button>
@@ -421,7 +470,9 @@ export default function Predictions() {
                 <form className="predictions-inline-form" onSubmit={handlePasswordUpdate}>
                   {passwordUpdateRequired && <p className="predictions-privacy-note">For your security, this temporary recovery code can only be used to set a new password.</p>}
                   <label>Create a new password<input type="password" autoComplete="new-password" value={newPassword} onChange={event => setNewPassword(event.target.value)} minLength={12} maxLength={128} required /></label>
-                  <button className="predictions-button" disabled={busy}>{passwordUpdateRequired ? 'Save new password' : 'Update password'}</button>
+                  <button className="predictions-button" disabled={busy}>
+                    {busy ? 'Updating password...' : passwordUpdateRequired ? 'Save new password' : 'Update password'}
+                  </button>
                 </form>
               )}
               {registrationOpen && (
@@ -432,7 +483,9 @@ export default function Predictions() {
                   <label>Mobile phone number<input type="tel" autoComplete="tel" value={registration.phone} onChange={event => setRegistration(value => ({ ...value, phone: event.target.value }))} required /></label>
                   <label>Create a password<input type="password" autoComplete="new-password" value={registration.password} onChange={event => setRegistration(value => ({ ...value, password: event.target.value }))} minLength={12} maxLength={128} required /></label>
                   <p className="predictions-privacy-note">Use a memorable passphrase of at least 12 characters. Recovery is reviewed by an administrator and sent to your registered WhatsApp number.</p>
-                  <button className="predictions-button" disabled={busy}>Create Predictor ID</button>
+                  <button className="predictions-button" disabled={busy}>
+                    {busy ? 'Securing password and creating ID...' : 'Create Predictor ID'}
+                  </button>
                 </form>
               )}
             </section>
@@ -489,7 +542,9 @@ export default function Predictions() {
                     {batchConfirmation && (
                       <div className="predictions-confirmation predictions-batch-confirmation" role="region" aria-label="Batch prediction confirmation">
                         <p>Submit {Object.values(dirtyFixtureIds).filter(Boolean).length} selected prediction(s) for {predictor.display_name} ({predictor.predictor_id})? Each match will be checked against its own kickoff deadline.</p>
-                        <button type="button" className="predictions-button" disabled={busy} onClick={handleSubmitBatch}>Confirm and submit all</button>
+                        <button type="button" className="predictions-button" disabled={busy} onClick={handleSubmitBatch}>
+                          {busy ? 'Saving predictions...' : 'Confirm and submit all'}
+                        </button>
                         <button type="button" className="predictions-text-button" onClick={() => setBatchConfirmation(false)}>Cancel</button>
                       </div>
                     )}

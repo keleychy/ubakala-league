@@ -1,6 +1,10 @@
 import React from 'react';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { predictionsApi } from '../api/predictionsApi';
+import {
+  createPredictorPasswordSalt,
+  derivePredictorPasswordVerifier
+} from '../utils/predictorCredentials';
 import Predictions from './Predictions';
 
 jest.mock('../api/predictionsApi', () => ({
@@ -9,6 +13,7 @@ jest.mock('../api/predictionsApi', () => ({
     getFixtures: jest.fn(),
     getLeaderboard: jest.fn(),
     getStatistics: jest.fn(),
+    getCredentialInfo: jest.fn(),
     register: jest.fn(),
     getHistory: jest.fn(),
     setPassword: jest.fn(),
@@ -16,6 +21,11 @@ jest.mock('../api/predictionsApi', () => ({
     submit: jest.fn(),
     submitBatch: jest.fn()
   }
+}));
+
+jest.mock('../utils/predictorCredentials', () => ({
+  createPredictorPasswordSalt: jest.fn(),
+  derivePredictorPasswordVerifier: jest.fn()
 }));
 
 const fixture = {
@@ -39,6 +49,8 @@ const secondFixture = {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  createPredictorPasswordSalt.mockReturnValue('a'.repeat(32));
+  derivePredictorPasswordVerifier.mockResolvedValue('b'.repeat(64));
   predictionsApi.getConfiguration.mockResolvedValue({
     enabled: true,
     registration_enabled: true,
@@ -82,7 +94,8 @@ test('registers a predictor and confirms an outcome before submitting', async ()
     surname: 'Eagle',
     third_name: '',
     phone: '08012345678',
-    password: 'eaglesWinEveryMatch!'
+    password_salt: 'a'.repeat(32),
+    password_verifier: 'b'.repeat(64)
   });
 
   const outcomeGroup = screen.getByRole('group', { name: 'Predict Eagle FC versus Rangers FC' });
@@ -96,11 +109,30 @@ test('registers a predictor and confirms an outcome before submitting', async ()
   await waitFor(() => {
     expect(predictionsApi.submitBatch).toHaveBeenCalledWith({
       predictor_id: 'EAG-123',
-      access_code: 'eaglesWinEveryMatch!',
+      access_code: 'b'.repeat(64),
       predictions: [
         { fixture_id: 'fixture-1', selected_outcome: '1' },
         { fixture_id: 'fixture-2', selected_outcome: 'X' }
       ]
+    });
+  });
+});
+
+test('upgrades a legacy credential on its first successful sign-in', async () => {
+  predictionsApi.getCredentialInfo.mockResolvedValue({ method: 'legacy' });
+  render(<Predictions />);
+  fireEvent.click(await screen.findByRole('button', { name: 'Access my predictions' }));
+  fireEvent.change(screen.getByLabelText('Predictor ID'), { target: { value: 'EAG-123' } });
+  fireEvent.change(screen.getByLabelText('Password or temporary recovery code'), {
+    target: { value: 'eaglesWinEveryMatch!' }
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Load my predictions' }));
+
+  await waitFor(() => {
+    expect(predictionsApi.getHistory).toHaveBeenCalledWith({
+      predictor_id: 'EAG-123',
+      access_code: 'eaglesWinEveryMatch!',
+      credential_upgrade: { salt: 'a'.repeat(32), verifier: 'b'.repeat(64) }
     });
   });
 });

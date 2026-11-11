@@ -52,6 +52,10 @@ export const predictionsApi = {
   getFixtures: () => getAction('predictions.fixtures'),
   getLeaderboard: (filters = {}) => getAction('predictions.leaderboard', filters),
   getStatistics: (filters = {}) => getAction('predictions.statistics', filters),
+  getCredentialInfo: predictorId => postAction(
+    'predictions.credentialInfo',
+    { predictor_id: predictorId }
+  ),
   register: details => postAction('predictions.register', details),
   getHistory: credentials => postAction('predictions.history', credentials),
   setPassword: credentials => postAction('predictions.setPassword', credentials),

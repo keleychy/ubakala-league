@@ -731,6 +731,19 @@ function getRecordRow_(sheet, id) {
 }
 
 function appendAuditLog_(user, action, entityType, entityId, oldValue, newValue, reason) {
+  appendAuditLogs_([{
+    user: user,
+    action: action,
+    entityType: entityType,
+    entityId: entityId,
+    oldValue: oldValue,
+    newValue: newValue,
+    reason: reason
+  }]);
+}
+
+function appendAuditLogs_(entries) {
+  if (!entries || !entries.length) return;
   const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
   const required = [
     'id', 'timestamp', 'user_email', 'action', 'entity_type',
@@ -749,20 +762,25 @@ function appendAuditLog_(user, action, entityType, entityId, oldValue, newValue,
       throw new Error('AuditLog sheet must have one ' + header + ' column');
     }
   });
-  const values = {
-    id: Utilities.getUuid(),
-    timestamp: new Date().toISOString(),
-    user_email: user.email,
-    action: action,
-    entity_type: entityType,
-    entity_id: String(entityId),
-    old_value: JSON.stringify(oldValue === undefined ? null : oldValue),
-    new_value: JSON.stringify(newValue === undefined ? null : newValue),
-    reason: optionalText_(reason) || ''
-  };
-  sheet.appendRow(headers.map(header =>
-    Object.prototype.hasOwnProperty.call(values, header) ? values[header] : ''
-  ));
+  const timestamp = new Date().toISOString();
+  const rows = entries.map(entry => {
+    const values = {
+      id: Utilities.getUuid(),
+      timestamp: timestamp,
+      user_email: entry.user.email,
+      action: entry.action,
+      entity_type: entry.entityType,
+      entity_id: String(entry.entityId),
+      old_value: JSON.stringify(entry.oldValue === undefined ? null : entry.oldValue),
+      new_value: JSON.stringify(entry.newValue === undefined ? null : entry.newValue),
+      reason: optionalText_(entry.reason) || ''
+    };
+    return headers.map(header =>
+      Object.prototype.hasOwnProperty.call(values, header) ? values[header] : ''
+    );
+  });
+  const firstRow = sheet.getLastRow() + 1;
+  sheet.getRange(firstRow, 1, rows.length, headers.length).setValues(rows);
   invalidateSheetRecordsCache_('AuditLog');
 }
 
