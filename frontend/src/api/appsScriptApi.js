@@ -246,7 +246,18 @@ export function createAppsScriptApi(baseUrl, fetchImpl = fetch) {
     return result.data;
   }
 
+  function invalidateGroupsWithTeamsCache() {
+    groupsWithTeamsCache.clear();
+    for (const requestUrl of inFlightRequests.keys()) {
+      const action = new URL(requestUrl).searchParams.get('action');
+      if (action === 'groups' || action === 'teamgroups' || action === 'teams') {
+        inFlightRequests.delete(requestUrl);
+      }
+    }
+  }
+
   return {
+    invalidateGroupsWithTeamsCache,
     async getTeams() {
       return requireArray(await getAction('teams'), 'teams').map(normalizeTeam);
     },
@@ -329,7 +340,9 @@ export function createAppsScriptApi(baseUrl, fetchImpl = fetch) {
       try {
         return await request;
       } catch (error) {
-        groupsWithTeamsCache.delete(cacheKey);
+        if (groupsWithTeamsCache.get(cacheKey) === request) {
+          groupsWithTeamsCache.delete(cacheKey);
+        }
         throw error;
       }
     },

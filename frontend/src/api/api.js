@@ -26,6 +26,10 @@ function getAppsScriptApi() {
   return appsScriptApiInstance;
 }
 
+export function invalidateGroupsWithTeamsCache() {
+  getAppsScriptApi()?.invalidateGroupsWithTeamsCache();
+}
+
 function buildUrl(path) {
   const base = API_URL.endsWith('/') ? API_URL.slice(0, -1) : API_URL;
   const p = path.startsWith('/') ? path : `/${path}`;

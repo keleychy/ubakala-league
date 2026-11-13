@@ -108,6 +108,110 @@ describe('Apps Script read API', () => {
     expect(actions).toEqual(['groups', 'teamgroups', 'teams']);
   });
 
+  test('invalidates cached group membership and fetches updated teams on the next read', async () => {
+    let updated = false;
+    const fetchImpl = jest.fn(async requestUrl => {
+      const action = new URL(requestUrl).searchParams.get('action');
+      if (action === 'groups') {
+        return response([
+          { id: 'group-a', season_id: 'season-1', name: 'A' },
+          { id: 'group-b', season_id: 'season-1', name: 'B' }
+        ]);
+      }
+      if (action === 'teamgroups') {
+        return response(updated
+          ? [{ id: 'assignment-1', season_id: 'season-1', group_id: 'group-b', team_id: 'TEAM-1' }]
+          : [{ id: 'assignment-1', season_id: 'season-1', group_id: 'group-a', team_id: 'TEAM-1' }]);
+      }
+      return response([
+        { id: 'TEAM-1', name: 'Avodim', short_name: 'Avodim', logo: '', archived: false }
+      ]);
+    });
+    const client = createAppsScriptApi(endpoint, fetchImpl);
+
+    const firstRead = await client.getGroupsWithTeams('season-1');
+    expect(firstRead[0].teams).toHaveLength(1);
+    expect(firstRead[1].teams).toHaveLength(0);
+    await client.getGroupsWithTeams('season-1');
+    expect(fetchImpl).toHaveBeenCalledTimes(3);
+
+    updated = true;
+    client.invalidateGroupsWithTeamsCache();
+
+    const refreshedRead = await client.getGroupsWithTeams('season-1');
+    expect(refreshedRead[0].teams).toHaveLength(0);
+    expect(refreshedRead[1].teams).toHaveLength(1);
+    expect(fetchImpl).toHaveBeenCalledTimes(6);
+  });
+
+  test('an older failed read cannot remove a newer request after invalidation', async () => {
+    let rejectOldGroupsRequest;
+    let groupsRequestCount = 0;
+    const fetchImpl = jest.fn(requestUrl => {
+      const action = new URL(requestUrl).searchParams.get('action');
+      if (action === 'groups') {
+        groupsRequestCount += 1;
+        if (groupsRequestCount === 1) {
+          return new Promise((resolve, reject) => {
+            rejectOldGroupsRequest = reject;
+          });
+        }
+        return Promise.resolve(response([
+          { id: 'group-a', season_id: 'season-1', name: 'A' }
+        ]));
+      }
+      if (action === 'teamgroups') {
+        return Promise.resolve(response([
+          { id: 'assignment-1', season_id: 'season-1', group_id: 'group-a', team_id: 'TEAM-1' }
+        ]));
+      }
+      return Promise.resolve(response([
+        { id: 'TEAM-1', name: 'Avodim', short_name: 'Avodim', logo: '', archived: false }
+      ]));
+    });
+    const client = createAppsScriptApi(endpoint, fetchImpl);
+
+    const oldRead = client.getGroupsWithTeams('season-1');
+    client.invalidateGroupsWithTeamsCache();
+    await expect(client.getGroupsWithTeams('season-1')).resolves.toMatchObject([
+      { group: { id: 'group-a' }, teams: [{ id: 'TEAM-1' }] }
+    ]);
+
+    rejectOldGroupsRequest(new Error('old request failed'));
+    await expect(oldRead).rejects.toThrow('old request failed');
+
+    await expect(client.getGroupsWithTeams('season-1')).resolves.toMatchObject([
+      { group: { id: 'group-a' }, teams: [{ id: 'TEAM-1' }] }
+    ]);
+    expect(groupsRequestCount).toBe(2);
+    expect(fetchImpl).toHaveBeenCalledTimes(6);
+  });
+
+  test('a failed group read is removed so a later read can retry', async () => {
+    let groupsRequestCount = 0;
+    const fetchImpl = jest.fn(requestUrl => {
+      const action = new URL(requestUrl).searchParams.get('action');
+      if (action === 'groups') {
+        groupsRequestCount += 1;
+        if (groupsRequestCount === 1) {
+          return Promise.reject(new Error('temporary group read failure'));
+        }
+        return Promise.resolve(response([
+          { id: 'group-a', season_id: 'season-1', name: 'A' }
+        ]));
+      }
+      return Promise.resolve(response([]));
+    });
+    const client = createAppsScriptApi(endpoint, fetchImpl);
+
+    await expect(client.getGroupsWithTeams('season-1'))
+      .rejects.toThrow('temporary group read failure');
+    await expect(client.getGroupsWithTeams('season-1')).resolves.toEqual([
+      { group: { id: 'group-a', name: 'A' }, teams: [] }
+    ]);
+    expect(fetchImpl).toHaveBeenCalledTimes(6);
+  });
+
   test('normalizes match types without inferring played status', async () => {
     const fetchImpl = jest.fn().mockResolvedValue(response([{
       id: 'UFC26-SENIOR-M030',
