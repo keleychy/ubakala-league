@@ -687,6 +687,7 @@ const Standings = () => {
             goal_diff: 0,
             points: 0,
             fair_play_points: 0,
+            fair_play_matches_recorded: 0,
             fair_play_complete: true
           };
         });
@@ -737,12 +738,17 @@ const Standings = () => {
 
           const homeFairPlayPoints = getFairPlayPoints(m, 'home');
           const awayFairPlayPoints = getFairPlayPoints(m, 'away');
-          if (homeFairPlayPoints === null || awayFairPlayPoints === null) {
+          if (homeFairPlayPoints === null) {
             homeRow.fair_play_complete = false;
-            awayRow.fair_play_complete = false;
           } else {
             homeRow.fair_play_points += homeFairPlayPoints;
+            homeRow.fair_play_matches_recorded += 1;
+          }
+          if (awayFairPlayPoints === null) {
+            awayRow.fair_play_complete = false;
+          } else {
             awayRow.fair_play_points += awayFairPlayPoints;
+            awayRow.fair_play_matches_recorded += 1;
           }
 
           if (homeScore > awayScore) {
@@ -1198,7 +1204,7 @@ const Standings = () => {
                               <th scope="col" title="Goals Against">GA</th>
                               <th scope="col" title="Goal Difference">GD</th>
                               <th scope="col" title="Points">PTS</th>
-                              <th scope="col" title="Fair Play points; lower ranks higher when previous tie-breakers are level">FP</th>
+                              <th scope="col" title="Fair Play points; lower ranks higher when previous tie-breakers are level. An asterisk marks incomplete records.">FP</th>
                             </tr>
                           </thead>
 
@@ -1242,8 +1248,10 @@ const Standings = () => {
                                 </td>
                                 <td title={row.fair_play_complete
                                   ? 'Fair Play points; lower is better'
-                                  : 'Fair Play ranking unavailable because one or more match card records are incomplete'}>
-                                  {row.fair_play_complete ? row.fair_play_points : '—'}
+                                  : 'Partial Fair Play total; ranking is unavailable until every match card record is complete'}>
+                                  {row.fair_play_matches_recorded > 0
+                                    ? `${row.fair_play_points}${row.fair_play_complete ? '' : '*'}`
+                                    : '—'}
                                 </td>
                               </tr>
                             ))}
@@ -1251,6 +1259,9 @@ const Standings = () => {
                         </table>
                       </div>
                     )}
+                    <p className="standings-section-caption">
+                      * Partial Fair Play total. Tiebreaking uses Fair Play only when all match card records are complete.
+                    </p>
                   </section>
                 );
               })}

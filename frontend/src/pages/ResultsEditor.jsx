@@ -114,6 +114,7 @@ function MatchRow({ match, onUpdated }) {
     const [saving, setSaving] = useState(false);
     const [savingPeriod, setSavingPeriod] = useState(false);
     const [savingStatus, setSavingStatus] = useState(false);
+    const [savingFairPlay, setSavingFairPlay] = useState(false);
     const [finishing, setFinishing] = useState(false);
     const [reopenFormOpen, setReopenFormOpen] = useState(false);
     const [reopenReason, setReopenReason] = useState('');
@@ -467,6 +468,54 @@ function MatchRow({ match, onUpdated }) {
             setMessage(error?.message || 'Unable to finish match.');
         } finally {
             setFinishing(false);
+        }
+    };
+
+    const handleSaveFairPlay = async () => {
+        setMessage('');
+        const fairPlayFieldsEntered = FAIR_PLAY_FIELDS.filter((field) =>
+            fairPlayCards[field.slice(1)] !== ''
+        );
+        if (fairPlayFieldsEntered.length !== FAIR_PLAY_FIELDS.length) {
+            setMessage('Enter all eight fair-play card counts, using 0 where there were no cards.');
+            return;
+        }
+        if (FAIR_PLAY_FIELDS.some((field) =>
+            !/^\d+$/.test(String(fairPlayCards[field.slice(1)]))
+        )) {
+            setMessage('Fair-play card counts must be non-negative whole numbers.');
+            return;
+        }
+        if (
+            !isFinished ||
+            !Number.isInteger(Number(match.home_score)) ||
+            !Number.isInteger(Number(match.away_score))
+        ) {
+            setMessage('Fair-play cards can be saved separately only for a finished match with a recorded score.');
+            return;
+        }
+
+        const payload = {
+            match_id: match.id,
+            home_score: Number(match.home_score),
+            away_score: Number(match.away_score),
+            reason: 'Fair-play card counts recorded.'
+        };
+        FAIR_PLAY_FIELDS.forEach((field) => {
+            payload[field.slice(1)] = Number(fairPlayCards[field.slice(1)]);
+        });
+
+        try {
+            setSavingFairPlay(true);
+            await callAdminApi('admin.matches.setResult', payload);
+            setMessage('Fair-play card counts saved successfully.');
+            window.dispatchEvent(new CustomEvent('match-scores-saved'));
+            window.dispatchEvent(new CustomEvent('match-updated'));
+            if (onUpdated) onUpdated();
+        } catch (error) {
+            setMessage(error?.message || 'Unable to save fair-play card counts.');
+        } finally {
+            setSavingFairPlay(false);
         }
     };
 
@@ -883,6 +932,16 @@ function MatchRow({ match, onUpdated }) {
                 )}
 
                 <div className="results-action-buttons">
+                    {isFinished && (
+                        <button
+                            type="button"
+                            className="results-save-button results-fair-play-save-button"
+                            onClick={handleSaveFairPlay}
+                            disabled={savingFairPlay || saving || finishing}
+                        >
+                            {savingFairPlay ? 'Saving Card Counts...' : 'Save Fair-play Cards'}
+                        </button>
+                    )}
                     <button
                         type="button"
                         className="results-save-button"

@@ -152,6 +152,44 @@ test('saves FIFA fair-play card categories for both teams', async () => {
   });
 });
 
+test('finished matches can save fair-play cards without re-editing the score', async () => {
+  render(<ResultsEditor />);
+  await screen.findByText('Eagle FC', { selector: '.results-team-name' });
+  fireEvent.click(screen.getByText('Fair-play cards (optional)'));
+
+  const cardCounts = {
+    'Eagle FC Yellow only': '1',
+    'Eagle FC Second yellow red': '0',
+    'Eagle FC Direct red': '0',
+    'Eagle FC Yellow + direct red': '0',
+    'Rangers FC Yellow only': '0',
+    'Rangers FC Second yellow red': '1',
+    'Rangers FC Direct red': '0',
+    'Rangers FC Yellow + direct red': '0',
+  };
+  Object.entries(cardCounts).forEach(([label, value]) => {
+    fireEvent.change(screen.getByLabelText(label), { target: { value } });
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Save Fair-play Cards' }));
+
+  await waitFor(() => {
+    expect(callAdminApi).toHaveBeenCalledWith('admin.matches.setResult', {
+      match_id: 'match-1',
+      home_score: 2,
+      away_score: 1,
+      reason: 'Fair-play card counts recorded.',
+      home_fair_play_yellow_only: 1,
+      home_fair_play_second_yellow_red: 0,
+      home_fair_play_direct_red: 0,
+      home_fair_play_yellow_direct_red: 0,
+      away_fair_play_yellow_only: 0,
+      away_fair_play_second_yellow_red: 1,
+      away_fair_play_direct_red: 0,
+      away_fair_play_yellow_direct_red: 0,
+    });
+  });
+});
+
 test('reopening a finished match records a reason and resets its status and period', async () => {
   render(<ResultsEditor />);
 
