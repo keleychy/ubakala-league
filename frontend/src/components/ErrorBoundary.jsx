@@ -1,30 +1,43 @@
 import React from 'react';
+import './ErrorBoundary.css';
 
 class ErrorBoundary extends React.Component {
     constructor(props) {
         super(props);
-        this.state = { hasError: false, error: null, info: null };
+        this.state = { hasError: false };
     }
 
-    static getDerivedStateFromError(error) {
-        return { hasError: true, error };
+    static getDerivedStateFromError() {
+        return { hasError: true };
     }
 
     componentDidCatch(error, info) {
-        this.setState({ error, info });
-        // eslint-disable-next-line no-console
-        console.error('Uncaught error in component tree:', error, info);
+        if (process.env.NODE_ENV !== 'production') {
+            console.error('Uncaught error in component tree:', error, info);
+        }
     }
+
+    handleRetry = () => {
+        this.setState({ hasError: false });
+    };
 
     render() {
         if (this.state.hasError) {
             return (
-                <div style={{ padding: 40, color: '#111', background: '#fff6f6', minHeight: '100vh' }}>
-                    <h2 style={{ color: '#b91c1c' }}>Something went wrong</h2>
-                    <div style={{ whiteSpace: 'pre-wrap', marginTop: 12 }}>
-                        {this.state.error?.toString()}
-                    </div>
-                    {this.state.info && <details style={{ marginTop: 12 }}>{this.state.info.componentStack}</details>}
+                <main className="app-error-boundary" role="alert">
+                    <section className="app-error-boundary__panel">
+                        <p className="app-error-boundary__eyebrow">Ubakala Unity Cup</p>
+                        <h1>We couldn't display this page</h1>
+                        <p className="app-error-boundary__message">
+                            An unexpected issue prevented this page from displaying. Please try again or return to the homepage.
+                        </p>
+                        <div className="app-error-boundary__actions">
+                            <button type="button" onClick={this.handleRetry}>
+                                Try again
+                            </button>
+                            <a href="/">Return to homepage</a>
+                        </main>
+                    </section>
                 </div>
             );
         }

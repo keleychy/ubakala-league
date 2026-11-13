@@ -1,0 +1,82 @@
+.app-error-boundary {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  padding: 24px;
+  background: #f3f6fa;
+}
+
+.app-error-boundary__panel {
+  width: min(100%, 560px);
+  padding: clamp(24px, 6vw, 40px);
+  border: 1px solid #dce4ed;
+  border-top: 4px solid #d6a83d;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 16px 44px rgba(16, 43, 80, 0.12);
+}
+
+.app-error-boundary__eyebrow {
+  margin-bottom: 10px;
+  color: #80621e;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+}
+
+.app-error-boundary__panel h1 {
+  margin: 0 0 12px;
+  color: #102b50;
+  font-size: clamp(24px, 6vw, 32px);
+  line-height: 1.2;
+}
+
+.app-error-boundary__message {
+  color: #475569;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.app-error-boundary__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.app-error-boundary__actions button {
+  min-height: 44px;
+  margin: 0;
+  padding: 10px 18px;
+  border: 0;
+  border-radius: 8px;
+  background: #173b70;
+  color: #ffffff;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.app-error-boundary__actions a {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  color: #173b70;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.app-error-boundary__actions button:focus-visible,
+.app-error-boundary__actions a:focus-visible {
+  outline: 3px solid #b88922;
+  outline-offset: 3px;
+}
+
+@media (max-width: 360px) {
+  .app-error-boundary {
+    padding: 16px;
+  }
+}
