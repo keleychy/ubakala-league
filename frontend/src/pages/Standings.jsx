@@ -1204,7 +1204,6 @@ const Standings = () => {
                               <th scope="col" title="Goals Against">GA</th>
                               <th scope="col" title="Goal Difference">GD</th>
                               <th scope="col" title="Points">PTS</th>
-                              <th scope="col" title="Fair Play points; lower ranks higher when previous tie-breakers are level. An asterisk marks incomplete records.">FP</th>
                             </tr>
                           </thead>
 
@@ -1246,22 +1245,12 @@ const Standings = () => {
                                 <td className={`points ${flashMap[row.team_id]?.points ? 'score-flash' : ''}`}>
                                   {row.points}
                                 </td>
-                                <td title={row.fair_play_complete
-                                  ? 'Fair Play points; lower is better'
-                                  : 'Partial Fair Play total; ranking is unavailable until every match card record is complete'}>
-                                  {row.fair_play_matches_recorded > 0
-                                    ? `${row.fair_play_points}${row.fair_play_complete ? '' : '*'}`
-                                    : '—'}
-                                </td>
                               </tr>
                             ))}
                           </tbody>
                         </table>
                       </div>
                     )}
-                    <p className="standings-section-caption">
-                      * Partial Fair Play total. Tiebreaking uses Fair Play only when all match card records are complete.
-                    </p>
                   </section>
                 );
               })}
