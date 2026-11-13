@@ -228,7 +228,7 @@
 }
 
 .predictions-button {
-  min-height: 42px;
+  min-height: 44px;
   padding: 10px 15px;
   border: 1px solid #173b68;
   border-radius: 8px;
@@ -271,7 +271,7 @@
 
 .predictions-tabs button,
 .predictions-filter-row button {
-  min-height: 40px;
+  min-height: 44px;
   padding: 9px 13px;
   border: 1px solid #d5dfeb;
   border-radius: 9px;
@@ -308,7 +308,7 @@
 }
 
 .predictions-pagination .predictions-button {
-  min-height: 36px;
+  min-height: 44px;
   padding: 7px 11px;
   white-space: nowrap;
 }
@@ -486,7 +486,7 @@
 }
 
 .predictions-text-button {
-  min-height: 40px;
+  min-height: 44px;
   margin-left: 9px;
   padding: 7px 10px;
   border: 0;
@@ -687,6 +687,7 @@
 }
 
 .predictions-row-actions button {
+  min-height: 44px;
   padding: 7px 9px;
   border: 1px solid #d5dfeb;
   border-radius: 7px;

@@ -611,7 +611,7 @@ const styles = `
   }
 
   .results-error button {
-    min-height: 40px;
+    min-height: 44px;
     margin: 10px 0 0;
     padding: 0 13px;
     border: 1px solid #b42323;
@@ -636,7 +636,7 @@ const styles = `
 
   .results-pagination button {
     min-width: 90px;
-    min-height: 42px;
+    min-height: 44px;
     border: 1px solid #cad5e3;
     border-radius: 8px;
     background: #fff;

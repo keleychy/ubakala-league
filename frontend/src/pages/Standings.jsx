@@ -277,9 +277,19 @@ const styles = `
 
   /* Standings table */
   .standings-table-wrap {
+    position: relative;
     width: 100%;
     overflow-x: auto;
     scrollbar-width: thin;
+  }
+
+  .standings-table-wrap:focus-visible {
+    outline: 3px solid rgba(36, 82, 134, 0.35);
+    outline-offset: 3px;
+  }
+
+  .standings-scroll-hint {
+    display: none;
   }
 
   .standings-table {
@@ -530,6 +540,45 @@ const styles = `
 
     .standings-table {
       min-width: 470px;
+    }
+
+    .standings-scroll-hint {
+      display: block;
+      margin: 0 0 8px;
+      color: #718096;
+      font-size: 11px;
+      line-height: 1.4;
+    }
+
+    .standings-table th:first-child,
+    .standings-table td:first-child {
+      position: sticky;
+      left: 0;
+      z-index: 2;
+      width: 34px;
+      min-width: 34px;
+      max-width: 34px;
+      box-sizing: border-box;
+      background: inherit;
+    }
+
+    .standings-table th:first-child {
+      z-index: 4;
+      background: #f4f6fa;
+    }
+
+    .standings-table th:nth-child(2),
+    .standings-table td:nth-child(2) {
+      position: sticky;
+      left: 34px;
+      z-index: 2;
+      background: inherit;
+      box-shadow: 5px 0 7px -6px rgba(16, 43, 80, 0.45);
+    }
+
+    .standings-table th:nth-child(2) {
+      z-index: 4;
+      background: #f4f6fa;
     }
 
     .standings-table th,
@@ -1190,7 +1239,13 @@ const Standings = () => {
                         No teams or results for this group yet.
                       </div>
                     ) : (
-                      <div className="standings-table-wrap">
+                      <div
+                        className="standings-table-wrap"
+                        role="region"
+                        aria-label={`Group ${group.name} standings table; scroll horizontally to view all columns`}
+                        tabIndex={0}
+                      >
+                        <p className="standings-scroll-hint">Swipe or scroll to view all statistics</p>
                         <table className="standings-table">
                           <thead>
                             <tr>

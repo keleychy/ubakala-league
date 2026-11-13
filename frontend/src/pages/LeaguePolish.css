@@ -125,7 +125,7 @@
 }
 
 .league-polish-page button {
-  min-height: 40px;
+  min-height: 44px;
   padding: 9px 15px;
   border: 1px solid transparent;
   border-radius: 8px;
@@ -185,7 +185,7 @@
 }
 
 .league-page-status--error button {
-  min-height: 40px;
+  min-height: 44px;
   margin: 10px 0 0;
   padding: 0 13px;
   border: 1px solid #a52a2a;
@@ -359,6 +359,8 @@
 
 .history-back-button,
 .history-archive-error button {
+  min-height: 44px;
+  box-sizing: border-box;
   border: 1px solid var(--league-border);
   border-radius: 9px;
   background: #fff;
@@ -415,6 +417,8 @@
 .history-category-tab {
   display: inline-flex;
   align-items: center;
+  min-height: 44px;
+  box-sizing: border-box;
   gap: 9px;
   border: 1px solid var(--league-border);
   border-radius: 999px;
@@ -1804,7 +1808,7 @@
 
 .results-editor-page .results-small-button {
   width: auto;
-  min-height: 27px;
+  min-height: 44px;
   padding: 4px 9px;
   border: 1px solid #d7e0eb;
   border-radius: 6px;
@@ -2088,7 +2092,7 @@
 
 .results-editor-page .results-save-button,
 .results-editor-page .results-finish-button {
-  min-height: 41px;
+  min-height: 44px;
   border-radius: 8px;
   font-size: 11px;
 }
@@ -3032,7 +3036,7 @@
 
 .news-uploader-inline-images-heading button,
 .news-uploader-inline-image-remove {
-  min-height: 32px;
+  min-height: 44px;
   padding: 6px 10px;
   border: 1px solid #d5deea;
   border-radius: 7px;
@@ -3085,7 +3089,7 @@
 }
 
 .news-uploader-page .news-uploader-form-actions button {
-  min-height: 42px;
+  min-height: 44px;
   padding: 9px 16px;
   border-radius: 8px;
   font-size: 12px;
@@ -3105,7 +3109,7 @@
 }
 
 .news-uploader-page .news-uploader-cancel {
-  min-height: 36px;
+  min-height: 44px;
   padding: 7px 11px;
   border-radius: 7px;
   font-size: 11px;
@@ -3211,7 +3215,8 @@
 .news-uploader-page .news-uploader-post-actions a,
 .news-uploader-page .news-uploader-post-actions button {
   display: inline-flex;
-  min-height: 33px;
+  min-height: 44px;
+  min-width: 44px;
   box-sizing: border-box;
   align-items: center;
   justify-content: center;
@@ -3331,8 +3336,8 @@
 
   .news-uploader-page .news-uploader-post-actions a,
   .news-uploader-page .news-uploader-post-actions button {
-    min-height: 31px;
-    padding: 5px 8px;
+    min-height: 44px;
+    padding: 7px 9px;
   }
 
   .news-uploader-form-actions {

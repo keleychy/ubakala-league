@@ -102,6 +102,17 @@
     transition: color 180ms ease;
 }
 
+.ubakala-footer-contact-item a,
+.ubakala-footer-links a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+}
+
+.ubakala-footer-contact-item a {
+    align-self: flex-start;
+}
+
 .ubakala-footer a:hover {
     color: #ffffff;
     text-decoration: underline;
@@ -118,7 +129,6 @@
 }
 
 .ubakala-footer-links a {
-    display: inline-block;
     color: rgba(255, 255, 255, 0.85);
     font-size: 13px;
     font-weight: 600;
