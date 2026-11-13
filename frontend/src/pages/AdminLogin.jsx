@@ -9,6 +9,7 @@ import {
   signInAdmin,
   signOutAdmin
 } from '../api/firebaseAuth';
+import { getAdminErrorMessage } from '../utils/adminErrorMessages';
 
 function getAdminDestination(profile) {
   const role = String(profile?.role || '').toLowerCase().replace(/[\s_-]+/g, '');
@@ -54,7 +55,10 @@ export default function AdminLogin() {
         }
       } catch (sessionError) {
         if (active) {
-          setError(sessionError.message || 'Unable to verify your existing administrator session.');
+          setError(getAdminErrorMessage(
+            sessionError,
+            'Unable to verify your administrator session. Refresh the page and try again.'
+          ));
           setIsCheckingSession(false);
         }
       }
@@ -66,12 +70,18 @@ export default function AdminLogin() {
         handleAuthState,
         authError => {
           if (!active) return;
-          setError(authError.message || 'Unable to initialize administrator access.');
+          setError(getAdminErrorMessage(
+            authError,
+            'Unable to initialize administrator access. Refresh the page and try again.'
+          ));
           setIsCheckingSession(false);
         }
       );
     } catch (authError) {
-      setError(authError.message || 'Firebase authentication is not configured.');
+      setError(getAdminErrorMessage(
+        authError,
+        'Unable to initialize administrator access. Refresh the page and try again.'
+      ));
       setIsCheckingSession(false);
     }
 
@@ -99,7 +109,10 @@ export default function AdminLogin() {
       }
     } catch (loginError) {
       await signOutAdmin().catch(() => {});
-      setError(loginError.message || 'Unable to sign in. Check your email and password.');
+      setError(getAdminErrorMessage(
+        loginError,
+        'Unable to sign in. Check your email and password, then try again.'
+      ));
     } finally {
       setIsLoading(false);
     }
@@ -117,7 +130,10 @@ export default function AdminLogin() {
       await sendAdminPasswordReset(email);
       setResetSent(true);
     } catch (resetError) {
-      setError(resetError.message || 'Unable to send password reset email.');
+      setError(getAdminErrorMessage(
+        resetError,
+        'Unable to send a password reset email. Check the address and try again.'
+      ));
     } finally {
       setIsLoading(false);
     }
@@ -147,7 +163,7 @@ export default function AdminLogin() {
 
         <form onSubmit={handleLogin} className="league-page-form">
           {error && (
-            <div className="league-page-status league-page-status--error">
+            <div className="league-page-status league-page-status--error" role="alert">
               {error}
             </div>
           )}

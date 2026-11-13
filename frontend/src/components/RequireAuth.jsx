@@ -4,6 +4,7 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { callAdminApi } from '../api/adminApi';
 import { getFirebaseAuth } from '../api/firebaseClient';
 import { signOutAdmin } from '../api/firebaseAuth';
+import { getAdminErrorMessage } from '../utils/adminErrorMessages';
 
 function normalizeRole(role) {
   return String(role || '').toLowerCase().replace(/[\s_-]+/g, '');
@@ -47,7 +48,10 @@ export default function RequireAuth({ children, allowedRoles = [] }) {
             setState({
               status: 'error',
               profile: null,
-              error: error.message || 'Unable to verify administrator access.'
+              error: getAdminErrorMessage(
+                error,
+                'Unable to verify administrator access. Please try again.'
+              )
             });
           }
         }
@@ -56,7 +60,10 @@ export default function RequireAuth({ children, allowedRoles = [] }) {
           setState({
             status: 'error',
             profile: null,
-            error: error.message || 'Unable to initialize administrator access.'
+            error: getAdminErrorMessage(
+              error,
+              'Unable to initialize administrator access. Please try again.'
+            )
           });
         }
       });
@@ -64,7 +71,10 @@ export default function RequireAuth({ children, allowedRoles = [] }) {
       setState({
         status: 'error',
         profile: null,
-        error: error.message || 'Firebase authentication is not configured.'
+        error: getAdminErrorMessage(
+          error,
+          'Unable to initialize administrator access. Please try again.'
+        )
       });
     }
 

@@ -36,9 +36,9 @@ class ErrorBoundary extends React.Component {
                                 Try again
                             </button>
                             <a href="/">Return to homepage</a>
-                        </main>
+                        </div>
                     </section>
-                </div>
+                </main>
             );
         }
         return this.props.children;

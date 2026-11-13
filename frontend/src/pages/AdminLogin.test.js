@@ -1,8 +1,9 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { onAuthStateChanged } from 'firebase/auth';
 import { callAdminApi } from '../api/adminApi';
+import { signInAdmin, signOutAdmin } from '../api/firebaseAuth';
 import AdminLogin from './AdminLogin';
 
 jest.mock('firebase/auth', () => ({
@@ -36,6 +37,7 @@ function renderAdminLogin() {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  signOutAdmin.mockResolvedValue(undefined);
   onAuthStateChanged.mockImplementation((auth, callback) => {
     Promise.resolve().then(() => callback(null));
     return jest.fn();
@@ -58,4 +60,24 @@ test('a signed-out visitor can still access the admin login form', async () => {
   renderAdminLogin();
 
   expect(await screen.findByRole('heading', { name: 'Admin Login' })).toBeInTheDocument();
+});
+
+test('administrator sign-in shows a friendly message for Firebase credential errors', async () => {
+  signInAdmin.mockRejectedValue(Object.assign(
+    new Error('Firebase: Error (auth/invalid-credential).'),
+    { code: 'auth/invalid-credential' }
+  ));
+
+  renderAdminLogin();
+
+  fireEvent.change(await screen.findByLabelText('Email'), {
+    target: { value: 'admin@example.com' }
+  });
+  fireEvent.change(screen.getByLabelText('Password'), {
+    target: { value: 'incorrect-password' }
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Login' }));
+
+  expect(await screen.findByText('The email or password is incorrect.')).toBeInTheDocument();
+  expect(screen.queryByText(/auth\/invalid-credential/)).not.toBeInTheDocument();
 });

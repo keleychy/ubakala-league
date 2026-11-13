@@ -6,6 +6,13 @@ import {
 } from 'firebase/auth';
 import { getFirebaseAuth } from './firebaseClient';
 
+export class AdminAuthError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = 'AdminAuthError';
+  }
+}
+
 export async function signInAdmin(email, password) {
   const auth = getFirebaseAuth();
   const credential = await signInWithEmailAndPassword(auth, email.trim(), password);
@@ -15,7 +22,9 @@ export async function signInAdmin(email, password) {
     } finally {
       await signOut(auth);
     }
-    throw new Error('Verify your email address before using administrator tools. A verification email has been sent.');
+    throw new AdminAuthError(
+      'Verify your email address before using administrator tools. A verification email has been sent.'
+    );
   }
   return credential.user;
 }
