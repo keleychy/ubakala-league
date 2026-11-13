@@ -284,7 +284,7 @@ const styles = `
 
   .standings-table {
     width: 100%;
-    min-width: 490px;
+    min-width: 540px;
     border-collapse: collapse;
     font-size: 12px;
   }
