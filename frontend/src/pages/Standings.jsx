@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { api, isAppsScriptReadApiEnabled } from '../api/api';
 import { isGroupStageMatch, PUBLIC_CATEGORIES } from '../utils/competition';
+import { getFairPlayPoints, rankGroupStandings } from '../utils/standingsRanking';
 
 const PERIOD_LABELS = {
   not_started: 'Not started',
@@ -652,6 +653,7 @@ const Standings = () => {
         }).filter(Boolean);
 
         const rows = {};
+        const completedGroupMatches = [];
 
         teamsArr.forEach((t) => {
           let id = null;
@@ -683,7 +685,9 @@ const Standings = () => {
             goals_for: 0,
             goals_against: 0,
             goal_diff: 0,
-            points: 0
+            points: 0,
+            fair_play_points: 0,
+            fair_play_complete: true
           };
         });
 
@@ -713,6 +717,15 @@ const Standings = () => {
 
           if (!homeRow || !awayRow) return;
 
+          completedGroupMatches.push({
+            home_team_id: String(hid),
+            away_team_id: String(aid),
+            home_score: Number(homeScore),
+            away_score: Number(awayScore),
+            status: m.status,
+            awarded_winner_team_id: m.awarded_winner_team_id || m.awarded_to
+          });
+
           homeRow.played += 1;
           awayRow.played += 1;
 
@@ -721,6 +734,16 @@ const Standings = () => {
 
           awayRow.goals_for += Number(awayScore);
           awayRow.goals_against += Number(homeScore);
+
+          const homeFairPlayPoints = getFairPlayPoints(m, 'home');
+          const awayFairPlayPoints = getFairPlayPoints(m, 'away');
+          if (homeFairPlayPoints === null || awayFairPlayPoints === null) {
+            homeRow.fair_play_complete = false;
+            awayRow.fair_play_complete = false;
+          } else {
+            homeRow.fair_play_points += homeFairPlayPoints;
+            awayRow.fair_play_points += awayFairPlayPoints;
+          }
 
           if (homeScore > awayScore) {
             homeRow.wins += 1;
@@ -743,16 +766,14 @@ const Standings = () => {
           goal_diff: r.goals_for - r.goals_against
         }));
 
-        standingsArr.sort(
-          (a, b) =>
-            b.points - a.points ||
-            b.goal_diff - a.goal_diff ||
-            b.goals_for - a.goals_for
+        const rankedStandings = rankGroupStandings(
+          standingsArr,
+          completedGroupMatches
         );
 
         return {
           group: { id: groupId, name: groupName },
-          standings: standingsArr
+          standings: rankedStandings
         };
       });
 
@@ -1177,6 +1198,7 @@ const Standings = () => {
                               <th scope="col" title="Goals Against">GA</th>
                               <th scope="col" title="Goal Difference">GD</th>
                               <th scope="col" title="Points">PTS</th>
+                              <th scope="col" title="Fair Play points; lower ranks higher when previous tie-breakers are level">FP</th>
                             </tr>
                           </thead>
 
@@ -1217,6 +1239,11 @@ const Standings = () => {
 
                                 <td className={`points ${flashMap[row.team_id]?.points ? 'score-flash' : ''}`}>
                                   {row.points}
+                                </td>
+                                <td title={row.fair_play_complete
+                                  ? 'Fair Play points; lower is better'
+                                  : 'Fair Play ranking unavailable because one or more match card records are incomplete'}>
+                                  {row.fair_play_complete ? row.fair_play_points : '—'}
                                 </td>
                               </tr>
                             ))}
