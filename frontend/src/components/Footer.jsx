@@ -1,9 +1,11 @@
 
 import { Link } from 'react-router-dom';
+import { useAnalyticsConsent } from './AnalyticsConsent';
 import './Footer.css';
 
 const Footer = () => {
   const currentYear = new Date().getFullYear();
+  const { openPreferences } = useAnalyticsConsent();
 
   return (
     <footer className="ubakala-footer">
@@ -86,6 +88,14 @@ const Footer = () => {
             Website produced by{' '}
             <strong>Novatech Consult</strong>
           </p>
+
+          <button
+            type="button"
+            className="ubakala-footer-preferences"
+            onClick={openPreferences}
+          >
+            Analytics preferences
+          </button>
 
         </div>
 

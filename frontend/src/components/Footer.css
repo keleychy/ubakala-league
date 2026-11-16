@@ -176,6 +176,29 @@
     font-weight: 800;
 }
 
+.ubakala-footer-preferences {
+    min-height: 44px;
+    padding: 8px 10px;
+    border: 1px solid rgba(243, 217, 142, 0.55);
+    border-radius: 7px;
+    background: transparent;
+    color: #f3d98e;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.ubakala-footer-preferences:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+}
+
+.ubakala-footer-preferences:focus-visible {
+    outline: 3px solid #f3d98e;
+    outline-offset: 3px;
+}
+
 /* =========================================
    TABLET
 ========================================= */
@@ -247,6 +270,10 @@
     .ubakala-footer-copyright,
     .ubakala-footer-credit {
         font-size: 11px;
+    }
+
+    .ubakala-footer-preferences {
+        align-self: stretch;
     }
 }
 

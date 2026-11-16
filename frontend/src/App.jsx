@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import Home from './pages/Home';
 import Results from './pages/Results';
@@ -22,36 +22,63 @@ import GroupManager from './pages/GroupManager';
 import Predictions from './pages/Predictions';
 import AdminPredictions from './pages/AdminPredictions';
 import NotFound from './pages/NotFound';
+import {
+  AnalyticsConsentNotice,
+  AnalyticsConsentProvider,
+  updateGoogleAnalyticsConsent,
+  useAnalyticsConsent,
+} from './components/AnalyticsConsent';
 
-// 1. IMPORT ANALYTICS LIBRARIES
 import { Analytics } from '@vercel/analytics/react';
 import ReactGA from 'react-ga4';
 
-// 2. INITIALIZE GOOGLE ANALYTICS
-ReactGA.initialize("G-7BQMQZEQHM");
+const GA_MEASUREMENT_ID = 'G-7BQMQZEQHM';
 
-// 3. HELPER COMPONENT TO TRACK PAGE VIEWS
 function AnalyticsTracker() {
   const location = useLocation();
+  const { consent } = useAnalyticsConsent();
+  const initialized = useRef(false);
+  const lastPageView = useRef('');
 
   useEffect(() => {
-    ReactGA.send({
-      hitType: "pageview",
-      page: location.pathname + location.search
-    });
-  }, [location]);
+    if (consent !== 'accepted') {
+      updateGoogleAnalyticsConsent(consent);
+      lastPageView.current = '';
+      return;
+    }
 
-  return null; // This component doesn't render anything, it just "listens"
+    updateGoogleAnalyticsConsent(consent);
+    if (!initialized.current) {
+      ReactGA.initialize(GA_MEASUREMENT_ID, {
+        gtagOptions: { send_page_view: false },
+      });
+      initialized.current = true;
+    }
+
+    const page = location.pathname + location.search;
+    if (lastPageView.current === page) return;
+    ReactGA.send({
+      hitType: 'pageview',
+      page,
+    });
+    lastPageView.current = page;
+  }, [consent, location.pathname, location.search]);
+
+  if (consent !== 'accepted') return null;
+
+  return (
+    <Analytics
+      disableAutoTrack
+      route={location.pathname}
+      path={location.pathname + location.search}
+    />
+  );
 }
 
 export default function App() {
   return (
-    <>
-      {/* Vercel Speed/Performance Analytics */}
-      <Analytics />
-
+    <AnalyticsConsentProvider>
       <BrowserRouter>
-        {/* THIS IS THE ENGINE THAT SENDS DATA TO GOOGLE */}
         <AnalyticsTracker />
 
         <ErrorBoundary>
@@ -119,7 +146,8 @@ export default function App() {
             <Footer />
           </div>
         </ErrorBoundary>
+        <AnalyticsConsentNotice />
       </BrowserRouter>
-    </>
+    </AnalyticsConsentProvider>
   );
 }
