@@ -1,4 +1,7 @@
 import React from 'react';
+import fs from 'fs';
+import path from 'path';
+import vm from 'vm';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { predictionsApi } from '../api/predictionsApi';
 import {
@@ -47,6 +50,43 @@ const secondFixture = {
   away_team_name: 'Wolves FC'
 };
 
+test('public leaderboard projection omits Predictor IDs and preserves ranking fields', () => {
+  const sourcePath = path.resolve(
+    __dirname,
+    '../../../apps-script-connected/Predictions.js'
+  );
+  const source = fs.readFileSync(sourcePath, 'utf8');
+  const context = {};
+  vm.runInNewContext(
+    `${source}\nthis.projectPublicLeaderboard = toPublicPredictionLeaderboard_;`,
+    context
+  );
+  const entry = {
+    predictor_id: 'EAG-1234',
+    rank: 1,
+    display_name: 'Alex Eagle',
+    total_points: 15,
+    total_predictions: 10,
+    settled_predictions: 8,
+    correct_predictions: 6,
+    pending_predictions: 2,
+    accuracy_percentage: 75
+  };
+  const [publicEntry] = context.projectPublicLeaderboard([entry]);
+
+  expect(JSON.parse(JSON.stringify(publicEntry))).toEqual({
+    rank: 1,
+    display_name: 'Alex Eagle',
+    total_points: 15,
+    total_predictions: 10,
+    settled_predictions: 8,
+    correct_predictions: 6,
+    pending_predictions: 2,
+    accuracy_percentage: 75
+  });
+  expect(entry.predictor_id).toBe('EAG-1234');
+});
+
 beforeEach(() => {
   jest.clearAllMocks();
   createPredictorPasswordSalt.mockReturnValue('a'.repeat(32));
@@ -76,6 +116,23 @@ beforeEach(() => {
     failed: 0,
     results: [{ fixture_id: 'fixture-1', success: true, updated: false }]
   });
+});
+
+test('renders public leaderboard entries without Predictor IDs', async () => {
+  predictionsApi.getLeaderboard.mockResolvedValue([{
+    rank: 1,
+    display_name: 'Alex Eagle',
+    total_points: 15,
+    total_predictions: 10,
+    correct_predictions: 6,
+    accuracy_percentage: 60
+  }]);
+  render(<Predictions />);
+  fireEvent.click(await screen.findByRole('button', { name: 'Leaderboard' }));
+
+  expect(await screen.findByText('Alex Eagle')).toBeInTheDocument();
+  expect(screen.getByText('15')).toBeInTheDocument();
+  expect(screen.getByText('60%')).toBeInTheDocument();
 });
 
 test('registers a predictor and confirms an outcome before submitting', async () => {

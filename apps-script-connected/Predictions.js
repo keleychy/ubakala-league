@@ -159,10 +159,12 @@ function handlePredictionPublicGet_(parameters) {
     if (settings.leaderboard_enabled !== 'true') {
       throw apiError_('The leaderboard is currently unavailable');
     }
-    return getPredictionLeaderboard_(
-      optionalText_(parameters.season_id),
-      optionalText_(parameters.category),
-      settings
+    return toPublicPredictionLeaderboard_(
+      getPredictionLeaderboard_(
+        optionalText_(parameters.season_id),
+        optionalText_(parameters.category),
+        settings
+      )
     );
   }
   if (parameters.action === 'predictions.statistics') {
@@ -176,6 +178,14 @@ function handlePredictionPublicGet_(parameters) {
     );
   }
   throw apiError_('Unsupported public Predictions Centre request');
+}
+
+function toPublicPredictionLeaderboard_(leaderboard) {
+  return leaderboard.map(entry => {
+    const publicEntry = Object.assign({}, entry);
+    delete publicEntry.predictor_id;
+    return publicEntry;
+  });
 }
 
 function handlePredictionPublicPost_(body) {

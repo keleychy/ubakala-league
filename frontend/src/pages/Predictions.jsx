@@ -680,8 +680,8 @@ export default function Predictions() {
                   <div className="predictions-table-wrap">
                     <table className="predictions-table">
                       <thead><tr><th>Rank</th><th>Predictor</th><th>Points</th><th>Predictions</th><th>Correct</th><th>Accuracy</th></tr></thead>
-                      <tbody>{visibleLeaderboard.map(item => (
-                        <tr key={item.predictor_id}>
+                      <tbody>{visibleLeaderboard.map((item, index) => (
+                        <tr key={`${item.rank}-${index}`}>
                           <td>{item.rank}</td><td>{item.display_name}</td><td>{item.total_points}</td>
                           <td>{item.total_predictions}</td><td>{item.correct_predictions}</td><td>{item.accuracy_percentage}%</td>
                         </tr>
