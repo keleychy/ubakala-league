@@ -5,6 +5,7 @@ import { callAdminApi } from '../api/adminApi';
 import { getFirebaseAuth } from '../api/firebaseClient';
 import { signOutAdmin } from '../api/firebaseAuth';
 import { getAdminErrorMessage } from '../utils/adminErrorMessages';
+import AdminSessionTimeout from './AdminSessionTimeout';
 
 function normalizeRole(role) {
   return String(role || '').toLowerCase().replace(/[\s_-]+/g, '');
@@ -105,5 +106,5 @@ export default function RequireAuth({ children, allowedRoles = [] }) {
       </div>
     );
   }
-  return children;
+  return <AdminSessionTimeout>{children}</AdminSessionTimeout>;
 }

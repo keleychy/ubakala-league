@@ -21,6 +21,7 @@ const HISTORY_FILTERS = [
   ['incorrect', 'Incorrect'],
   ['void', 'Void']
 ];
+const PREDICTOR_SESSION_STORAGE_KEY = 'ubakala-predictor-session-v1';
 
 function formatKickoff(date, time) {
   if (!date) return 'Date to be confirmed';
@@ -100,6 +101,7 @@ export default function Predictions() {
   const [newCredentials, setNewCredentials] = useState(null);
   const [credentials, setCredentials] = useState({ predictor_id: '', access_code: '' });
   const [predictor, setPredictor] = useState(null);
+  const [rememberPredictorSession, setRememberPredictorSession] = useState(false);
   const [history, setHistory] = useState([]);
   const [historyFilter, setHistoryFilter] = useState('all');
 
@@ -164,6 +166,49 @@ export default function Predictions() {
     return data;
   }, []);
 
+  useEffect(() => {
+    let active = true;
+    let storedSession;
+    try {
+      const saved = window.sessionStorage.getItem(PREDICTOR_SESSION_STORAGE_KEY);
+      if (!saved) return undefined;
+      storedSession = JSON.parse(saved);
+      if (
+        !storedSession ||
+        typeof storedSession.predictor_id !== 'string' ||
+        typeof storedSession.access_code !== 'string' ||
+        !storedSession.predictor_id ||
+        !storedSession.access_code
+      ) {
+        window.sessionStorage.removeItem(PREDICTOR_SESSION_STORAGE_KEY);
+        setError('Your saved predictor session was invalid. Please sign in again.');
+        return undefined;
+      }
+    } catch (storageError) {
+      setError('Saved predictor sign-in could not be read. Please sign in again.');
+      return undefined;
+    }
+
+    setCredentials(storedSession);
+    setRememberPredictorSession(true);
+    refreshHistory(storedSession)
+      .then(data => {
+        if (!active) return;
+        setPasswordUpdateRequired(data.predictor?.needs_password_update === true);
+      })
+      .catch(() => {
+        if (!active) return;
+        setCredentials({ predictor_id: '', access_code: '' });
+        setPredictor(null);
+        setHistory([]);
+        setError('Your saved predictor session could not be restored. Check your connection, then sign in again.');
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [refreshHistory]);
+
   const handleAccess = async event => {
     event.preventDefault();
     setBusy(true);
@@ -197,10 +242,28 @@ export default function Predictions() {
         authenticatedCredentials,
         credentialUpgrade
       );
-      setCredentials(authenticatedCredentials);
+      const establishedCredentials = {
+        ...authenticatedCredentials,
+        ...(credentialUpgrade ? { access_code: credentialUpgrade.verifier } : {})
+      };
+      setCredentials(establishedCredentials);
       setSuccess('Your predictions have been loaded.');
       setPasswordUpdateRequired(data.predictor?.needs_password_update === true);
       setRegistrationOpen(false);
+      try {
+        if (rememberPredictorSession && !data.predictor?.needs_password_update) {
+          window.sessionStorage.setItem(
+            PREDICTOR_SESSION_STORAGE_KEY,
+            JSON.stringify(establishedCredentials)
+          );
+        } else {
+          window.sessionStorage.removeItem(PREDICTOR_SESSION_STORAGE_KEY);
+        }
+      } catch (storageError) {
+        setError(rememberPredictorSession
+          ? 'You are signed in, but this tab could not save the session. Refreshing will sign you out.'
+          : 'You are signed in, but this tab could not clear a saved sign-in. Close this tab to clear it.');
+      }
     } catch (accessError) {
       setError(accessError.message || 'Could not access those predictions.');
     } finally {
@@ -279,9 +342,24 @@ export default function Predictions() {
       });
       const nextCredentials = { ...credentials, access_code: verifier };
       setCredentials(nextCredentials);
+      try {
+        if (rememberPredictorSession) {
+          window.sessionStorage.setItem(
+            PREDICTOR_SESSION_STORAGE_KEY,
+            JSON.stringify(nextCredentials)
+          );
+        }
+      } catch (storageError) {
+        setError('Your password changed, but this tab could not save the session. Refreshing will sign you out.');
+      }
       setNewPassword('');
       setPasswordUpdateRequired(false);
       setPasswordChangeOpen(false);
+      setRecoveryOpen(false);
+      setRegistrationOpen(false);
+      setBatchConfirmation(false);
+      setRememberPredictorSession(false);
+      setActiveSection('my');
       await refreshHistory(nextCredentials);
       setSuccess('Your password has been updated.');
     } catch (passwordError) {
@@ -289,6 +367,27 @@ export default function Predictions() {
     } finally {
       setBusy(false);
     }
+  };
+
+  const handlePredictorLogout = () => {
+    let storageError;
+    try {
+      window.sessionStorage.removeItem(PREDICTOR_SESSION_STORAGE_KEY);
+    } catch (error) {
+      storageError = error;
+    }
+    setCredentials({ predictor_id: '', access_code: '' });
+    setPredictor(null);
+    setHistory([]);
+    setSelectedOutcomes({});
+    setDirtyFixtureIds({});
+    setNewCredentials(null);
+    setPasswordUpdateRequired(false);
+    setPasswordChangeOpen(false);
+    setSuccess(storageError
+      ? 'You are signed out. Close this tab to clear its saved sign-in.'
+      : 'You have signed out of your predictor account.');
+    setError('');
   };
 
   const handleSubmitBatch = async () => {
@@ -418,6 +517,15 @@ export default function Predictions() {
                 <button type="button" className="predictions-button predictions-button--secondary" onClick={() => setActiveSection('my')}>
                   Access my predictions
                 </button>
+                {predictor && (
+                  <button
+                    type="button"
+                    className="predictions-button predictions-button--secondary"
+                    onClick={handlePredictorLogout}
+                  >
+                    Sign out
+                  </button>
+                )}
                 {configuration?.registration_enabled && (
                   <button type="button" className="predictions-button predictions-button--secondary" onClick={() => setRegistrationOpen(value => !value)}>
                     {registrationOpen ? 'Close registration' : 'Register'}
@@ -449,6 +557,19 @@ export default function Predictions() {
                       onChange={event => setCredentials(value => ({ ...value, access_code: event.target.value }))}
                       required
                     />
+                  </label>
+                  <label className="predictions-session-option">
+                    <input
+                      type="checkbox"
+                      checked={rememberPredictorSession}
+                      onChange={event => setRememberPredictorSession(event.target.checked)}
+                    />
+                    <span>
+                      <strong>Stay signed in on this tab</strong>
+                      <small>
+                        Saves your sign-in for this tab only. It is cleared when you close the tab or sign out.
+                      </small>
+                    </span>
                   </label>
                   <button className="predictions-button" disabled={busy}>
                     {busy ? 'Signing in securely...' : 'Load my predictions'}
@@ -681,8 +802,12 @@ export default function Predictions() {
                     <table className="predictions-table">
                       <thead><tr><th>Rank</th><th>Predictor</th><th>Points</th><th>Predictions</th><th>Correct</th><th>Accuracy</th></tr></thead>
                       <tbody>{visibleLeaderboard.map((item, index) => (
-                        <tr key={`${item.rank}-${index}`}>
-                          <td>{item.rank}</td><td>{item.display_name}</td><td>{item.total_points}</td>
+                        <tr
+                          className={Number(item.rank) <= 3 ? `predictions-table-row--rank-${item.rank}` : ''}
+                          key={`${item.rank}-${index}`}
+                        >
+                          <td><span className="predictions-rank-badge">{item.rank}</span></td>
+                          <td>{item.display_name}</td><td>{item.total_points}</td>
                           <td>{item.total_predictions}</td><td>{item.correct_predictions}</td><td>{item.accuracy_percentage}%</td>
                         </tr>
                       ))}</tbody>
@@ -699,15 +824,31 @@ export default function Predictions() {
                 {!configuration?.statistics_enabled || !statistics ? <div className="predictions-empty">Prediction statistics are currently unavailable.</div> : (
                   <div className="predictions-stat-grid">
                     {[
-                      ['Registered predictors', statistics.registered_predictors],
-                      ['Predictions', statistics.total_predictions],
-                      ['Correct', statistics.correct_predictions],
-                      ['Incorrect', statistics.incorrect_predictions],
-                      ['Pending', statistics.pending_predictions],
-                      ['Void', statistics.void_predictions],
-                      ['Accuracy', `${statistics.accuracy_percentage}%`],
-                      ['Most selected', statistics.most_selected_outcome || '—']
-                    ].map(([label, value]) => <div className="predictions-stat-card" key={label}><span>{label}</span><strong>{value}</strong></div>)}
+                      { label: 'Registered predictors', value: statistics.registered_predictors },
+                      { label: 'Predictions', value: statistics.total_predictions },
+                      { label: 'Correct', value: statistics.correct_predictions, variant: 'positive' },
+                      { label: 'Incorrect', value: statistics.incorrect_predictions, variant: 'negative' },
+                      { label: 'Pending', value: statistics.pending_predictions },
+                      { label: 'Void', value: statistics.void_predictions },
+                      { label: 'Accuracy', value: `${statistics.accuracy_percentage}%`, variant: 'accuracy' },
+                      {
+                        label: 'Most-picked outcome',
+                        value: outcomeLabel(statistics.most_selected_outcome),
+                        detail: statistics.most_selected_outcome
+                          ? `1 = Home win · X = Draw · 2 = Away win`
+                          : 'No picks yet',
+                        variant: 'featured'
+                      }
+                    ].map(card => (
+                      <div
+                        className={`predictions-stat-card${card.variant ? ` predictions-stat-card--${card.variant}` : ''}`}
+                        key={card.label}
+                      >
+                        <span>{card.label}</span>
+                        <strong>{card.value ?? '—'}</strong>
+                        {card.detail && <small>{card.detail}</small>}
+                      </div>
+                    ))}
                   </div>
                 )}
               </section>

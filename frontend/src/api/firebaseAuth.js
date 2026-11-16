@@ -5,6 +5,7 @@ import {
   signOut
 } from 'firebase/auth';
 import { getFirebaseAuth } from './firebaseClient';
+import { recordAdminActivity } from '../utils/adminSession';
 
 export class AdminAuthError extends Error {
   constructor(message) {
@@ -26,6 +27,7 @@ export async function signInAdmin(email, password) {
       'Verify your email address before using administrator tools. A verification email has been sent.'
     );
   }
+  recordAdminActivity();
   return credential.user;
 }
 

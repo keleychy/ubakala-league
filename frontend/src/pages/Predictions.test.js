@@ -105,6 +105,7 @@ test('public leaderboard projection omits Predictor IDs and preserves ranking fi
 
 beforeEach(() => {
   jest.clearAllMocks();
+  window.sessionStorage.clear();
   createPredictorPasswordSalt.mockReturnValue('a'.repeat(32));
   derivePredictorPasswordVerifier.mockResolvedValue('b'.repeat(64));
   predictionsApi.getConfiguration.mockResolvedValue({
@@ -149,6 +150,60 @@ test('renders public leaderboard entries without Predictor IDs', async () => {
   expect(await screen.findByText('Alex Eagle')).toBeInTheDocument();
   expect(screen.getByText('15')).toBeInTheDocument();
   expect(screen.getByText('60%')).toBeInTheDocument();
+});
+
+test('explains the most-picked outcome using the 1X2 labels', async () => {
+  predictionsApi.getStatistics.mockResolvedValue({
+    registered_predictors: 9,
+    total_predictions: 66,
+    correct_predictions: 23,
+    incorrect_predictions: 16,
+    pending_predictions: 27,
+    void_predictions: 0,
+    accuracy_percentage: 58.97,
+    most_selected_outcome: '2'
+  });
+  render(<Predictions />);
+  fireEvent.click(await screen.findByRole('button', { name: 'Statistics' }));
+
+  expect(await screen.findByText('Away win')).toBeInTheDocument();
+  expect(screen.getByText('1 = Home win · X = Draw · 2 = Away win')).toBeInTheDocument();
+});
+
+test('restores an opted-in predictor session after refresh and signs out cleanly', async () => {
+  predictionsApi.getCredentialInfo.mockResolvedValue({
+    method: 'pbkdf2_web',
+    salt: 'salt',
+    iterations: 1000
+  });
+  const firstRender = render(<Predictions />);
+  fireEvent.click(await screen.findByRole('button', { name: 'Access my predictions' }));
+  fireEvent.change(screen.getByLabelText('Predictor ID'), {
+    target: { value: 'EAG-123' }
+  });
+  fireEvent.change(screen.getByLabelText('Password or temporary recovery code'), {
+    target: { value: 'eaglesWinEveryMatch!' }
+  });
+  fireEvent.click(screen.getByRole('checkbox', { name: /stay signed in on this tab/i }));
+  fireEvent.click(screen.getByRole('button', { name: 'Load my predictions' }));
+
+  expect(await screen.findByText('Welcome, Alex Eagle')).toBeInTheDocument();
+  expect(JSON.parse(window.sessionStorage.getItem('ubakala-predictor-session-v1'))).toEqual({
+    predictor_id: 'EAG-123',
+    access_code: 'b'.repeat(64)
+  });
+
+  firstRender.unmount();
+  render(<Predictions />);
+  expect(await screen.findByText('Welcome, Alex Eagle')).toBeInTheDocument();
+  expect(predictionsApi.getHistory).toHaveBeenLastCalledWith({
+    predictor_id: 'EAG-123',
+    access_code: 'b'.repeat(64)
+  });
+
+  fireEvent.click(screen.getByRole('button', { name: 'Sign out' }));
+  expect(screen.queryByText('Welcome, Alex Eagle')).not.toBeInTheDocument();
+  expect(window.sessionStorage.getItem('ubakala-predictor-session-v1')).toBeNull();
 });
 
 test('registers a predictor and confirms an outcome before submitting', async () => {

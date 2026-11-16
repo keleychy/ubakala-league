@@ -1,19 +1,13 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { callAdminApi } from '../api/adminApi';
 import { signOutAdmin } from '../api/firebaseAuth';
 import './LeaguePolish.css';
 
-const SESSION_TIMEOUT = 15 * 60 * 1000;
-const WARNING_TIMEOUT = 2 * 60 * 1000;
-
 export default function AdminDashboard() {
   const nav = useNavigate();
   const [profile, setProfile] = useState(null);
-  const [sessionWarning, setSessionWarning] = useState(false);
   const [error, setError] = useState('');
-  const inactivityTimerRef = useRef(null);
-  const warningTimerRef = useRef(null);
 
   useEffect(() => {
     let active = true;
@@ -32,12 +26,10 @@ export default function AdminDashboard() {
     };
   }, [nav]);
 
-  const handleLogout = useCallback(async () => {
-    if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
-    if (warningTimerRef.current) clearTimeout(warningTimerRef.current);
+  const handleLogout = async () => {
     await signOutAdmin();
     nav('/admin', { replace: true });
-  }, [nav]);
+  };
 
   const handleLogoutWithError = () => {
     handleLogout().catch(logoutError => {
@@ -45,43 +37,10 @@ export default function AdminDashboard() {
     });
   };
 
-  useEffect(() => {
-    const resetInactivityTimer = () => {
-      if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
-      if (warningTimerRef.current) clearTimeout(warningTimerRef.current);
-      setSessionWarning(false);
-      inactivityTimerRef.current = setTimeout(() => {
-        setSessionWarning(true);
-        warningTimerRef.current = setTimeout(() => {
-          handleLogout().catch(error => {
-            setError(error.message || 'Unable to end the administrator session.');
-          });
-        }, WARNING_TIMEOUT);
-      }, SESSION_TIMEOUT);
-    };
-
-    ['mousemove', 'keypress', 'scroll', 'click'].forEach(eventName => {
-      window.addEventListener(eventName, resetInactivityTimer);
-    });
-    resetInactivityTimer();
-    return () => {
-      ['mousemove', 'keypress', 'scroll', 'click'].forEach(eventName => {
-        window.removeEventListener(eventName, resetInactivityTimer);
-      });
-      if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
-      if (warningTimerRef.current) clearTimeout(warningTimerRef.current);
-    };
-  }, [handleLogout]);
-
   const role = String(profile?.role || '').toLowerCase().replace(/[\s_-]+/g, '');
   const isAdmin = role === 'admin';
   const canEditResults = isAdmin || role === 'resultseditor';
   const canManageNews = isAdmin || role === 'newsuser';
-
-  function extendSession() {
-    setSessionWarning(false);
-    window.dispatchEvent(new Event('mousemove'));
-  }
 
   return (
     <div className="league-polish-page">
@@ -182,21 +141,6 @@ export default function AdminDashboard() {
         </div>
       </main>
 
-      {sessionWarning && (
-        <>
-          <div className="league-session-overlay" />
-          <section className="league-session-warning" role="alertdialog" aria-modal="true" aria-labelledby="session-warning-title">
-            <h2 id="session-warning-title">Session Expiring Soon</h2>
-            <p>Your session will end due to inactivity. Continue to stay signed in.</p>
-            <div>
-              <button type="button" onClick={extendSession}>Continue session</button>
-              <button type="button" className="league-button-danger" onClick={handleLogoutWithError}>
-                Logout
-              </button>
-            </div>
-          </section>
-        </>
-      )}
     </div>
   );
 }
