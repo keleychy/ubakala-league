@@ -355,11 +355,6 @@ export default function Predictions() {
       setNewPassword('');
       setPasswordUpdateRequired(false);
       setPasswordChangeOpen(false);
-      setRecoveryOpen(false);
-      setRegistrationOpen(false);
-      setBatchConfirmation(false);
-      setRememberPredictorSession(false);
-      setActiveSection('my');
       await refreshHistory(nextCredentials);
       setSuccess('Your password has been updated.');
     } catch (passwordError) {
@@ -370,11 +365,11 @@ export default function Predictions() {
   };
 
   const handlePredictorLogout = () => {
-    let storageError;
     try {
       window.sessionStorage.removeItem(PREDICTOR_SESSION_STORAGE_KEY);
-    } catch (error) {
-      storageError = error;
+    } catch {
+      setError('We could not clear this tab’s saved sign-in. You are still signed in; close this tab to end the session.');
+      return;
     }
     setCredentials({ predictor_id: '', access_code: '' });
     setPredictor(null);
@@ -384,9 +379,12 @@ export default function Predictions() {
     setNewCredentials(null);
     setPasswordUpdateRequired(false);
     setPasswordChangeOpen(false);
-    setSuccess(storageError
-      ? 'You are signed out. Close this tab to clear its saved sign-in.'
-      : 'You have signed out of your predictor account.');
+    setRecoveryOpen(false);
+    setRegistrationOpen(false);
+    setBatchConfirmation(false);
+    setRememberPredictorSession(false);
+    setActiveSection('my');
+    setSuccess('You have signed out of your predictor account.');
     setError('');
   };
 
