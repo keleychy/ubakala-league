@@ -184,7 +184,7 @@ export default function Predictions() {
         setError('Your saved predictor session was invalid. Please sign in again.');
         return undefined;
       }
-    } catch (storageError) {
+    } catch {
       setError('Saved predictor sign-in could not be read. Please sign in again.');
       return undefined;
     }
@@ -259,7 +259,7 @@ export default function Predictions() {
         } else {
           window.sessionStorage.removeItem(PREDICTOR_SESSION_STORAGE_KEY);
         }
-      } catch (storageError) {
+      } catch {
         setError(rememberPredictorSession
           ? 'You are signed in, but this tab could not save the session. Refreshing will sign you out.'
           : 'You are signed in, but this tab could not clear a saved sign-in. Close this tab to clear it.');
@@ -349,7 +349,7 @@ export default function Predictions() {
             JSON.stringify(nextCredentials)
           );
         }
-      } catch (storageError) {
+      } catch {
         setError('Your password changed, but this tab could not save the session. Refreshing will sign you out.');
       }
       setNewPassword('');

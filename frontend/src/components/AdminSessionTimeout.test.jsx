@@ -54,11 +54,18 @@ test('signs out an idle administrator after the warning period', async () => {
 });
 
 test('expires a session immediately when a suspended page resumes past the deadline', async () => {
+  render(<AdminSessionTimeout><div>Protected admin content</div></AdminSessionTimeout>);
+  Object.defineProperty(document, 'visibilityState', {
+    configurable: true,
+    value: 'visible'
+  });
   window.localStorage.setItem(
     ADMIN_SESSION_ACTIVITY_KEY,
     String(Date.now() - 18 * 60 * 1000)
   );
-  render(<AdminSessionTimeout><div>Protected admin content</div></AdminSessionTimeout>);
+  act(() => {
+    document.dispatchEvent(new Event('visibilitychange'));
+  });
 
   await waitFor(() => {
     expect(signOutAdmin).toHaveBeenCalledTimes(1);

@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { signOutAdmin } from '../api/firebaseAuth';
 import {
+  ADMIN_SESSION_ACTIVITY_KEY,
   getAdminLastActivity,
   recordAdminActivity
 } from '../utils/adminSession';
@@ -73,7 +74,7 @@ export default function AdminSessionTimeout({ children }) {
       setError('Administrator session security could not be maintained. Sign in again.');
       setExpired(true);
     }
-  }, [endSession, scheduleTimeout]);
+  }, [scheduleTimeout]);
 
   const verifyElapsedTime = useCallback(() => {
     try {
@@ -84,7 +85,7 @@ export default function AdminSessionTimeout({ children }) {
       setError('Administrator session security could not be verified. Sign in again.');
       setExpired(true);
     }
-  }, [endSession, scheduleTimeout]);
+  }, [scheduleTimeout]);
 
   useEffect(() => {
     try {
@@ -112,9 +113,12 @@ export default function AdminSessionTimeout({ children }) {
     const checkOnResume = () => {
       if (document.visibilityState === 'visible') verifyElapsedTime();
     };
+    const checkOnStorageChange = event => {
+      if (event.key === ADMIN_SESSION_ACTIVITY_KEY) verifyElapsedTime();
+    };
     document.addEventListener('visibilitychange', checkOnResume);
     window.addEventListener('focus', checkOnResume);
-    window.addEventListener('storage', verifyElapsedTime);
+    window.addEventListener('storage', checkOnStorageChange);
 
     return () => {
       activityEvents.forEach(eventName =>
@@ -122,7 +126,7 @@ export default function AdminSessionTimeout({ children }) {
       );
       document.removeEventListener('visibilitychange', checkOnResume);
       window.removeEventListener('focus', checkOnResume);
-      window.removeEventListener('storage', verifyElapsedTime);
+      window.removeEventListener('storage', checkOnStorageChange);
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
   }, [endSession, recordActivity, scheduleTimeout, verifyElapsedTime]);

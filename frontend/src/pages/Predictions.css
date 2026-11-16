@@ -690,19 +690,23 @@
   line-height: 1.4;
 }
 
-.predictions-session-option {
+.predictions-inline-form .predictions-session-option {
   display: flex;
   grid-column: 1 / -1;
+  flex-direction: row;
   align-items: flex-start;
   gap: 10px;
   color: #1c3d63;
 }
 
-.predictions-session-option input {
+.predictions-inline-form .predictions-session-option input {
   width: 18px;
   height: 18px;
   flex: 0 0 auto;
   margin: 2px 0 0;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
   accent-color: #173b68;
 }
 
