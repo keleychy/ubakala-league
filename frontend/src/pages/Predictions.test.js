@@ -61,30 +61,46 @@ test('public leaderboard projection omits Predictor IDs and preserves ranking fi
     `${source}\nthis.projectPublicLeaderboard = toPublicPredictionLeaderboard_;`,
     context
   );
-  const entry = {
-    predictor_id: 'EAG-1234',
-    rank: 1,
-    display_name: 'Alex Eagle',
-    total_points: 15,
-    total_predictions: 10,
-    settled_predictions: 8,
-    correct_predictions: 6,
-    pending_predictions: 2,
-    accuracy_percentage: 75
+  const records = {
+    Predictors: [{
+      predictor_id: 'EAG-1234',
+      display_name: 'Alex Eagle',
+      account_status: 'ACTIVE'
+    }],
+    Predictions: [{
+      prediction_id: 'prediction-1',
+      predictor_id: 'EAG-1234',
+      season_id: 'season-2026'
+    }],
+    'Prediction Results': [{
+      prediction_id: 'prediction-1',
+      settlement_status: 'SETTLED',
+      points_awarded: 15,
+      selected_outcome: 'HOME',
+      official_result: 'HOME'
+    }]
   };
-  const [publicEntry] = context.projectPublicLeaderboard([entry]);
+  context.getPredictionEligibleSeasons_ = () => [{
+    id: 'season-2026',
+    category: 'junior_boys'
+  }];
+  context.getSheetRecords = sheetName => records[sheetName];
+
+  const adminLeaderboard = context.getPredictionLeaderboard_('', '', {});
+  const publicLeaderboard = context.projectPublicLeaderboard(adminLeaderboard);
+  const [publicEntry] = publicLeaderboard;
 
   expect(JSON.parse(JSON.stringify(publicEntry))).toEqual({
     rank: 1,
     display_name: 'Alex Eagle',
     total_points: 15,
-    total_predictions: 10,
-    settled_predictions: 8,
-    correct_predictions: 6,
-    pending_predictions: 2,
-    accuracy_percentage: 75
+    total_predictions: 1,
+    settled_predictions: 1,
+    correct_predictions: 1,
+    pending_predictions: 0,
+    accuracy_percentage: 100
   });
-  expect(entry.predictor_id).toBe('EAG-1234');
+  expect(adminLeaderboard[0].predictor_id).toBe('EAG-1234');
 });
 
 beforeEach(() => {
