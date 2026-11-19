@@ -158,6 +158,37 @@
   line-height: 1.55;
 }
 
+.support-bank-details {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0 0;
+}
+
+.support-bank-details > div {
+  display: grid;
+  grid-template-columns: minmax(100px, .7fr) minmax(0, 1fr);
+  gap: 8px;
+  align-items: baseline;
+}
+
+.support-bank-details dt {
+  color: #65758a;
+  font-size: 12px;
+}
+
+.support-bank-details dd {
+  margin: 0;
+  color: #173b70;
+  font-size: 14px;
+  font-weight: 750;
+  overflow-wrap: anywhere;
+}
+
+.support-bank-details .support-account-number {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: .06em;
+}
+
 .support-status {
   padding: 6px 9px;
   border: 1px solid #dce5ef;
@@ -167,6 +198,12 @@
   font-size: 10px;
   font-weight: 750;
   white-space: nowrap;
+}
+
+.support-status--available {
+  border-color: #cfe7d9;
+  color: #176942;
+  background: #edf8f2;
 }
 
 .support-amount-panel {

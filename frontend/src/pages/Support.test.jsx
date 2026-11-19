@@ -3,7 +3,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import Support from './Support';
 
-test('renders the support page directly at its route with payment placeholders', () => {
+test('renders the support page directly at its route with the supplied bank details', () => {
   render(
     <MemoryRouter initialEntries={['/support']}>
       <Routes>
@@ -19,8 +19,11 @@ test('renders the support page directly at its route with payment placeholders',
     .toBeInTheDocument();
   expect(screen.getByRole('heading', { name: 'Nigerian bank transfer' }))
     .toBeInTheDocument();
-  expect(screen.getByText(/No payment can be made through this page yet/))
-    .toBeInTheDocument();
+  expect(screen.getByText('GTBank')).toBeInTheDocument();
+  expect(screen.getByText('Ogbuehi Kelechi Timothy')).toBeInTheDocument();
+  expect(screen.getByText('0177067096')).toBeInTheDocument();
+  expect(screen.getByText('Online payment')).toBeInTheDocument();
+  expect(screen.getByText('Not available yet')).toBeInTheDocument();
   expect(screen.getByRole('heading', { name: 'ABOUT THE DEVELOPER' }))
     .toBeInTheDocument();
   expect(screen.getByRole('img', { name: 'Developer photograph will be added' }))

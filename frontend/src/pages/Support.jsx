@@ -51,8 +51,8 @@ export default function Support() {
             <span className="support-eyebrow">Voluntary contributions</span>
             <h2 id="support-contribution-title">Choose how you would like to support</h2>
             <p>
-              Payment arrangements are being prepared. No payment can be made through
-              this page yet.
+              You can make a voluntary bank transfer using the details below. Online
+              and international payment options are not available yet.
             </p>
           </div>
 
@@ -61,9 +61,22 @@ export default function Support() {
               <span className="support-option-icon" aria-hidden="true">₦</span>
               <div>
                 <h3>Nigerian bank transfer</h3>
-                <p>Bank name and account details will be added when confirmed.</p>
+                <dl className="support-bank-details">
+                  <div>
+                    <dt>Bank</dt>
+                    <dd>GTBank</dd>
+                  </div>
+                  <div>
+                    <dt>Account name</dt>
+                    <dd>Ogbuehi Kelechi Timothy</dd>
+                  </div>
+                  <div>
+                    <dt>Account number</dt>
+                    <dd className="support-account-number">0177067096</dd>
+                  </div>
+                </dl>
               </div>
-              <span className="support-status">Details to come</span>
+              <span className="support-status support-status--available">Available</span>
             </article>
             <article className="support-payment-option">
               <span className="support-option-icon support-option-icon--online" aria-hidden="true">↗</span>
