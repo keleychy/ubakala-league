@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import Support from './Support';
 
@@ -26,11 +26,11 @@ test('renders the support page directly at its route with the supplied bank deta
   expect(screen.getByText('Not available yet')).toBeInTheDocument();
   expect(screen.getByRole('heading', { name: 'ABOUT THE DEVELOPER' }))
     .toBeInTheDocument();
-  expect(screen.getByRole('img', { name: 'Developer photograph will be added' }))
+  expect(screen.getByRole('img', { name: 'Ubakala Unity Cup website developer' }))
     .toBeInTheDocument();
 });
 
-test('suggested and custom amounts are selectable without initiating payment', () => {
+test('does not show amount controls that cannot make a contribution', () => {
   render(
     <MemoryRouter initialEntries={['/support']}>
       <Routes>
@@ -39,12 +39,7 @@ test('suggested and custom amounts are selectable without initiating payment', (
     </MemoryRouter>
   );
 
-  fireEvent.click(screen.getByRole('button', { name: '₦2,500' }));
-  expect(screen.getByRole('status')).toHaveTextContent('Selected amount: ₦2,500');
-  expect(screen.getByRole('status')).toHaveTextContent('no payment has been made');
-
-  fireEvent.change(screen.getByRole('spinbutton', { name: /Custom amount \(NGN\)/i }), {
-    target: { value: '7300' }
-  });
-  expect(screen.getByRole('status')).toHaveTextContent('Selected amount: ₦7,300');
+  expect(screen.queryByRole('group', { name: 'Suggested contribution amounts' }))
+    .not.toBeInTheDocument();
+  expect(screen.queryByLabelText('Custom amount (NGN)')).not.toBeInTheDocument();
 });

@@ -1,7 +1,5 @@
-import React, { useState } from 'react';
+import React from 'react';
 import './Support.css';
-
-const suggestedAmounts = [1000, 2500, 5000, 10000];
 
 const supportMessage = [
   'The Ubakala Unity Cup website was independently conceived, designed, developed and is maintained voluntarily to provide the community with a reliable digital platform for competition fixtures, match results, standings, news, historical records and other tournament information.',
@@ -14,25 +12,7 @@ const supportMessage = [
   'Thank you for supporting the project.'
 ];
 
-function formatNaira(amount) {
-  return `₦${Number(amount).toLocaleString('en-NG')}`;
-}
-
 export default function Support() {
-  const [selectedAmount, setSelectedAmount] = useState(null);
-  const [customAmount, setCustomAmount] = useState('');
-
-  const handleSuggestedAmount = amount => {
-    setSelectedAmount(amount);
-    setCustomAmount('');
-  };
-
-  const handleCustomAmount = event => {
-    const value = event.target.value;
-    setCustomAmount(value);
-    setSelectedAmount(value ? Number(value) : null);
-  };
-
   return (
     <main className="support-page">
       <div className="support-content">
@@ -96,45 +76,6 @@ export default function Support() {
             </article>
           </div>
 
-          <div className="support-amount-panel">
-            <h3>Suggested contribution amounts</h3>
-            <p>Choose an amount as a guide, or enter a custom amount. There is no obligation to contribute.</p>
-            <div className="support-amount-options" role="group" aria-label="Suggested contribution amounts">
-              {suggestedAmounts.map(amount => (
-                <button
-                  type="button"
-                  className={selectedAmount === amount ? 'is-selected' : ''}
-                  aria-pressed={selectedAmount === amount}
-                  key={amount}
-                  onClick={() => handleSuggestedAmount(amount)}
-                >
-                  {formatNaira(amount)}
-                </button>
-              ))}
-            </div>
-            <label className="support-custom-amount">
-              Custom amount (NGN)
-              <span>
-                <span aria-hidden="true">₦</span>
-                <input
-                  type="number"
-                  min="1"
-                  step="1"
-                  inputMode="numeric"
-                  value={customAmount}
-                  onChange={handleCustomAmount}
-                  placeholder="Enter an amount"
-                />
-              </span>
-            </label>
-            {selectedAmount !== null && selectedAmount > 0 && (
-              <p className="support-amount-selection" role="status">
-                Selected amount: <strong>{formatNaira(selectedAmount)}</strong>
-                <span> This is only a selection; no payment has been made.</span>
-              </p>
-            )}
-          </div>
-
           <p className="support-voluntary-note">
             Contributions are optional. Website access and competition information
             remain available to everyone regardless of whether they donate.
@@ -142,8 +83,8 @@ export default function Support() {
         </section>
 
         <section className="support-developer" aria-labelledby="support-developer-title">
-          <div className="support-developer-photo" role="img" aria-label="Developer photograph will be added">
-            <span>Professional photograph to be added</span>
+          <div className="support-developer-photo">
+            <img src="/developer.jpeg" alt="Ubakala Unity Cup website developer" />
           </div>
           <div className="support-developer-copy">
             <span className="support-eyebrow">The person behind the platform</span>
