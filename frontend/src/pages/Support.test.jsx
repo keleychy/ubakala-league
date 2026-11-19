@@ -28,6 +28,12 @@ test('renders the support page directly at its route with the supplied bank deta
     .toBeInTheDocument();
   expect(screen.getByText(/Bank transfer is currently the only available way to contribute/))
     .toBeInTheDocument();
+  expect(screen.getByRole('heading', { name: 'Support FAQ' })).toBeInTheDocument();
+  expect(screen.getByText(/website hosting and domain renewal/)).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: 'KELEYCHY1@gmail.com' }))
+    .toHaveAttribute('href', 'mailto:KELEYCHY1@gmail.com');
+  expect(screen.getByText(/Contributor names and contribution amounts are not published/))
+    .toBeInTheDocument();
   expect(screen.getByRole('heading', { name: 'ABOUT THE DEVELOPER' }))
     .toBeInTheDocument();
   expect(screen.getByRole('img', { name: 'Ubakala Unity Cup website developer' }))

@@ -50,10 +50,13 @@ export default function Support() {
             <h2 id="support-maintenance-title">What support helps maintain</h2>
             <p>
               Keeping the website operational and maintaining its data comes with
-              recurring expenses. These include hosting, domain renewal, database and
-              data maintenance, technical support, security, backups, preservation of
-              historical records and future improvements.
+              recurring expenses. Support helps with ongoing needs such as:
             </p>
+            <ul className="support-maintenance-list">
+              <li><strong>Keeping the platform online:</strong> website hosting and domain renewal.</li>
+              <li><strong>Protecting competition records:</strong> data maintenance, backups and preservation of historical information.</li>
+              <li><strong>Maintaining and improving the service:</strong> technical support, security and future improvements.</li>
+            </ul>
           </section>
 
           <section aria-labelledby="support-voluntary-title">
@@ -149,6 +152,52 @@ export default function Support() {
             Contributions are optional. Website access and competition information
             remain available to everyone regardless of whether they donate.
           </p>
+        </section>
+
+        <section className="support-faq" aria-labelledby="support-faq-title">
+          <div className="support-section-heading">
+            <span className="support-eyebrow">Good to know</span>
+            <h2 id="support-faq-title">Support FAQ</h2>
+          </div>
+          <div className="support-faq-list">
+            <details>
+              <summary>Do I have to contribute to use the website?</summary>
+              <p>No. Contributions are completely voluntary, and all website information remains available whether or not you contribute.</p>
+            </details>
+            <details>
+              <summary>How much should I contribute?</summary>
+              <p>There is no required amount. If you choose to contribute, you decide what amount is right for you.</p>
+            </details>
+            <details>
+              <summary>How can I contribute right now?</summary>
+              <p>Bank transfer is currently the only available option. Online and international payment methods are not available yet.</p>
+            </details>
+            <details>
+              <summary>Will my name or contribution amount be published?</summary>
+              <p>No. Contributor names and contribution amounts are not published on this website.</p>
+            </details>
+            <details>
+              <summary>Does this website collect my bank-transfer details?</summary>
+              <p>
+                This website does not collect contributor details through a donation
+                form or payment gateway. Your bank processes the transfer; please
+                check with your bank about how it handles transaction information.
+              </p>
+            </details>
+            <details>
+              <summary>Can I contribute from outside Nigeria?</summary>
+              <p>International payment instructions are not available at this time.</p>
+            </details>
+          </div>
+        </section>
+
+        <section className="support-contact" aria-labelledby="support-contact-title">
+          <div>
+            <span className="support-eyebrow">Need help?</span>
+            <h2 id="support-contact-title">Questions about supporting the website?</h2>
+            <p>Contact the developer with questions about the Support page or contributions.</p>
+          </div>
+          <a href="mailto:KELEYCHY1@gmail.com">KELEYCHY1@gmail.com</a>
         </section>
 
         <section className="support-developer" aria-labelledby="support-developer-title">
