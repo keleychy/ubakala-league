@@ -23,7 +23,7 @@ test('renders the support page directly at its route with the supplied bank deta
   expect(screen.getByText('Ogbuehi Kelechi Timothy')).toBeInTheDocument();
   expect(screen.getByText('0177067096')).toBeInTheDocument();
   expect(screen.getByText('Online payment')).toBeInTheDocument();
-  expect(screen.getByText('Not available yet')).toBeInTheDocument();
+  expect(screen.getAllByText('Not available yet')).toHaveLength(2);
   expect(screen.getByRole('heading', { name: 'How to contribute by bank transfer' }))
     .toBeInTheDocument();
   expect(screen.getByText(/Bank transfer is currently the only available way to contribute/))

@@ -25,7 +25,7 @@ export default function Support() {
       <div className="support-content">
         <header className="support-hero">
           <span className="support-eyebrow">A community archive, built with care</span>
-          <h1>SUPPORT THE UBakala UNITY CUP WEBSITE</h1>
+          <h1>SUPPORT THE UBAKALA UNITY CUP WEBSITE</h1>
           <p>Help Keep the Competition Online and Its History Preserved.</p>
         </header>
 
