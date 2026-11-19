@@ -65,6 +65,19 @@
   padding: clamp(20px, 4vw, 36px);
 }
 
+.support-story section + section {
+  margin-top: 24px;
+  padding-top: 22px;
+  border-top: 1px solid #e8edf3;
+}
+
+.support-story h2 {
+  margin: 0 0 10px;
+  color: #102b50;
+  font-size: clamp(17px, 2.4vw, 20px);
+  line-height: 1.35;
+}
+
 .support-story p,
 .support-developer-copy > p {
   margin: 0 0 15px;
@@ -187,6 +200,64 @@
 .support-bank-details .support-account-number {
   font-variant-numeric: tabular-nums;
   letter-spacing: .06em;
+}
+
+.support-copy-button {
+  min-height: 42px;
+  margin-top: 13px;
+  padding: 9px 14px;
+  border: 1px solid #173b70;
+  border-radius: 8px;
+  color: #fff;
+  background: #173b70;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 750;
+  cursor: pointer;
+  transition: background-color .15s ease, border-color .15s ease;
+}
+
+.support-copy-button:hover {
+  border-color: #102b50;
+  background: #102b50;
+}
+
+.support-copy-button:focus-visible {
+  outline: 3px solid #d6a83d;
+  outline-offset: 3px;
+}
+
+.support-copy-message {
+  display: block;
+  min-height: 19px;
+  margin-top: 5px;
+  color: #176942;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.support-transfer-guide {
+  margin-top: 11px;
+  padding: 14px;
+  border-left: 3px solid #d6a83d;
+  border-radius: 0 8px 8px 0;
+  background: #f5f7fb;
+}
+
+.support-transfer-guide h4 {
+  margin: 0 0 7px;
+  color: #173b70;
+  font-size: 13px;
+}
+
+.support-transfer-guide ol {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding-left: 19px;
+  color: #596a7e;
+  font-size: 12px;
+  line-height: 1.55;
 }
 
 .support-status {

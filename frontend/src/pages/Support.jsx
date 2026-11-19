@@ -1,18 +1,25 @@
-import React from 'react';
+import React, { useState } from 'react';
 import './Support.css';
 
-const supportMessage = [
-  'The Ubakala Unity Cup website was independently conceived, designed, developed and is maintained voluntarily to provide the community with a reliable digital platform for competition fixtures, match results, standings, news, historical records and other tournament information.',
-  'Beyond serving the ongoing competition, the website is also intended to serve as a digital archive of the Ubakala Unity Cup, preserving competition data, records, results, participating teams and historical information for future generations and future reference.',
-  'Keeping the website operational and maintaining its data comes with recurring expenses. These include hosting, domain renewal, database and data maintenance, technical support, security, backups, preservation of historical records and future improvements.',
-  'If you find the platform useful and wish to support its continued operation, maintenance, development and preservation of competition history, you are welcome to make a voluntary contribution.',
-  'Every contribution, regardless of amount, is appreciated.',
-  'Contributions are entirely voluntary. Access to the website and its information is not dependent on donations.',
-  'Your support helps keep the Ubakala Unity Cup digitally accessible while ensuring that its history and records are preserved for the future.',
-  'Thank you for supporting the project.'
-];
+const accountNumber = '0177067096';
 
 export default function Support() {
+  const [copyMessage, setCopyMessage] = useState('');
+
+  async function copyAccountNumber() {
+    if (!navigator.clipboard?.writeText) {
+      setCopyMessage('Copy is unavailable in this browser. You can select the account number above.');
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(accountNumber);
+      setCopyMessage('Account number copied.');
+    } catch {
+      setCopyMessage('Unable to copy. You can select the account number above.');
+    }
+  }
+
   return (
     <main className="support-page">
       <div className="support-content">
@@ -23,7 +30,50 @@ export default function Support() {
         </header>
 
         <article className="support-story" aria-label="About supporting the website">
-          {supportMessage.map(paragraph => <p key={paragraph}>{paragraph}</p>)}
+          <section aria-labelledby="support-purpose-title">
+            <h2 id="support-purpose-title">A platform and a community archive</h2>
+            <p>
+              The Ubakala Unity Cup website was independently conceived, designed,
+              developed and is maintained voluntarily to provide the community with
+              a reliable digital platform for competition fixtures, match results,
+              standings, news, historical records and other tournament information.
+            </p>
+            <p>
+              Beyond serving the ongoing competition, the website is also intended to
+              serve as a digital archive of the Ubakala Unity Cup, preserving competition
+              data, records, results, participating teams and historical information for
+              future generations and future reference.
+            </p>
+          </section>
+
+          <section aria-labelledby="support-maintenance-title">
+            <h2 id="support-maintenance-title">What support helps maintain</h2>
+            <p>
+              Keeping the website operational and maintaining its data comes with
+              recurring expenses. These include hosting, domain renewal, database and
+              data maintenance, technical support, security, backups, preservation of
+              historical records and future improvements.
+            </p>
+          </section>
+
+          <section aria-labelledby="support-voluntary-title">
+            <h2 id="support-voluntary-title">Your support is entirely voluntary</h2>
+            <p>
+              If you find the platform useful and wish to support its continued
+              operation, maintenance, development and preservation of competition
+              history, you are welcome to make a voluntary contribution.
+            </p>
+            <p>Every contribution, regardless of amount, is appreciated.</p>
+            <p>
+              Contributions are entirely voluntary. Access to the website and its
+              information is not dependent on donations.
+            </p>
+            <p>
+              Your support helps keep the Ubakala Unity Cup digitally accessible while
+              ensuring that its history and records are preserved for the future.
+            </p>
+            <p>Thank you for supporting the project.</p>
+          </section>
         </article>
 
         <section className="support-contribution" aria-labelledby="support-contribution-title">
@@ -31,8 +81,9 @@ export default function Support() {
             <span className="support-eyebrow">Voluntary contributions</span>
             <h2 id="support-contribution-title">Choose how you would like to support</h2>
             <p>
-              You can make a voluntary bank transfer using the details below. Online
-              and international payment options are not available yet.
+              Bank transfer is currently the only available way to contribute. Online
+              and international payment options are not set up, and no payment gateway
+              is connected to this page.
             </p>
           </div>
 
@@ -52,9 +103,27 @@ export default function Support() {
                   </div>
                   <div>
                     <dt>Account number</dt>
-                    <dd className="support-account-number">0177067096</dd>
+                    <dd className="support-account-number">{accountNumber}</dd>
                   </div>
                 </dl>
+                <button
+                  className="support-copy-button"
+                  type="button"
+                  onClick={copyAccountNumber}
+                >
+                  Copy account number
+                </button>
+                <span className="support-copy-message" role="status" aria-live="polite">
+                  {copyMessage}
+                </span>
+                <div className="support-transfer-guide">
+                  <h4>How to contribute by bank transfer</h4>
+                  <ol>
+                    <li>Choose the amount you wish to contribute; any amount is optional.</li>
+                    <li>Copy the account number and make a transfer using your bank.</li>
+                    <li>Check the bank and account name shown above before confirming.</li>
+                  </ol>
+                </div>
               </div>
               <span className="support-status support-status--available">Available</span>
             </article>
@@ -62,7 +131,7 @@ export default function Support() {
               <span className="support-option-icon support-option-icon--online" aria-hidden="true">↗</span>
               <div>
                 <h3>Online payment</h3>
-                <p>A secure payment option will be provided after setup and approval.</p>
+                <p>No online payment option is currently available on this website.</p>
               </div>
               <span className="support-status">Not available yet</span>
             </article>
@@ -70,9 +139,9 @@ export default function Support() {
               <span className="support-option-icon support-option-icon--global" aria-hidden="true">◎</span>
               <div>
                 <h3>Contributions from abroad</h3>
-                <p>International payment instructions will be shared when available.</p>
+                <p>There is no international payment method available at this time.</p>
               </div>
-              <span className="support-status">Details to come</span>
+              <span className="support-status">Not available yet</span>
             </article>
           </div>
 
