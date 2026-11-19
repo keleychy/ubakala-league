@@ -8,6 +8,7 @@ import News from './pages/News';
 import NewsDetail from './pages/NewsDetail';
 import History from './pages/History';
 import RulesRegulations from './pages/RulesRegulations';
+import Support from './pages/Support';
 import AdminLogin from './pages/AdminLogin';
 import AdminDashboard from './pages/AdminDashboard';
 import NewsUploader from './pages/NewsUploader';
@@ -103,6 +104,7 @@ export default function App() {
                 <Route path="/history" element={<History />} />
                 <Route path="/history/:year" element={<History />} />
                 <Route path="/rules-regulations" element={<RulesRegulations />} />
+                <Route path="/support" element={<Support />} />
                 <Route path="/predictions" element={<Predictions />} />
                 <Route path="/admin" element={<AdminLogin />} />
                 <Route path="/admin-dashboard" element={
