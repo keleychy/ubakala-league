@@ -114,7 +114,9 @@ export function AnalyticsConsentNotice() {
       <p id="analytics-consent-description" className="analytics-consent__description">
         Google Analytics and Vercel Analytics are optional and help us understand
         site usage. They will not start unless you accept. You can change your
-        choice at any time using Analytics preferences in the footer.
+        choice at any time using Analytics preferences in the footer. Separately,
+        clicks on the homepage Support button are counted as an anonymous total,
+        regardless of this choice.
       </p>
       {consent !== null && (
         <p className="analytics-consent__current" role="status">

@@ -377,6 +377,9 @@ export function createAppsScriptApi(baseUrl, fetchImpl = fetch) {
       return {
         views: normalizeNumber(result?.views, 'News.views') ?? 0
       };
+    },
+    async recordHomepageSupportClick() {
+      return postAction('support.recordHomepageClick', {});
     }
   };
 }

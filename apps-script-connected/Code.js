@@ -47,6 +47,12 @@ function doGet(e) {
 function doPost(e) {
   try {
     const body = JSON.parse(e && e.postData ? e.postData.contents || '{}' : '{}');
+    if (body.action === 'support.recordHomepageClick') {
+      return jsonResponse({
+        success: true,
+        data: recordHomepageSupportClick_()
+      });
+    }
     if (body.action === 'news.recordView') {
       return jsonResponse({
         success: true,
@@ -530,6 +536,10 @@ function handleAdminPost_(body, user) {
 
   if (action === 'admin.me') {
     return { email: user.email, role: user.role };
+  }
+  if (action === 'admin.support.clickCount') {
+    requireAdminPermission_(user, 'support');
+    return { click_count: getHomepageSupportClickCount_() };
   }
   if (action.indexOf('admin.predictions.') === 0) {
     requireAdminPermission_(user, 'predictions');
@@ -1700,6 +1710,101 @@ function deleteNews_(body, user) {
       invalidateSheetRecordsCache_('News');
     }
     return { id: id, deleted: true };
+  });
+}
+
+function getHomepageSupportClickCount_() {
+  const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = spreadsheet.getSheetByName('SupportStats');
+  if (!sheet || sheet.getLastRow() === 0) return 0;
+
+  const headers = getSheetHeaders_(sheet);
+  if (
+    headers.length !== 2 ||
+    headers[0] !== 'metric' ||
+    headers[1] !== 'count'
+  ) {
+    throw new Error('SupportStats sheet must have metric and count columns');
+  }
+
+  const rows = sheet.getLastRow() > 1
+    ? sheet.getRange(2, 1, sheet.getLastRow() - 1, 2).getValues()
+    : [];
+  const matchingRows = rows.reduce((matches, row, index) => {
+    if (String(row[0]) === 'homepage_support_clicks') {
+      matches.push({ rowNumber: index + 2, value: row[1] });
+    }
+    return matches;
+  }, []);
+
+  if (matchingRows.length > 1) {
+    throw new Error('SupportStats sheet has duplicate homepage support metrics');
+  }
+  if (matchingRows.length === 0) return 0;
+
+  return parseSupportClickCount_(matchingRows[0].value);
+}
+
+function parseSupportClickCount_(value) {
+  if (
+    typeof value !== 'number' &&
+    (typeof value !== 'string' || value.trim() === '')
+  ) {
+    throw new Error('SupportStats click count must be a non-negative integer');
+  }
+  const count = Number(value);
+  if (!Number.isSafeInteger(count) || count < 0) {
+    throw new Error('SupportStats click count must be a non-negative integer');
+  }
+  return count;
+}
+
+function recordHomepageSupportClick_() {
+  return withAdminWriteLock_(() => {
+    const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
+    let sheet = spreadsheet.getSheetByName('SupportStats');
+    if (!sheet) {
+      sheet = spreadsheet.insertSheet('SupportStats');
+    }
+    if (sheet.getLastRow() === 0) {
+      sheet.getRange(1, 1, 1, 2).setValues([['metric', 'count']]);
+    }
+
+    const headers = getSheetHeaders_(sheet);
+    if (
+      headers.length !== 2 ||
+      headers[0] !== 'metric' ||
+      headers[1] !== 'count'
+    ) {
+      throw new Error('SupportStats sheet must have metric and count columns');
+    }
+
+    const rows = sheet.getLastRow() > 1
+      ? sheet.getRange(2, 1, sheet.getLastRow() - 1, 2).getValues()
+      : [];
+    const matchingRows = rows.reduce((matches, row, index) => {
+      if (String(row[0]) === 'homepage_support_clicks') {
+        matches.push(index + 2);
+      }
+      return matches;
+    }, []);
+
+    if (matchingRows.length > 1) {
+      throw new Error('SupportStats sheet has duplicate homepage support metrics');
+    }
+
+    let rowNumber = matchingRows[0];
+    if (!rowNumber) {
+      rowNumber = sheet.getLastRow() + 1;
+      sheet.getRange(rowNumber, 1, 1, 2)
+        .setValues([['homepage_support_clicks', 0]]);
+    }
+
+    const countCell = sheet.getRange(rowNumber, 2);
+    const currentCount = parseSupportClickCount_(countCell.getValue());
+    const nextCount = currentCount + 1;
+    countCell.setValue(nextCount);
+    return { click_count: nextCount };
   });
 }
 

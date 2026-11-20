@@ -247,6 +247,13 @@
   background: #fff7e4;
 }
 
+.home-support-disclosure {
+  margin: 7px 0 0;
+  color: var(--home-muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
 .home-page .home-support-link:focus-visible {
   outline: 3px solid var(--home-gold);
   outline-offset: 3px;
@@ -897,6 +904,10 @@
 
   .home-page .home-support-link {
     align-self: stretch;
+  }
+
+  .home-support-disclosure {
+    margin-top: 6px;
   }
 
   .home-page .home-section {

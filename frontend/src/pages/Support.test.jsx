@@ -34,6 +34,7 @@ test('renders the support page directly at its route with the supplied bank deta
     .toHaveAttribute('href', 'mailto:KELEYCHY1@gmail.com');
   expect(screen.getByText(/Contributor names and contribution amounts are not published/))
     .toBeInTheDocument();
+  expect(screen.getByText(/anonymous aggregate count of clicks/)).toBeInTheDocument();
   expect(screen.getByRole('heading', { name: 'ABOUT THE DEVELOPER' }))
     .toBeInTheDocument();
   expect(screen.getByRole('img', { name: 'Ubakala Unity Cup website developer' }))

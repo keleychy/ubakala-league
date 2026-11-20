@@ -1,7 +1,7 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { api } from '../api/api';
+import { api, isAppsScriptReadApiEnabled } from '../api/api';
 import Home from './Home';
 import { getLagosDateKey } from '../utils/competition';
 
@@ -9,14 +9,18 @@ jest.mock('../api/api', () => ({
   api: {
     getTeams: jest.fn(),
     getMatches: jest.fn(),
-    getSeasons: jest.fn()
-  }
+    getSeasons: jest.fn(),
+    recordHomepageSupportClick: jest.fn()
+  },
+  isAppsScriptReadApiEnabled: jest.fn()
 }));
 
 beforeEach(() => {
   jest.clearAllMocks();
   api.getTeams.mockResolvedValue([]);
   api.getSeasons.mockResolvedValue([]);
+  api.recordHomepageSupportClick.mockResolvedValue({ click_count: 1 });
+  isAppsScriptReadApiEnabled.mockReturnValue(true);
 });
 
 function renderHomeWithStatus(status) {
@@ -78,6 +82,15 @@ test('homepage shows a discreet link to the Support page', async () => {
   })).toBeInTheDocument();
   expect(screen.getByRole('link', { name: 'Support this website' }))
     .toHaveAttribute('href', '/support');
+});
+
+test('homepage Support link records a click without blocking navigation', async () => {
+  renderHomeWithStatus('FINISHED');
+  const supportLink = await screen.findByRole('link', { name: 'Support this website' });
+
+  fireEvent.click(supportLink);
+
+  expect(api.recordHomepageSupportClick).toHaveBeenCalledTimes(1);
 });
 
 test('homepage highlights Predictions as new during its one-week announcement', () => {

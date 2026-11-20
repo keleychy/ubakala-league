@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { api } from '../api/api';
+import { api, isAppsScriptReadApiEnabled } from '../api/api';
 import { Link, useNavigate } from 'react-router-dom';
 import './Results.css';
 import './Home.css';
@@ -33,6 +33,13 @@ export default function Home() {
   const navigate = useNavigate();
   const prevMatchesRef = useRef({});
   const [flashMap, setFlashMap] = useState({});
+
+  const recordSupportClick = () => {
+    if (!isAppsScriptReadApiEnabled()) return;
+    api.recordHomepageSupportClick().catch(error => {
+      console.error('Unable to record homepage Support click:', error);
+    });
+  };
   const timeoutRef = useRef(null);
   const FLASH_DURATION = 800;
 
@@ -331,8 +338,12 @@ export default function Home() {
               Learn how voluntary support helps maintain the website and its
               competition records.
             </p>
+            <p className="home-support-disclosure">
+              We count these button clicks as an anonymous total, even if you decline
+              optional analytics. No visitor ID is stored.
+            </p>
           </div>
-          <Link className="home-support-link" to="/support">
+          <Link className="home-support-link" to="/support" onClick={recordSupportClick}>
             Support this website <span aria-hidden="true">→</span>
           </Link>
         </aside>

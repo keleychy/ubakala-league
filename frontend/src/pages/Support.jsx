@@ -185,6 +185,15 @@ export default function Support() {
               </p>
             </details>
             <details>
+              <summary>Are clicks on the homepage Support button counted?</summary>
+              <p>
+                Yes. We keep an anonymous aggregate count of clicks on that button
+                to understand interest in supporting the website. It counts clicks,
+                not unique visitors, stores no visitor ID, and operates regardless
+                of optional analytics preferences.
+              </p>
+            </details>
+            <details>
               <summary>Can I contribute from outside Nigeria?</summary>
               <p>International payment instructions are not available at this time.</p>
             </details>

@@ -8,6 +8,9 @@ export default function AdminDashboard() {
   const nav = useNavigate();
   const [profile, setProfile] = useState(null);
   const [error, setError] = useState('');
+  const [supportClickCount, setSupportClickCount] = useState(null);
+  const [supportClickError, setSupportClickError] = useState('');
+  const [supportCountLoadAttempt, setSupportCountLoadAttempt] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -42,6 +45,26 @@ export default function AdminDashboard() {
   const canEditResults = isAdmin || role === 'resultseditor';
   const canManageNews = isAdmin || role === 'newsuser';
 
+  useEffect(() => {
+    if (!isAdmin) return undefined;
+    let active = true;
+    setSupportClickError('');
+    callAdminApi('admin.support.clickCount')
+      .then(data => {
+        if (active) setSupportClickCount(data.click_count);
+      })
+      .catch(countError => {
+        if (active) {
+          setSupportClickError(
+            countError.message || 'Unable to load the Support button click count.'
+          );
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, [isAdmin, supportCountLoadAttempt]);
+
   return (
     <div className="league-polish-page">
       <main className="league-polish-content">
@@ -71,6 +94,32 @@ export default function AdminDashboard() {
         )}
 
         <div className="league-dashboard-grid">
+          {isAdmin && (
+            <article className="league-dashboard-card" aria-labelledby="support-click-count-title">
+              <div>
+                <div className="league-dashboard-card__title" id="support-click-count-title">
+                  Homepage Support clicks
+                </div>
+                <div className="league-dashboard-card__description">
+                  {supportClickCount === null && !supportClickError
+                    ? 'Loading count...'
+                    : supportClickError
+                      ? supportClickError
+                      : `${supportClickCount} total button clicks`}
+                </div>
+              </div>
+              {supportClickError && (
+                <button
+                  type="button"
+                  className="league-button-secondary"
+                  onClick={() => setSupportCountLoadAttempt(attempt => attempt + 1)}
+                >
+                  Retry
+                </button>
+              )}
+            </article>
+          )}
+
           {canEditResults && (
             <Link to="/results-editor" className="league-dashboard-link">
               <div className="league-dashboard-card">

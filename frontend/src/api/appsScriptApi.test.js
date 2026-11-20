@@ -354,6 +354,20 @@ describe('Apps Script read API', () => {
     });
   });
 
+  test('records a homepage Support click through the public POST action', async () => {
+    const fetchImpl = jest.fn().mockResolvedValue(response({ click_count: 8 }));
+    const client = createAppsScriptApi(endpoint, fetchImpl);
+
+    await expect(client.recordHomepageSupportClick())
+      .resolves.toEqual({ click_count: 8 });
+
+    expect(fetchImpl).toHaveBeenCalledWith(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'support.recordHomepageClick' })
+    });
+  });
+
   test('surfaces failed API envelopes', async () => {
     const fetchImpl = jest.fn().mockResolvedValue(response('Unknown action', false));
     const client = createAppsScriptApi(endpoint, fetchImpl);

@@ -101,6 +101,13 @@ export const api = {
     }
     return appsScriptApi.recordNewsView(id, visitorId);
   },
+  recordHomepageSupportClick: () => {
+    const appsScriptApi = getAppsScriptApi();
+    if (!appsScriptApi) {
+      throw new Error('Support click tracking requires the Apps Script API provider.');
+    }
+    return appsScriptApi.recordHomepageSupportClick();
+  },
   getStandings: (seasonId) => {
     if (isAppsScriptReadApiEnabled()) {
       throw new Error('Standings are not available from the Apps Script read API');

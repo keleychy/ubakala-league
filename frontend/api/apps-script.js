@@ -29,6 +29,7 @@ const ADMIN_ACTIONS = new Set([
   'admin.news.update',
   'admin.news.delete',
   'admin.groups.list',
+  'admin.support.clickCount',
   'admin.teams.createManual',
   'admin.teams.move',
   'admin.teams.import',
@@ -48,6 +49,7 @@ const ADMIN_ACTIONS = new Set([
 
 const PUBLIC_POST_ACTIONS = new Set([
   'news.recordView',
+  'support.recordHomepageClick',
   'predictions.credentialInfo',
   'predictions.register',
   'predictions.history',

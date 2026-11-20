@@ -1,0 +1,81 @@
+const handler = require('../../api/apps-script');
+
+function createResponse() {
+  return {
+    headers: {},
+    statusCode: 200,
+    setHeader(name, value) {
+      this.headers[name] = value;
+    },
+    status(code) {
+      this.statusCode = code;
+      return this;
+    },
+    json(payload) {
+      this.payload = payload;
+      return this;
+    }
+  };
+}
+
+describe('Apps Script proxy Support click actions', () => {
+  const originalFetch = global.fetch;
+
+  beforeEach(() => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      text: async () => JSON.stringify({
+        success: true,
+        data: { click_count: 12 }
+      })
+    });
+  });
+
+  afterEach(() => {
+    global.fetch = originalFetch;
+  });
+
+  test('allows public homepage Support click recording without visitor data', async () => {
+    const response = createResponse();
+
+    await handler({
+      method: 'POST',
+      body: { action: 'support.recordHomepageClick' }
+    }, response);
+
+    expect(response.statusCode).toBe(200);
+    expect(response.payload).toMatchObject({ success: true });
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(global.fetch.mock.calls[0][1].body)).toEqual({
+      action: 'support.recordHomepageClick'
+    });
+  });
+
+  test('allows the protected count action only when an ID token is supplied', async () => {
+    const response = createResponse();
+
+    await handler({
+      method: 'POST',
+      body: { action: 'admin.support.clickCount', idToken: 'firebase-token' }
+    }, response);
+
+    expect(response.statusCode).toBe(200);
+    expect(JSON.parse(global.fetch.mock.calls[0][1].body)).toEqual({
+      action: 'admin.support.clickCount',
+      idToken: 'firebase-token'
+    });
+  });
+
+  test('rejects the protected count action when an ID token is missing', async () => {
+    const response = createResponse();
+
+    await handler({
+      method: 'POST',
+      body: { action: 'admin.support.clickCount' }
+    }, response);
+
+    expect(response.statusCode).toBe(400);
+    expect(response.payload.error).toBe('Firebase ID token is required');
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+});
