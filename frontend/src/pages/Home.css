@@ -693,6 +693,16 @@
     transform 160ms ease;
 }
 
+.home-page .home-team-card-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.home-page .home-team-card-link:focus-visible {
+  outline: 3px solid var(--home-gold);
+  outline-offset: 3px;
+}
+
 .home-page .home-team-card:hover {
   transform: translateY(-2px);
   border-color: #a9c8b0;
@@ -713,6 +723,13 @@
   font-size: 12px;
   font-weight: 850;
   letter-spacing: 0.4px;
+}
+
+.home-team-emblem img {
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  object-fit: cover;
 }
 
 .home-page .home-team-card-name {

@@ -14,7 +14,16 @@ describe('Apps Script read API', () => {
 
   test('unwraps success envelopes and preserves IDs as strings', async () => {
     const fetchImpl = jest.fn().mockResolvedValue(response([
-      { id: 123, name: 'Avodim', short_name: '', logo: '', archived: 'FALSE' }
+      {
+        id: 123,
+        name: 'Avodim',
+        short_name: '',
+        logo: '',
+        archived: 'FALSE',
+        profile_description: 'A community team',
+        profile_history: '',
+        home_community: 'Ubakala'
+      }
     ]));
     const client = createAppsScriptApi(endpoint, fetchImpl);
 
@@ -24,7 +33,10 @@ describe('Apps Script read API', () => {
         name: 'Avodim',
         short_name: null,
         logo: null,
-        archived: false
+        archived: false,
+        profile_description: 'A community team',
+        profile_history: null,
+        home_community: 'Ubakala'
       }
     ]);
 
@@ -94,13 +106,16 @@ describe('Apps Script read API', () => {
     const client = createAppsScriptApi(endpoint, fetchImpl);
 
     await expect(client.getGroupsWithTeams('season-1')).resolves.toEqual([{
-      group: { id: 'group-a', name: 'A' },
+      group: { id: 'group-a', season_id: 'season-1', name: 'A' },
       teams: [{
         id: 'TEAM-1',
         name: 'Avodim',
         short_name: 'Avodim',
         logo: null,
-        archived: false
+        archived: false,
+        profile_description: null,
+        profile_history: null,
+        home_community: null
       }]
     }]);
     await client.getGroupsWithTeams('season-1');
@@ -207,7 +222,7 @@ describe('Apps Script read API', () => {
     await expect(client.getGroupsWithTeams('season-1'))
       .rejects.toThrow('temporary group read failure');
     await expect(client.getGroupsWithTeams('season-1')).resolves.toEqual([
-      { group: { id: 'group-a', name: 'A' }, teams: [] }
+      { group: { id: 'group-a', season_id: 'season-1', name: 'A' }, teams: [] }
     ]);
     expect(fetchImpl).toHaveBeenCalledTimes(6);
   });

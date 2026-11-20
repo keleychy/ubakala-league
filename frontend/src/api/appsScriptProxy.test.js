@@ -78,4 +78,26 @@ describe('Apps Script proxy Support click actions', () => {
     expect(response.payload.error).toBe('Firebase ID token is required');
     expect(global.fetch).not.toHaveBeenCalled();
   });
+
+  test('allows team profile updates only through the authenticated admin action list', async () => {
+    const response = createResponse();
+
+    await handler({
+      method: 'POST',
+      body: {
+        action: 'admin.teams.profile.update',
+        idToken: 'firebase-token',
+        team_id: 'team-1',
+        profile_description: 'Community club'
+      }
+    }, response);
+
+    expect(response.statusCode).toBe(200);
+    expect(JSON.parse(global.fetch.mock.calls[0][1].body)).toMatchObject({
+      action: 'admin.teams.profile.update',
+      idToken: 'firebase-token',
+      team_id: 'team-1',
+      profile_description: 'Community club'
+    });
+  });
 });

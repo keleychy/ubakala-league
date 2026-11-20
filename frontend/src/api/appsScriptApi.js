@@ -35,7 +35,10 @@ function normalizeTeam(team) {
     name: normalizeText(team.name) || '',
     short_name: normalizeText(team.short_name),
     logo: normalizeText(team.logo),
-    archived: normalizeBoolean(team.archived, 'Teams.archived')
+    archived: normalizeBoolean(team.archived, 'Teams.archived'),
+    profile_description: normalizeText(team.profile_description),
+    profile_history: normalizeText(team.profile_history),
+    home_community: normalizeText(team.home_community)
   };
 }
 
@@ -332,7 +335,11 @@ export function createAppsScriptApi(baseUrl, fetchImpl = fetch) {
         });
 
         return groups.map(group => ({
-          group: { id: group.id, name: group.name },
+          group: {
+            id: group.id,
+            season_id: group.season_id,
+            name: group.name
+          },
           teams: teamsByGroup.get(group.id)
         }));
       })();

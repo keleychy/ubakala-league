@@ -11,6 +11,8 @@ import RulesRegulations from './pages/RulesRegulations';
 import Support from './pages/Support';
 import AdminLogin from './pages/AdminLogin';
 import AdminDashboard from './pages/AdminDashboard';
+import TeamProfile from './pages/TeamProfile';
+import TeamProfilesAdmin from './pages/TeamProfilesAdmin';
 import NewsUploader from './pages/NewsUploader';
 import ResultsEditor from './pages/ResultsEditor';
 import RequireAuth from './components/RequireAuth';
@@ -105,6 +107,7 @@ export default function App() {
                 <Route path="/news/:id" element={<NewsDetail />} />
                 <Route path="/history" element={<History />} />
                 <Route path="/history/:year" element={<History />} />
+                <Route path="/teams/:id" element={<TeamProfile />} />
                 <Route path="/rules-regulations" element={<RulesRegulations />} />
                 <Route path="/support" element={<Support />} />
                 <Route path="/predictions" element={<Predictions />} />
@@ -137,6 +140,11 @@ export default function App() {
                 <Route path="/group-manager" element={
                   <RequireAuth allowedRoles={['admin']}>
                     <GroupManager />
+                  </RequireAuth>
+                } />
+                <Route path="/team-profiles" element={
+                  <RequireAuth allowedRoles={['admin']}>
+                    <TeamProfilesAdmin />
                   </RequireAuth>
                 } />
                 <Route path="/admin-predictions" element={

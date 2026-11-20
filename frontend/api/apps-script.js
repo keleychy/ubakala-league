@@ -31,6 +31,7 @@ const ADMIN_ACTIONS = new Set([
   'admin.groups.list',
   'admin.support.clickCount',
   'admin.teams.createManual',
+  'admin.teams.profile.update',
   'admin.teams.move',
   'admin.teams.import',
   'admin.predictions.initialize',

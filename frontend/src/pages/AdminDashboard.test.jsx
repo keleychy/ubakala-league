@@ -30,6 +30,8 @@ test('loads the support click count for the admin role', async () => {
   renderDashboard();
 
   expect(await screen.findByText('23 total button clicks')).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: /Team Profiles/ }))
+    .toHaveAttribute('href', '/team-profiles');
   expect(callAdminApi).toHaveBeenCalledWith('admin.support.clickCount');
 });
 
@@ -42,4 +44,5 @@ test('does not request or display the support click count for a results editor',
   expect(callAdminApi).toHaveBeenCalledTimes(1);
   expect(callAdminApi).not.toHaveBeenCalledWith('admin.support.clickCount');
   expect(screen.queryByText('Homepage Support clicks')).not.toBeInTheDocument();
+  expect(screen.queryByRole('link', { name: /Team Profiles/ })).not.toBeInTheDocument();
 });

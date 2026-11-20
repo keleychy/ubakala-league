@@ -104,6 +104,9 @@ function getAdminErrorMessage_(error) {
   if (/Matches sheet must have one/i.test(message)) {
     return 'The Matches sheet is missing a required column or has duplicate column headers. Check its header row and run testDatabaseStructure() in Apps Script.';
   }
+  if (/Teams sheet must have one (profile_description|profile_history|home_community) column/i.test(message)) {
+    return 'The Teams sheet is missing a team-profile column or has duplicate headers. Add profile_description, profile_history, and home_community to row 1, then retry.';
+  }
   if (/Record not found/i.test(message)) {
     return 'This match could not be found in the spreadsheet. Refresh the Results Editor and try again.';
   }
@@ -167,7 +170,10 @@ function checkDatabaseStructure() {
   const spreadsheet = SpreadsheetApp.openById(SPREADSHEET_ID);
 
   const expectedHeaders = {
-    Teams: ['id', 'name', 'short_name', 'logo', 'archived'],
+    Teams: [
+      'id', 'name', 'short_name', 'logo', 'archived',
+      'profile_description', 'profile_history', 'home_community'
+    ],
     Seasons: ['id', 'name', 'category', 'year', 'active', 'archived'],
     Groups: ['id', 'season_id', 'name'],
     TeamGroups: ['id', 'season_id', 'group_id', 'team_id'],
@@ -604,6 +610,10 @@ function handleAdminPost_(body, user) {
   if (action === 'admin.teams.createManual') {
     requireAdminPermission_(user, 'teams');
     return createManualTeam_(body, user);
+  }
+  if (action === 'admin.teams.profile.update') {
+    requireAdminPermission_(user, 'teams');
+    return updateTeamProfile_(body, user);
   }
   if (action === 'admin.teams.move') {
     requireAdminPermission_(user, 'teams');
@@ -1952,6 +1962,47 @@ function createTeamRecord_(name) {
   };
 }
 
+function updateTeamProfile_(body, user) {
+  const teamId = requiredId_(body.team_id, 'team_id');
+  const updates = {
+    profile_description: teamProfileText_(
+      body.profile_description,
+      'profile_description',
+      600
+    ),
+    profile_history: teamProfileText_(
+      body.profile_history,
+      'profile_history',
+      1500
+    ),
+    home_community: teamProfileText_(
+      body.home_community,
+      'home_community',
+      120
+    )
+  };
+  const updated = updateRecordFieldsAndAudit_(
+    'Teams',
+    teamId,
+    updates,
+    user,
+    'team.profile_updated',
+    'Updated public team profile'
+  );
+  return normalizeTeam_(updated);
+}
+
+function teamProfileText_(value, fieldName, maxLength) {
+  if (value !== null && value !== undefined && typeof value !== 'string') {
+    throw apiError_(fieldName + ' must be text');
+  }
+  const text = String(value || '').trim();
+  if (text.length > maxLength) {
+    throw apiError_(fieldName + ' must be ' + maxLength + ' characters or fewer');
+  }
+  return text;
+}
+
 function createTeamAssignment_(seasonId, groupId, teamId) {
   return {
     id: Utilities.getUuid(),
@@ -2157,7 +2208,10 @@ function normalizeTeam_(record) {
     name: requiredText_(record.name, 'Teams.name'),
     short_name: optionalText_(record.short_name),
     logo: optionalText_(record.logo),
-    archived: optionalBoolean_(record.archived, 'Teams.archived')
+    archived: optionalBoolean_(record.archived, 'Teams.archived'),
+    profile_description: optionalText_(record.profile_description),
+    profile_history: optionalText_(record.profile_history),
+    home_community: optionalText_(record.home_community)
   };
 }
 

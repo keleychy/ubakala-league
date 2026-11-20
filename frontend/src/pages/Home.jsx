@@ -26,6 +26,7 @@ export default function Home() {
   const [matchesLoading, setMatchesLoading] = useState(true);
   const [teamsLoading, setTeamsLoading] = useState(true);
   const [showingTomorrow, setShowingTomorrow] = useState(false);
+  const [showingUpcoming, setShowingUpcoming] = useState(false);
   const [teamsLoadedOnce, setTeamsLoadedOnce] = useState(false);
   const [matchesLoadedOnce, setMatchesLoadedOnce] = useState(false);
   const [championMap, setChampionMap] = useState({});
@@ -181,8 +182,29 @@ export default function Home() {
         })
         .slice(0, 3);
 
-      const displayMatches =
-        todayMatches.length > 0 ? todayMatches : tomorrowMatches;
+      const upcomingMatches = (data || [])
+        .filter(match => {
+          const dateKey = getMatchDateKey(match);
+          const status = getMatchStatusCode(match);
+          return dateKey > tomorrow &&
+            !['FINISHED', 'AWARDED', 'VOID', 'CANCELLED', 'ABANDONED'].includes(status);
+        })
+        .sort((first, second) => {
+          const dateOrder = getMatchDateKey(first).localeCompare(getMatchDateKey(second));
+          if (dateOrder !== 0) return dateOrder;
+          return String(first.kickoff_time || '').localeCompare(
+            String(second.kickoff_time || '')
+          );
+        })
+        .slice(0, 3);
+
+      const showingUpcomingFlag =
+        todayMatches.length === 0 && tomorrowMatches.length === 0;
+      const displayMatches = todayMatches.length > 0
+        ? todayMatches
+        : tomorrowMatches.length > 0
+          ? tomorrowMatches
+          : upcomingMatches;
 
       const showingTomorrowFlag = todayMatches.length === 0;
       const prev = prevMatchesRef.current || {};
@@ -205,6 +227,7 @@ export default function Home() {
       if (Object.keys(diffs).length === 0) {
         setMatches(displayMatches);
         setShowingTomorrow(showingTomorrowFlag);
+        setShowingUpcoming(showingUpcomingFlag);
       } else {
         if (timeoutRef.current) clearTimeout(timeoutRef.current);
 
@@ -213,6 +236,7 @@ export default function Home() {
         timeoutRef.current = setTimeout(() => {
           setMatches(displayMatches);
           setShowingTomorrow(showingTomorrowFlag);
+          setShowingUpcoming(showingUpcomingFlag);
           setFlashMap({});
           timeoutRef.current = null;
         }, FLASH_DURATION);
@@ -349,7 +373,13 @@ export default function Home() {
           <div className="home-section-heading">
             <div>
               <p className="home-eyebrow">FIXTURES &amp; SCORES</p>
-              <h2>{showingTomorrow ? "Tomorrow's Matches" : "Today's Matches"}</h2>
+              <h2>
+                {showingUpcoming
+                  ? 'Upcoming Matches'
+                  : showingTomorrow
+                    ? "Tomorrow's Matches"
+                    : "Today's Matches"}
+              </h2>
             </div>
 
             <Link className="home-text-link" to="/results">
@@ -591,15 +621,24 @@ export default function Home() {
           ) : teams.length > 0 ? (
             <div className="home-teams-grid">
               {teams.map((t) => (
-                <div key={t.id} className="home-team-card">
+                <Link
+                  key={t.id}
+                  to={`/teams/${encodeURIComponent(t.id)}`}
+                  className="home-team-card home-team-card-link"
+                  aria-label={`View ${formatTeamName(t.name)} team profile`}
+                >
                   <div className="home-team-emblem" aria-hidden="true">
-                    {formatTeamName(t.name)
-                      .split(/\s+/)
-                      .filter(Boolean)
-                      .slice(0, 2)
-                      .map((word) => word.charAt(0))
-                      .join('')
-                      .toUpperCase()}
+                    {t.logo ? (
+                      <img src={t.logo} alt="" loading="lazy" />
+                    ) : (
+                      formatTeamName(t.name)
+                        .split(/\s+/)
+                        .filter(Boolean)
+                        .slice(0, 2)
+                        .map((word) => word.charAt(0))
+                        .join('')
+                        .toUpperCase()
+                    )}
                   </div>
 
                   <div className="home-team-card-name">
@@ -632,7 +671,7 @@ export default function Home() {
                       ))}
                     </div>
                   )}
-                </div>
+                </Link>
               ))}
             </div>
           ) : (

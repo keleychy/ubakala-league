@@ -177,6 +177,18 @@ export default function AdminDashboard() {
                 </div>
               </Link>
 
+              <Link to="/team-profiles" className="league-dashboard-link">
+                <div className="league-dashboard-card">
+                  <div>
+                    <div className="league-dashboard-card__title">Team Profiles</div>
+                    <div className="league-dashboard-card__description">Edit the public description, history and home community for each team.</div>
+                  </div>
+                  <div style={{ marginTop: 16, color: 'var(--league-blue)', fontSize: 12, fontWeight: 700 }}>
+                    Manage team profiles <span aria-hidden="true">→</span>
+                  </div>
+                </div>
+              </Link>
+
               <Link to="/admin-predictions" className="league-dashboard-link">
                 <div className="league-dashboard-card">
                   <div>
