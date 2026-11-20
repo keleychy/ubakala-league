@@ -65,6 +65,6 @@ test('footer Support This Website link opens the support page', () => {
 
   fireEvent.click(screen.getByRole('link', { name: 'Support This Website' }));
   expect(screen.getByRole('heading', {
-    name: 'SUPPORT THE UBakala UNITY CUP WEBSITE'
+    name: 'SUPPORT THE UBAKALA UNITY CUP WEBSITE'
   })).toBeInTheDocument();
 });

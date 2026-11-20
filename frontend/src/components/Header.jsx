@@ -163,6 +163,10 @@ export default function Header() {
               History
             </NavLink>
 
+            <NavLink to="/support" className="nav-link">
+              Support
+            </NavLink>
+
             <NavLink to="/rules-regulations" className="nav-link">
               Rules &amp; Regulations
             </NavLink>
@@ -217,6 +221,10 @@ export default function Header() {
 
           <NavLink to="/history" className="nav-link" onClick={closeMenu}>
             History
+          </NavLink>
+
+          <NavLink to="/support" className="nav-link" onClick={closeMenu}>
+            Support
           </NavLink>
 
           <NavLink to="/rules-regulations" className="nav-link" onClick={closeMenu}>

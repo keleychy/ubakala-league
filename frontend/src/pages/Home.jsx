@@ -323,6 +323,20 @@ export default function Home() {
       </section>
 
       <div className="home-content">
+        <aside className="home-support-card" aria-label="Support the website">
+          <div className="home-support-copy">
+            <p className="home-eyebrow">KEEP OUR HISTORY ONLINE</p>
+            <h2>Help preserve the Ubakala Unity Cup archive</h2>
+            <p>
+              Learn how voluntary support helps maintain the website and its
+              competition records.
+            </p>
+          </div>
+          <Link className="home-support-link" to="/support">
+            Support this website <span aria-hidden="true">→</span>
+          </Link>
+        </aside>
+
         <section className="home-section home-matches-section">
           <div className="home-section-heading">
             <div>

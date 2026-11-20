@@ -61,6 +61,23 @@ test('marks the current page in both desktop and mobile navigation', () => {
   activeLinks.forEach(link => expect(link).toHaveAttribute('aria-current', 'page'));
 });
 
+test('provides a Support link in desktop and mobile main navigation', () => {
+  onAuthStateChanged.mockImplementation((auth, callback) => {
+    callback(null);
+    return jest.fn();
+  });
+
+  render(
+    <MemoryRouter>
+      <Header />
+    </MemoryRouter>
+  );
+
+  const supportLinks = screen.getAllByRole('link', { name: 'Support' });
+  expect(supportLinks).toHaveLength(2);
+  supportLinks.forEach(link => expect(link).toHaveAttribute('href', '/support'));
+});
+
 test('shows the Predictions announcement in both menus and removes it after a week', () => {
   jest.useFakeTimers();
   jest.setSystemTime(new Date('2026-11-12T13:18:19.960+01:00'));

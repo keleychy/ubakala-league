@@ -70,6 +70,16 @@ test('homepage provides direct links to Predictions and Rules & Regulations', as
     .toHaveAttribute('href', '/rules-regulations');
 });
 
+test('homepage shows a discreet link to the Support page', async () => {
+  renderHomeWithStatus('FINISHED');
+
+  expect(await screen.findByRole('heading', {
+    name: 'Help preserve the Ubakala Unity Cup archive'
+  })).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: 'Support this website' }))
+    .toHaveAttribute('href', '/support');
+});
+
 test('homepage highlights Predictions as new during its one-week announcement', () => {
   jest.useFakeTimers();
   jest.setSystemTime(new Date('2026-11-12T13:18:19.960+01:00'));

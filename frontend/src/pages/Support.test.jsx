@@ -13,7 +13,7 @@ test('renders the support page directly at its route with the supplied bank deta
   );
 
   expect(screen.getByRole('heading', {
-    name: 'SUPPORT THE UBakala UNITY CUP WEBSITE'
+    name: 'SUPPORT THE UBAKALA UNITY CUP WEBSITE'
   })).toBeInTheDocument();
   expect(screen.getByText('Help Keep the Competition Online and Its History Preserved.'))
     .toBeInTheDocument();
