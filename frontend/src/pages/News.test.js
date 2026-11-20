@@ -41,6 +41,41 @@ test('news cards show views and paginate nine stories at a time', async () => {
   expect(screen.queryByRole('link', { name: 'Read Story 1' })).not.toBeInTheDocument();
 });
 
+test('news cards show the most recently published story first', async () => {
+  api.getNews.mockResolvedValue([
+    {
+      id: 'older',
+      title: 'Older story',
+      content: 'An earlier update.',
+      published_at: '2026-10-12T10:00:00Z'
+    },
+    {
+      id: 'newest',
+      title: 'Newest story',
+      content: 'The latest update.',
+      published_at: '2026-11-19T10:00:00Z'
+    },
+    {
+      id: 'middle',
+      title: 'Middle story',
+      content: 'A later update.',
+      published_at: '2026-11-01T10:00:00Z'
+    }
+  ]);
+
+  const { container } = render(
+    <MemoryRouter>
+      <News />
+    </MemoryRouter>
+  );
+
+  await screen.findByRole('link', { name: 'Read Newest story' });
+  const storyTitles = Array.from(container.querySelectorAll('.news-story-card h2'))
+    .map(heading => heading.textContent);
+
+  expect(storyTitles).toEqual(['Newest story', 'Middle story', 'Older story']);
+});
+
 test('news loading errors provide a retry action', async () => {
   api.getNews
     .mockRejectedValueOnce(new Error('Network unavailable'))

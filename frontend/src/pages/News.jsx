@@ -24,6 +24,11 @@ function formatDate(value) {
   });
 }
 
+function getPublishedTimestamp(item) {
+  const date = new Date(item.published_at || item.created_at || '');
+  return Number.isNaN(date.getTime()) ? 0 : date.getTime();
+}
+
 const News = () => {
   const [newsItems, setNewsItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -53,10 +58,14 @@ const News = () => {
   }, [loadNews]);
 
   const pageCount = Math.ceil(newsItems.length / NEWS_PER_PAGE);
-  const visibleNews = newsItems.slice(
+  const visibleNews = [...newsItems]
+    .sort((first, second) =>
+      getPublishedTimestamp(second) - getPublishedTimestamp(first)
+    )
+    .slice(
     (currentPage - 1) * NEWS_PER_PAGE,
     currentPage * NEWS_PER_PAGE
-  );
+    );
 
   return (
     <div className="league-polish-page">
