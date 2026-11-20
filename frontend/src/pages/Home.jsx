@@ -338,10 +338,7 @@ export default function Home() {
               Learn how voluntary support helps maintain the website and its
               competition records.
             </p>
-            <p className="home-support-disclosure">
-              We count these button clicks as an anonymous total, even if you decline
-              optional analytics. No visitor ID is stored.
-            </p>
+
           </div>
           <Link className="home-support-link" to="/support" onClick={recordSupportClick}>
             Support this website <span aria-hidden="true">→</span>
@@ -393,13 +390,13 @@ export default function Home() {
                   seasonCategoryMap[String(seasonId)];
                 const categoryLabel = rawCategory
                   ? PUBLIC_CATEGORIES.find(
-                      ({ value }) =>
-                        value === String(rawCategory).trim().toLowerCase()
-                    )?.label ||
-                    String(rawCategory)
-                      .trim()
-                      .replace(/_/g, ' ')
-                      .replace(/\b\w/g, (letter) => letter.toUpperCase())
+                    ({ value }) =>
+                      value === String(rawCategory).trim().toLowerCase()
+                  )?.label ||
+                  String(rawCategory)
+                    .trim()
+                    .replace(/_/g, ' ')
+                    .replace(/\b\w/g, (letter) => letter.toUpperCase())
                   : null;
 
                 const homeScore =
@@ -480,17 +477,17 @@ export default function Home() {
                         </div>
 
                         {hasPenaltyScores && (
-                            <div className="home-penalty-score">
-                              Penalties{' '}
-                              {homePenalty !== null && homePenalty !== undefined
-                                ? homePenalty
-                                : '-'}{' '}
-                              -{' '}
-                              {awayPenalty !== null && awayPenalty !== undefined
-                                ? awayPenalty
-                                : '-'}
-                            </div>
-                          )}
+                          <div className="home-penalty-score">
+                            Penalties{' '}
+                            {homePenalty !== null && homePenalty !== undefined
+                              ? homePenalty
+                              : '-'}{' '}
+                            -{' '}
+                            {awayPenalty !== null && awayPenalty !== undefined
+                              ? awayPenalty
+                              : '-'}
+                          </div>
+                        )}
                       </div>
 
                       <div className="home-score-team home-score-away">
