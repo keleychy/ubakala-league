@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { callAdminApi } from '../api/adminApi';
 import { signOutAdmin } from '../api/firebaseAuth';
+import FormattedArticle from '../components/FormattedArticle';
 import './LeaguePolish.css';
 
 function formatDate(value) {
@@ -44,6 +45,74 @@ export default function NewsUploader() {
     const [imgValid, setImgValid] = useState(null);
     const [newsList, setNewsList] = useState([]);
     const [editingId, setEditingId] = useState(null);
+    const contentRef = useRef(null);
+    const [selectionToRestore, setSelectionToRestore] = useState(null);
+
+    useLayoutEffect(() => {
+        if (!selectionToRestore || !contentRef.current) return;
+        contentRef.current.focus();
+        contentRef.current.setSelectionRange(
+            selectionToRestore.start,
+            selectionToRestore.end
+        );
+        setSelectionToRestore(null);
+    }, [content, selectionToRestore]);
+
+    function wrapContentSelection(before, after, placeholder) {
+        const textarea = contentRef.current;
+        if (!textarea) return;
+
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const selectedText = content.slice(start, end) || placeholder;
+        const nextContent = content.slice(0, start) +
+            before + selectedText + after +
+            content.slice(end);
+
+        setContent(nextContent);
+        setSelectionToRestore({
+            start: start + before.length,
+            end: start + before.length + selectedText.length
+        });
+    }
+
+    function prefixContentLines(prefix, placeholder) {
+        const textarea = contentRef.current;
+        if (!textarea) return;
+
+        const selectionStart = textarea.selectionStart;
+        const selectionEnd = textarea.selectionEnd;
+        const hasSelection = selectionStart !== selectionEnd;
+        const start = hasSelection
+            ? selectionStart
+            : content.lastIndexOf('\n', selectionStart - 1) + 1;
+        const nextLineBreak = content.indexOf('\n', selectionStart);
+        const end = hasSelection || nextLineBreak === -1
+            ? selectionEnd === selectionStart ? content.length : selectionEnd
+            : nextLineBreak;
+        const selectedLines = content.slice(start, end) || placeholder;
+        const prefixedLines = selectedLines
+            .split('\n')
+            .map(line => `${prefix}${line}`)
+            .join('\n');
+
+        setContent(content.slice(0, start) + prefixedLines + content.slice(end));
+        setSelectionToRestore({
+            start: start + prefix.length,
+            end: start + prefixedLines.length
+        });
+    }
+
+    function handleFormatting(action) {
+        if (action === 'bold') wrapContentSelection('**', '**', 'bold text');
+        if (action === 'italic') wrapContentSelection('_', '_', 'italic text');
+        if (action === 'link') {
+            wrapContentSelection('[', '](https://example.com)', 'link text');
+        }
+        if (action === 'heading') prefixContentLines('## ', 'Heading');
+        if (action === 'list') prefixContentLines('- ', 'List item');
+        if (action === 'quote') prefixContentLines('> ', 'Quote');
+    }
 
     function clearForm() {
         setTitle('');
@@ -310,9 +379,35 @@ export default function NewsUploader() {
                             </div>
                         )}
 
-                        <label className="news-uploader-field news-uploader-field--wide">
-                            <span>Article content <b>*</b></span>
+                        <div className="news-uploader-field news-uploader-field--wide news-uploader-content-field">
+                            <label htmlFor="news-article-content">
+                                Article content <b>*</b>
+                            </label>
+                            <div className="news-uploader-toolbar" role="toolbar" aria-label="Article formatting">
+                                {[
+                                    { action: 'bold', label: 'Bold', marker: 'B' },
+                                    { action: 'italic', label: 'Italic', marker: 'I' },
+                                    { action: 'heading', label: 'Heading', marker: 'H2' },
+                                    { action: 'list', label: 'Bulleted list', marker: '• List' },
+                                    { action: 'quote', label: 'Quote', marker: '“ Quote' },
+                                    { action: 'link', label: 'Insert link', marker: 'Link' }
+                                ].map(({ action, label, marker }) => (
+                                    <button
+                                        key={action}
+                                        type="button"
+                                        aria-label={label}
+                                        title={label}
+                                        disabled={isLoading}
+                                        onMouseDown={event => event.preventDefault()}
+                                        onClick={() => handleFormatting(action)}
+                                    >
+                                        {marker}
+                                    </button>
+                                ))}
+                            </div>
                             <textarea
+                                id="news-article-content"
+                                ref={contentRef}
                                 placeholder="Write the full announcement, report or league update..."
                                 rows={10}
                                 value={content}
@@ -321,12 +416,28 @@ export default function NewsUploader() {
                                 aria-invalid={Boolean(errors.content)}
                             />
                             <small className="news-uploader-help">
-                                Separate paragraphs with a blank line. Format text with *bold* or **bold**, _italic_, ~~strikethrough~~, and `inline code`.
-                                <br />
-                                Use ## Heading, - list item, &gt; quote, [link text](https://example.com), or paste a URL to make it clickable.
+                                Select text before using a button to format it. Links open in a new tab; pasted URLs become clickable.
                             </small>
                             {errors.content && <small className="news-uploader-field-error">{errors.content}</small>}
-                        </label>
+                        </div>
+
+                        <section className="news-uploader-live-preview news-uploader-field--wide" aria-label="Live article preview">
+                            <div className="news-uploader-live-preview-heading">
+                                <span>Live preview</span>
+                                <small>Updates as you edit</small>
+                            </div>
+                            <article className="news-uploader-preview-article">
+                                <h2>{title.trim() || 'Your article headline'}</h2>
+                                {subtitle.trim() && (
+                                    <p className="news-article-subtitle">{subtitle}</p>
+                                )}
+                                {content.trim()
+                                    ? <FormattedArticle content={content} />
+                                    : <p className="news-uploader-preview-placeholder">
+                                        Your formatted article content will appear here.
+                                    </p>}
+                            </article>
+                        </section>
 
                         <div className="news-uploader-inline-images news-uploader-field--wide">
                             <div className="news-uploader-inline-images-heading">

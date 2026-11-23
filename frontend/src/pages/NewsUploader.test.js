@@ -54,3 +54,43 @@ test('publishes optional in-article images at their selected paragraph positions
     }));
   });
 });
+
+test('formats selected article text and shows the same formatting in the live preview', async () => {
+  render(
+    <MemoryRouter>
+      <NewsUploader />
+    </MemoryRouter>
+  );
+
+  const content = screen.getByPlaceholderText('Write the full announcement, report or league update...');
+  fireEvent.change(content, { target: { value: 'Hello world' } });
+  content.setSelectionRange(0, 5);
+  fireEvent.select(content);
+  fireEvent.click(screen.getByRole('button', { name: 'Bold' }));
+
+  expect(content).toHaveValue('**Hello** world');
+  expect(screen.getByText('Hello', { selector: 'strong' })).toBeInTheDocument();
+
+  content.setSelectionRange(10, 15);
+  fireEvent.select(content);
+  fireEvent.click(screen.getByRole('button', { name: 'Insert link' }));
+
+  expect(content).toHaveValue('**Hello** [world](https://example.com)');
+  expect(screen.getByRole('link', { name: 'world' }))
+    .toHaveAttribute('href', 'https://example.com');
+});
+
+test('inserts a heading marker at the cursor and previews the heading', async () => {
+  render(
+    <MemoryRouter>
+      <NewsUploader />
+    </MemoryRouter>
+  );
+
+  const content = screen.getByPlaceholderText('Write the full announcement, report or league update...');
+  fireEvent.click(screen.getByRole('button', { name: 'Heading' }));
+
+  expect(content).toHaveValue('## Heading');
+  expect(screen.getByRole('heading', { name: 'Heading', level: 2 }))
+    .toBeInTheDocument();
+});
