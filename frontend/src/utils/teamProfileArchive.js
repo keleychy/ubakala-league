@@ -39,6 +39,7 @@ export function normalizeTeamProfileArchive(archive, teams) {
   const teamIds = createTeamIdLookup(teams);
   const seasons = [];
   const matches = [];
+  const unmatchedTeamNames = new Set();
 
   archive.categories.forEach(category => {
     if (!category || !Array.isArray(category.matches)) {
@@ -62,6 +63,8 @@ export function normalizeTeamProfileArchive(archive, teams) {
       const awayTeamId = getArchivedTeamNameKeys(match.away_team)
         .map(key => teamIds.get(key))
         .find(Boolean) || null;
+      if (!homeTeamId && match.home_team) unmatchedTeamNames.add(match.home_team);
+      if (!awayTeamId && match.away_team) unmatchedTeamNames.add(match.away_team);
       matches.push({
         id: `${seasonId}-match-${index + 1}`,
         season_id: seasonId,
@@ -87,5 +90,9 @@ export function normalizeTeamProfileArchive(archive, teams) {
     });
   });
 
-  return { seasons, matches };
+  return {
+    seasons,
+    matches,
+    unmatchedTeamNames: [...unmatchedTeamNames].sort()
+  };
 }

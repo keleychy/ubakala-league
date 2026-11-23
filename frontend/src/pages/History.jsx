@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import './LeaguePolish.css';
 
 const historicalData = [
@@ -72,9 +72,12 @@ function groupByStage(matches) {
   return [...grouped.entries()].filter(([, stageMatches]) => stageMatches.length > 0);
 }
 
-function MatchCard({ match }) {
+function MatchCard({ match, id }) {
   return (
-    <article className="league-page-card history-match-card">
+    <article
+      id={id}
+      className="league-page-card history-match-card"
+    >
       <div className="history-match-meta">
         <span className="history-match-stage">{match.stage}</span>
         <time dateTime={match.date}>{formatMatchDate(match.date)}</time>
@@ -148,7 +151,11 @@ function SeasonArchive({ archive, categoryId, onCategoryChange }) {
               <h5>{matchday === null ? 'Matchday not recorded' : `Matchday ${matchday}`}</h5>
               <div className="history-match-list">
                 {stageMatchdayMatches.map((match, index) => (
-                  <MatchCard key={`${match.date}-${match.home_team}-${match.away_team}-${index}`} match={match} />
+                  <MatchCard
+                    key={`${match.date}-${match.home_team}-${match.away_team}-${index}`}
+                    match={match}
+                    id={stage === 'Final' ? `archive-final-${category.id}` : undefined}
+                  />
                 ))}
               </div>
             </div>
@@ -162,6 +169,8 @@ function SeasonArchive({ archive, categoryId, onCategoryChange }) {
 const History = () => {
   const { year } = useParams();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedCategory = searchParams.get('category');
   const [archive, setArchive] = useState(null);
   const [activeCategory, setActiveCategory] = useState('senior-boys');
   const [isLoadingArchive, setIsLoadingArchive] = useState(false);
@@ -181,17 +190,38 @@ const History = () => {
         throw new Error('The 2025 archive does not contain any categories.');
       }
       setArchive(data);
-      setActiveCategory(data.categories[0].id);
+      setActiveCategory(
+        data.categories.some(item => item.id === requestedCategory)
+          ? requestedCategory
+          : data.categories[0].id
+      );
     } catch (error) {
       setArchiveError(error.message || 'Could not load the 2025 archive.');
     } finally {
       setIsLoadingArchive(false);
     }
-  }, []);
+  }, [requestedCategory]);
 
   useEffect(() => {
     if (showArchive && !archive) loadArchive();
   }, [showArchive, archive, loadArchive]);
+
+  useEffect(() => {
+    if (!archive || !window.location.hash) return;
+    const targetId = decodeURIComponent(window.location.hash.slice(1));
+    const target = document.getElementById(targetId);
+    if (target && typeof target.scrollIntoView === 'function') {
+      target.scrollIntoView({ block: 'start' });
+    }
+  }, [archive, activeCategory]);
+
+  const handleCategoryChange = categoryId => {
+    setActiveCategory(categoryId);
+    setSearchParams(current => {
+      current.set('category', categoryId);
+      return current;
+    }, { replace: true });
+  };
 
   return (
     <div className="league-polish-page">
@@ -226,7 +256,7 @@ const History = () => {
               <SeasonArchive
                 archive={archive}
                 categoryId={activeCategory}
-                onCategoryChange={setActiveCategory}
+                onCategoryChange={handleCategoryChange}
               />
             )}
           </>

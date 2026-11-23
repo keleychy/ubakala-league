@@ -61,9 +61,9 @@
 }
 
 .team-profile-record-heading {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) repeat(2, minmax(150px, 220px));
+  align-items: start;
   gap: 16px;
 }
 
@@ -99,7 +99,7 @@
 
 .team-profile-record-stats {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 10px;
   margin: 0;
 }
@@ -122,6 +122,17 @@
   color: var(--league-navy);
   font-size: 20px;
   font-weight: 800;
+}
+
+.team-profile-archive-warning {
+  margin: 14px 0 0;
+  padding: 10px 12px;
+  border: 1px solid #ebd6a5;
+  border-radius: 8px;
+  background: #fff9eb;
+  color: #74591c;
+  font-size: 12px;
+  line-height: 1.55;
 }
 
 .team-profile-copy {
@@ -318,11 +329,11 @@
   }
 
   .team-profile-record-heading {
-    display: grid;
+    grid-template-columns: 1fr;
   }
 
   .team-profile-season-select {
-    min-width: 100%;
+    min-width: 0;
   }
 
   .team-profile-record-stats {

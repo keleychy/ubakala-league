@@ -1,4 +1,5 @@
 import { normalizeTeamProfileArchive } from './teamProfileArchive';
+import archivedSeason from '../../public/archive/2025.json';
 
 test('maps archived team names to current IDs using names, short names, and known aliases', () => {
   const archive = {
@@ -39,4 +40,34 @@ test('maps archived team names to current IDs using names, short names, and know
     home_score: 2,
     away_score: 0
   });
+});
+
+test('matches every team name in the real 2025 archive to the provided team directory', () => {
+  const teams = [
+    { id: 'TEAM-UMUOSU', name: 'Umuosu' },
+    { id: 'TEAM-EZIAMA', name: 'Eziama' },
+    { id: 'TEAM-AVODIM', name: 'Avodim' },
+    { id: 'TEAM-AMIBO', name: 'Amibo' },
+    { id: 'TEAM-AMUZU', name: 'Amuzu' },
+    { id: 'TEAM-NSUKWE', name: 'Nsukwe' },
+    { id: 'TEAM-EZU-N-ERIM', name: "Ezu N'Erim" },
+    { id: 'TEAM-UMUOGO', name: 'Umuogo' },
+    { id: 'TEAM-MGBARAKUMA', name: 'Mgbarakuma' },
+    { id: 'TEAM-UMUMBA', name: 'Umumba' },
+    { id: 'TEAM-UTURU', name: 'Uturu' },
+    { id: 'TEAM-ABAM', name: 'Abam' },
+    { id: 'TEAM-NSIRIMO-AUT', name: 'Nsirimo Aut' },
+    { id: 'TEAM-IPUPE', name: 'Ipupe' },
+    { id: 'TEAM-LAGURU', name: 'Laguru' },
+    { id: 'TEAM-CHOCURL', name: 'Chocurl' },
+    { id: 'TEAM-DIAMOND-ALL-STARS', name: 'Diamond All Stars' }
+  ];
+
+  const normalized = normalizeTeamProfileArchive(archivedSeason, teams);
+
+  expect(normalized.matches).toHaveLength(86);
+  expect(normalized.unmatchedTeamNames).toEqual([]);
+  expect(normalized.matches.every(match =>
+    match.home_team_id && match.away_team_id
+  )).toBe(true);
 });

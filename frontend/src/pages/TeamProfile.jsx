@@ -19,6 +19,10 @@ const NON_UPCOMING_STATUSES = new Set([
 ]);
 const TEAM_FIXTURE_LIMIT = 5;
 
+function normalizeCategoryId(category) {
+  return String(category || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
+}
+
 function getTeamId(match, side) {
   const team = match[`${side}_team`];
   return String(match[`${side}_team_id`] ?? team?.id ?? team ?? '');
@@ -192,6 +196,7 @@ export default function TeamProfile() {
   const [error, setError] = useState('');
   const [loadAttempt, setLoadAttempt] = useState(0);
   const [recordSeasonYear, setRecordSeasonYear] = useState('');
+  const [recordCategory, setRecordCategory] = useState('all');
 
   const loadProfile = useCallback(async () => {
     setLoading(true);
@@ -215,7 +220,8 @@ export default function TeamProfile() {
         teams,
         matches: [...matches, ...archive.matches],
         seasons: [...seasons, ...archive.seasons],
-        groupsWithTeams
+        groupsWithTeams,
+        unmatchedArchiveTeamNames: archive.unmatchedTeamNames
       });
     } catch (loadError) {
       setError(loadError.message || 'Unable to load this team profile.');
@@ -289,6 +295,21 @@ export default function TeamProfile() {
   }, [data]);
   const selectedRecordSeasonYear = recordSeasonYear ||
     recordSeasonOptions[0]?.value || '';
+  const recordCategoryOptions = useMemo(() => {
+    const categories = new Map((data?.seasons || [])
+      .filter(season => {
+        const year = Number(season.year) || Number(
+          String(season.name || '').match(/\b\d{4}\b/)?.[0]
+        );
+        return String(year) === selectedRecordSeasonYear;
+      })
+      .map(season => season.category)
+      .filter(Boolean)
+      .map(category => [normalizeCategoryId(category), category]));
+    return [...categories.keys()].sort((first, second) =>
+      getCompetitionCategoryLabel(first).localeCompare(getCompetitionCategoryLabel(second))
+    );
+  }, [data, selectedRecordSeasonYear]);
   const recordMatches = useMemo(() => {
     const seasonMatches = teamMatches.filter(match => {
       const seasonId = String(match.season_id || match.season?.id || '');
@@ -296,10 +317,13 @@ export default function TeamProfile() {
       const year = Number(season?.year) || Number(
         String(season?.name || '').match(/\b\d{4}\b/)?.[0]
       );
-      return String(year) === selectedRecordSeasonYear;
+      const category = match.category || match.season?.category || season?.category;
+      return String(year) === selectedRecordSeasonYear &&
+        (recordCategory === 'all' ||
+          normalizeCategoryId(category) === recordCategory);
     });
     return getTeamSeasonRecord(seasonMatches, teamId);
-  }, [seasonsById, selectedRecordSeasonYear, teamId, teamMatches]);
+  }, [recordCategory, seasonsById, selectedRecordSeasonYear, teamId, teamMatches]);
   const confirmedAchievements = useMemo(() => {
     if (!team || !data) return [];
     return (data.matches || []).flatMap(match => {
@@ -312,12 +336,21 @@ export default function TeamProfile() {
       const category = match.season?.category ||
         match.category ||
         season?.category;
+      const year = Number(season?.year) || Number(
+        String(season?.name || '').match(/\b\d{4}\b/)?.[0]
+      );
+      const categoryId = String(category || '').toLowerCase().replace(/[\s_]+/g, '-');
+      const sourceHref = season?.archived
+        ? `/history/${year}?category=${encodeURIComponent(categoryId)}#archive-final-${encodeURIComponent(categoryId)}`
+        : `/results?matchId=${encodeURIComponent(match.id)}`;
       return [{
         id: match.id,
         season: season?.name || match.season?.name || 'Recorded season',
         category: category ? getCompetitionCategoryLabel(category) : null,
         date: getMatchDateKey(match),
-        evidence: getFinalResultEvidence(match)
+        evidence: getFinalResultEvidence(match),
+        sourceHref,
+        sourceLabel: season?.archived ? 'View archived final' : 'View recorded final'
       }];
     }).sort((first, second) =>
       (second.date || '').localeCompare(first.date || '') ||
@@ -408,11 +441,29 @@ export default function TeamProfile() {
               <select
                 aria-label="Season record season"
                 value={selectedRecordSeasonYear}
-                onChange={event => setRecordSeasonYear(event.target.value)}
+                onChange={event => {
+                  setRecordSeasonYear(event.target.value);
+                  setRecordCategory('all');
+                }}
               >
                 {recordSeasonOptions.map(season => (
                   <option key={season.value} value={season.value}>
                     {season.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="team-profile-season-select">
+              <span>Category</span>
+              <select
+                aria-label="Season record category"
+                value={recordCategory}
+                onChange={event => setRecordCategory(event.target.value)}
+              >
+                <option value="all">All categories</option>
+                {recordCategoryOptions.map(category => (
+                  <option key={category} value={category}>
+                    {getCompetitionCategoryLabel(category)}
                   </option>
                 ))}
               </select>
@@ -426,7 +477,8 @@ export default function TeamProfile() {
                 ['Draws', recordMatches.draws],
                 ['Losses', recordMatches.losses],
                 ['Goals for', recordMatches.goalsFor],
-                ['Goals against', recordMatches.goalsAgainst]
+                ['Goals against', recordMatches.goalsAgainst],
+                ['Goal difference', recordMatches.goalsFor - recordMatches.goalsAgainst]
               ].map(([label, value]) => (
                 <div key={label}>
                   <dt>{label}</dt>
@@ -439,6 +491,12 @@ export default function TeamProfile() {
               No completed, scored matches are recorded for this selection.
             </p>
           )}
+          {selectedRecordSeasonYear === '2025' &&
+            data.unmatchedArchiveTeamNames.length > 0 && (
+              <p className="team-profile-archive-warning" role="status">
+                Some archived 2025 teams could not be matched to profiles and are excluded from team records: {data.unmatchedArchiveTeamNames.join(', ')}.
+              </p>
+            )}
         </section>
 
         {confirmedAchievements.length > 0 && (
@@ -454,9 +512,9 @@ export default function TeamProfile() {
                   <span>
                     <Link
                       className="team-profile-achievement-link"
-                      to={`/results?matchId=${encodeURIComponent(achievement.id)}`}
+                      to={achievement.sourceHref}
                     >
-                      Recorded final winner
+                      {achievement.sourceLabel}
                     </Link>
                     <span className="team-profile-achievement-details">
                       {[achievement.category, achievement.season].filter(Boolean).join(' · ')}

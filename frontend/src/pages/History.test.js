@@ -41,6 +41,19 @@ const archive = {
         penalty_away: null,
         awarded: false,
         void: false
+      }, {
+        date: '2025-11-10T16:00:00Z',
+        matchday: null,
+        stage: 'Final',
+        venue: 'UBAKALA MAIN FIELD',
+        home_team: 'ABAM',
+        away_team: 'AMIBO',
+        home_score: 2,
+        away_score: 1,
+        penalty_home: null,
+        penalty_away: null,
+        awarded: false,
+        void: false
       }]
     }
   ]
@@ -73,7 +86,7 @@ test('opens the static 2025 archive and filters match results by category', asyn
 
   fireEvent.click(screen.getByRole('button', { name: /Girls/ }));
 
-  expect(await screen.findByText('ABAM')).toBeInTheDocument();
+  expect(await screen.findAllByText('ABAM')).not.toHaveLength(0);
   expect(screen.getByRole('heading', { name: 'Group Stage' })).toBeInTheDocument();
   expect(screen.getByRole('heading', { name: 'Matchday not recorded' })).toBeInTheDocument();
   expect(screen.queryByText('UMUOSU')).not.toBeInTheDocument();
@@ -90,4 +103,22 @@ test('loads the archive directly from its season URL', async () => {
 
   expect(await screen.findByText('UMUOSU')).toBeInTheDocument();
   expect(window.fetch).toHaveBeenCalledTimes(1);
+});
+
+test('opens the requested archived category and exposes a linkable final anchor', async () => {
+  render(
+    <MemoryRouter initialEntries={[
+      '/history/2025?category=girls#archive-final-girls'
+    ]}>
+      <Routes>
+        <Route path="/history/:year" element={<History />} />
+      </Routes>
+    </MemoryRouter>
+  );
+
+  const girlsCategory = await screen.findByRole('button', { name: /Girls/ });
+  expect(girlsCategory).toHaveAttribute('aria-pressed', 'true');
+  expect(document.getElementById('archive-final-girls')).toHaveTextContent(
+    'ABAM'
+  );
 });

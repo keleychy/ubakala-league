@@ -142,10 +142,10 @@ test('shows confirmed championships from completed finals and excludes unresolve
   const achievements = await screen.findByRole('region', {
     name: 'Recorded championship results'
   });
-  expect(achievements).toHaveTextContent('Recorded final winner');
+  expect(achievements).toHaveTextContent('View recorded final');
   expect(achievements).toHaveTextContent('Final score: 1–1; penalties 5–4');
   expect(achievements).toHaveTextContent('Senior Boys · Senior Boys 2026');
-  expect(screen.getByRole('link', { name: /Recorded final winner/ }))
+  expect(screen.getByRole('link', { name: /View recorded final/ }))
     .toHaveAttribute('href', '/results?matchId=final-won');
   expect(achievements.querySelectorAll('li')).toHaveLength(1);
 });
@@ -236,17 +236,31 @@ test('shows archived 2025 season records from the static archive without extra A
   expect(screen.getByRole('option', {
     name: 'All seasons 2025'
   })).toBeInTheDocument();
+  const categorySelector = screen.getByRole('combobox', {
+    name: 'Season record category'
+  });
+  expect([...categorySelector.options].map(option => option.textContent))
+    .toEqual(['All categories', 'Junior Boys', 'Senior Boys']);
   expect(screen.getByText('Played').parentElement).toHaveTextContent('3');
   expect(screen.getByText('Wins').parentElement).toHaveTextContent('2');
   expect(screen.getByText('Draws').parentElement).toHaveTextContent('1');
   expect(screen.getByText('Losses').parentElement).toHaveTextContent('0');
   expect(screen.getByText('Goals for').parentElement).toHaveTextContent('3');
   expect(screen.getByText('Goals against').parentElement).toHaveTextContent('1');
+  expect(screen.getByText('Goal difference').parentElement).toHaveTextContent('+2');
+  fireEvent.change(categorySelector, { target: { value: 'senior_boys' } });
+  expect(screen.getByText('Played').parentElement).toHaveTextContent('2');
+  expect(screen.getByText('Goal difference').parentElement).toHaveTextContent('+1');
   const archivedChampionship = screen.getByRole('region', {
     name: 'Recorded championship results'
   });
   expect(archivedChampionship).toHaveTextContent('2025 Junior Boys Cup');
   expect(archivedChampionship).toHaveTextContent('Final score: 1–0');
+  expect(screen.getByRole('link', { name: 'View archived final' }))
+    .toHaveAttribute(
+      'href',
+      '/history/2025?category=junior-boys#archive-final-junior-boys'
+    );
   expect(api.getTeams).toHaveBeenCalledTimes(1);
   expect(api.getMatches).toHaveBeenCalledTimes(1);
   expect(api.getSeasons).toHaveBeenCalledTimes(1);
