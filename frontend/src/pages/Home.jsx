@@ -5,7 +5,10 @@ import { Link, useNavigate } from 'react-router-dom';
 import './Results.css';
 import './Home.css';
 import usePolling from '../utils/usePolling';
-import { usePredictionsAnnouncement } from '../utils/featureAnnouncements';
+import {
+  usePredictionsAnnouncement,
+  useSupportAnnouncement
+} from '../utils/featureAnnouncements';
 import SponsorsShowcase from './SponsorsShowcase';
 import {
   formatMatchSchedule,
@@ -22,6 +25,7 @@ import {
 
 export default function Home() {
   const predictionsAnnouncementActive = usePredictionsAnnouncement();
+  const supportAnnouncementActive = useSupportAnnouncement();
   const [teams, setTeams] = useState([]);
   const [matches, setMatches] = useState([]);
   const [matchesLoading, setMatchesLoading] = useState(true);
@@ -333,6 +337,14 @@ export default function Home() {
             </Link>
             <Link className="home-nav-link" to="/history">
               Competition History
+            </Link>
+            <Link
+              className={`home-nav-link${supportAnnouncementActive ? ' home-nav-link--announced' : ''}`}
+              to="/support"
+              onClick={recordSupportClick}
+            >
+              Support
+              {supportAnnouncementActive && <span className="new-feature-badge" aria-hidden="true">NEW</span>}
             </Link>
             <Link
               className={`home-nav-link${predictionsAnnouncementActive ? ' home-nav-link--announced' : ''}`}

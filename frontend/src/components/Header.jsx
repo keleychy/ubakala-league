@@ -113,6 +113,14 @@ export default function Header() {
             </div>
           )}
 
+          {!username && (
+            <div className="header-guest-actions">
+              <Link to="/admin" className="admin-button">
+                Admin Login
+              </Link>
+            </div>
+          )}
+
           <button
             type="button"
             className="hamburger-btn"
@@ -183,11 +191,6 @@ export default function Header() {
               {predictionsAnnouncementActive && <span className="new-feature-badge" aria-hidden="true">NEW</span>}
             </NavLink>
 
-            {!username && (
-              <Link to="/admin" className="admin-button">
-                Admin
-              </Link>
-            )}
           </div>
 
         </nav>

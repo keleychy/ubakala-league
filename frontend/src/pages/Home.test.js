@@ -129,6 +129,8 @@ test('homepage provides direct links to Predictions and Rules & Regulations', as
     .toHaveAttribute('href', '/sponsors');
   expect(await screen.findByRole('link', { name: 'Predictions' }))
     .toHaveAttribute('href', '/predictions');
+  const supportNavLink = screen.getByRole('link', { name: 'Support' });
+  expect(supportNavLink).toHaveAttribute('href', '/support');
   expect(screen.getByRole('link', { name: 'Rules & Regulations' }))
     .toHaveAttribute('href', '/rules-regulations');
 });
@@ -186,6 +188,18 @@ test('homepage highlights Predictions as new during its one-week announcement', 
 
   const predictionsLink = screen.getByRole('link', { name: 'Predictions' });
   expect(predictionsLink.querySelector('.new-feature-badge')).toHaveTextContent('NEW');
+
+  unmount();
+  jest.useRealTimers();
+});
+
+test('homepage highlights Support as new during its two-week announcement', () => {
+  jest.useFakeTimers();
+  jest.setSystemTime(new Date('2026-11-23T08:55:25.000+01:00'));
+  const { unmount } = renderHomeWithStatus('FINISHED');
+
+  const supportLink = screen.getByRole('link', { name: 'Support' });
+  expect(supportLink.querySelector('.new-feature-badge')).toHaveTextContent('NEW');
 
   unmount();
   jest.useRealTimers();

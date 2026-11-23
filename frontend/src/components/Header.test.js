@@ -61,6 +61,27 @@ test('marks the current page in both desktop and mobile navigation', () => {
   activeLinks.forEach(link => expect(link).toHaveAttribute('aria-current', 'page'));
 });
 
+test('places the public Admin Login shortcut in the header top row', () => {
+  onAuthStateChanged.mockImplementation((auth, callback) => {
+    callback(null);
+    return jest.fn();
+  });
+
+  const { container } = render(
+    <MemoryRouter>
+      <Header />
+    </MemoryRouter>
+  );
+
+  const adminLinks = screen.getAllByRole('link', { name: 'Admin Login' });
+  expect(adminLinks).toHaveLength(2);
+  expect(container.querySelector('.header-top-row')).toContainElement(adminLinks[0]);
+  expect(container.querySelector('.nav-desktop')).not.toContainElement(adminLinks[0]);
+  expect(container.querySelector('.nav-desktop .nav-primary-links')).toContainElement(
+    screen.getAllByRole('link', { name: 'Standings' })[0]
+  );
+});
+
 test('provides a Support link in desktop and mobile main navigation', () => {
   onAuthStateChanged.mockImplementation((auth, callback) => {
     callback(null);
