@@ -107,8 +107,8 @@
 .home-sponsors-portrait {
   position: relative;
   display: grid;
-  width: clamp(104px, 17vw, 144px);
-  height: clamp(104px, 17vw, 144px);
+  width: clamp(132px, 19vw, 170px);
+  height: clamp(132px, 19vw, 170px);
   flex: 0 0 auto;
   place-items: center;
   overflow: hidden;
@@ -328,8 +328,8 @@
   }
 
   .home-sponsors-portrait {
-    width: 94px;
-    height: 94px;
+    width: 116px;
+    height: 116px;
   }
 
   .home-sponsors-copy {
