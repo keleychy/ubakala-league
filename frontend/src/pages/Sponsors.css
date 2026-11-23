@@ -150,6 +150,45 @@
   overflow-wrap: anywhere;
 }
 
+.sponsors-archive {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 24px;
+  padding: 21px 24px;
+  border: 1px solid #dfe6df;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.sponsors-archive-mark {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  flex: 0 0 48px;
+  place-items: center;
+  border: 1px solid #c39a45;
+  border-radius: 50%;
+  background: #173b2d;
+  color: #f0d99c;
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: .5px;
+}
+
+.sponsors-archive h2 {
+  margin: 0;
+  color: #17352a;
+  font-size: 17px;
+}
+
+.sponsors-archive p {
+  margin: 5px 0 0;
+  color: #718077;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
 @media (max-width: 900px) {
   .sponsors-directory {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -180,6 +219,12 @@
   .sponsors-directory-card {
     min-height: 0;
     padding: 22px 18px;
+  }
+
+  .sponsors-archive {
+    align-items: flex-start;
+    margin-top: 17px;
+    padding: 17px;
   }
 
   .sponsors-directory-portrait {

@@ -163,6 +163,10 @@ export default function Header() {
               History
             </NavLink>
 
+            <NavLink to="/sponsors" className="nav-link">
+              Sponsors
+            </NavLink>
+
             <NavLink to="/support" className="nav-link">
               Support
             </NavLink>
@@ -221,6 +225,10 @@ export default function Header() {
 
           <NavLink to="/history" className="nav-link" onClick={closeMenu}>
             History
+          </NavLink>
+
+          <NavLink to="/sponsors" className="nav-link" onClick={closeMenu}>
+            Sponsors
           </NavLink>
 
           <NavLink to="/support" className="nav-link" onClick={closeMenu}>

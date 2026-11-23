@@ -25,6 +25,7 @@ test('footer quick links point to the matching application routes', () => {
   expect(screen.getByRole('link', { name: 'Home' })).toHaveAttribute('href', '/');
   expect(screen.getByRole('link', { name: 'Results' })).toHaveAttribute('href', '/results');
   expect(screen.getByRole('link', { name: 'Standings' })).toHaveAttribute('href', '/standings');
+  expect(screen.getByRole('link', { name: 'Our Sponsors' })).toHaveAttribute('href', '/sponsors');
   expect(screen.getByRole('link', { name: 'Admin' })).toHaveAttribute('href', '/admin');
   expect(screen.getByRole('link', { name: 'Rules & Regulations' }))
     .toHaveAttribute('href', '/rules-regulations');

@@ -78,6 +78,23 @@ test('provides a Support link in desktop and mobile main navigation', () => {
   supportLinks.forEach(link => expect(link).toHaveAttribute('href', '/support'));
 });
 
+test('provides an Our Sponsors link in desktop and mobile navigation', () => {
+  onAuthStateChanged.mockImplementation((auth, callback) => {
+    callback(null);
+    return jest.fn();
+  });
+
+  render(
+    <MemoryRouter>
+      <Header />
+    </MemoryRouter>
+  );
+
+  const sponsorLinks = screen.getAllByRole('link', { name: 'Sponsors' });
+  expect(sponsorLinks).toHaveLength(2);
+  sponsorLinks.forEach(link => expect(link).toHaveAttribute('href', '/sponsors'));
+});
+
 test('shows the Predictions announcement in both menus and removes it after a week', () => {
   jest.useFakeTimers();
   jest.setSystemTime(new Date('2026-11-12T13:18:19.960+01:00'));

@@ -12,6 +12,8 @@ test('shows every sponsor with their supplied category and portrait or placehold
 
   expect(screen.getByRole('heading', { name: 'Our Sponsors' }))
     .toBeInTheDocument();
+  expect(screen.getByText('2026 Ubakala Unity Cup')).toBeInTheDocument();
+  expect(screen.getByText(/heartfelt thanks/i)).toBeInTheDocument();
 
   const expectedSponsors = [
     ['RTD. Commander Macdonald Ubah', 'Senior Boys', true],
@@ -33,4 +35,8 @@ test('shows every sponsor with their supplied category and portrait or placehold
 
   expect(screen.getByRole('link', { name: /Back to homepage/ }))
     .toHaveAttribute('href', '/');
+  expect(screen.getByRole('heading', { name: 'Past Sponsors' }))
+    .toBeInTheDocument();
+  expect(screen.getByText(/Past-season sponsor details will be added here/))
+    .toBeInTheDocument();
 });

@@ -1,3 +1,5 @@
+export const SPONSOR_SEASON = '2026 Ubakala Unity Cup';
+
 export const SPONSORS = [
   {
     name: 'RTD. Commander Macdonald Ubah',

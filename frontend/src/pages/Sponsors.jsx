@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import SponsorPortrait from '../components/SponsorPortrait';
-import { SPONSORS } from '../data/sponsors';
+import { SPONSORS, SPONSOR_SEASON } from '../data/sponsors';
 import './Sponsors.css';
 
 export default function Sponsors() {
@@ -13,11 +13,11 @@ export default function Sponsors() {
         </Link>
 
         <header className="sponsors-page-header">
-          <p className="sponsors-page-eyebrow">UBAKALA UNITY CUP</p>
+          <p className="sponsors-page-eyebrow">{SPONSOR_SEASON}</p>
           <h1>Our Sponsors</h1>
           <p>
-            With sincere gratitude, we recognize the people supporting our
-            competition and its categories.
+            We extend our heartfelt thanks to these sponsors for supporting
+            the competition and its categories.
           </p>
         </header>
 
@@ -36,6 +36,16 @@ export default function Sponsors() {
               </div>
             </article>
           ))}
+        </section>
+
+        <section className="sponsors-archive" aria-labelledby="sponsors-archive-title">
+          <div className="sponsors-archive-mark" aria-hidden="true">UUC</div>
+          <div>
+            <h2 id="sponsors-archive-title">Past Sponsors</h2>
+            <p>
+              Past-season sponsor details will be added here as they are confirmed.
+            </p>
+          </div>
         </section>
       </div>
     </main>
