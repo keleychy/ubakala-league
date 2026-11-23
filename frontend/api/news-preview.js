@@ -34,24 +34,37 @@ function getArticleDescription(article) {
   return `${plainText.slice(0, 197).trim()}...`;
 }
 
+function getArticlePreviewImage(article) {
+  const imageUrls = [
+    article.image_url,
+    ...(Array.isArray(article.inline_images)
+      ? article.inline_images.map(image => image?.url)
+      : [])
+  ];
+
+  for (const candidate of imageUrls) {
+    try {
+      const imageUrl = new URL(candidate);
+      if (
+        (imageUrl.protocol === 'https:' || imageUrl.protocol === 'http:') &&
+        imageUrl.hostname &&
+        !imageUrl.username &&
+        !imageUrl.password
+      ) {
+        return imageUrl.href;
+      }
+    } catch (error) {
+      // Try the next article image when a URL is absent or invalid.
+    }
+  }
+
+  return `${SITE_URL}/preview.jpg`;
+}
+
 function renderArticleMetadata(html, article, articleUrl) {
   const title = String(article.title || 'Ubakala Football League').trim();
   const description = getArticleDescription(article);
-  let image = `${SITE_URL}/preview.jpg`;
-
-  try {
-    const imageUrl = new URL(article.image_url);
-    if (
-      (imageUrl.protocol === 'https:' || imageUrl.protocol === 'http:') &&
-      imageUrl.hostname &&
-      !imageUrl.username &&
-      !imageUrl.password
-    ) {
-      image = imageUrl.href;
-    }
-  } catch (error) {
-    // Keep the site preview image when an article has no usable image URL.
-  }
+  const image = getArticlePreviewImage(article);
 
   let result = html
     .replace(
@@ -141,3 +154,4 @@ module.exports = async function handler(request, response) {
 };
 
 module.exports.renderArticleMetadata = renderArticleMetadata;
+module.exports.getArticlePreviewImage = getArticlePreviewImage;

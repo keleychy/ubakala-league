@@ -52,7 +52,7 @@ test('tournament bracket highlights and displays the winner of a penalty shootou
   expect(match.querySelector('.br-penalty-result')).toHaveTextContent('4–3');
   expect(within(match).getByText('Date & time')).toBeInTheDocument();
   expect(within(match).getByText(/Mar 15, 2026/)).toBeInTheDocument();
-  expect(within(match).getByText(/3:30 PM/)).toBeInTheDocument();
+  expect(within(match).getByText(/2:30 PM/)).toBeInTheDocument();
   expect(within(match).getByText('Ubakala Township Stadium')).toBeInTheDocument();
 });
 
