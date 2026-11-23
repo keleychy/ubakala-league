@@ -9,6 +9,7 @@ import {
   getMatchStatusCode,
   isFinalMatch
 } from '../utils/competition';
+import { normalizeTeamProfileArchive } from '../utils/teamProfileArchive';
 import './LeaguePolish.css';
 import './TeamProfile.css';
 
@@ -80,7 +81,7 @@ function sortByMatchDate(matches, direction) {
 
 function getTeamSeasonRecord(matches, teamId) {
   return matches.reduce((record, match) => {
-    if (getMatchStatusCode(match) !== 'FINISHED') return record;
+    if (!['FINISHED', 'AWARDED'].includes(getMatchStatusCode(match))) return record;
     const homeScore = Number(match.home_score);
     const awayScore = Number(match.away_score);
     if (
@@ -196,16 +197,24 @@ export default function TeamProfile() {
     setLoading(true);
     setError('');
     try {
-      const [teams, matches, seasons, groupsWithTeams] = await Promise.all([
+      const [teams, matches, seasons, groupsWithTeams, archiveResponse] = await Promise.all([
         api.getTeams(),
         api.getMatches(),
         api.getSeasons(),
-        api.getGroupsWithTeams()
+        api.getGroupsWithTeams(),
+        fetch('/archive/2025.json')
       ]);
+      if (!archiveResponse.ok) {
+        throw new Error(`Could not load the 2025 team archive (${archiveResponse.status}).`);
+      }
+      const archive = normalizeTeamProfileArchive(
+        await archiveResponse.json(),
+        teams
+      );
       setData({
         teams,
-        matches,
-        seasons,
+        matches: [...matches, ...archive.matches],
+        seasons: [...seasons, ...archive.seasons],
         groupsWithTeams
       });
     } catch (loadError) {
@@ -385,7 +394,7 @@ export default function TeamProfile() {
             <div>
               <h2>Season record</h2>
               <p className="team-profile-record-note">
-                Counts completed matches with a recorded score.
+                Counts completed or awarded matches with a recorded score.
               </p>
             </div>
             <label className="team-profile-season-select">

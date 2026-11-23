@@ -5,6 +5,8 @@ import { api } from '../api/api';
 import TeamProfile from './TeamProfile';
 import { getLagosDateKey, shiftDateKey } from '../utils/competition';
 
+const originalFetch = global.fetch;
+
 jest.mock('../api/api', () => ({
   api: {
     getTeams: jest.fn(),
@@ -16,9 +18,14 @@ jest.mock('../api/api', () => ({
 
 beforeEach(() => {
   jest.clearAllMocks();
+  global.fetch = jest.fn().mockResolvedValue({
+    ok: true,
+    json: async () => ({ season: 2025, categories: [] })
+  });
   api.getTeams.mockResolvedValue([{
     id: 'team-1',
     name: 'Avodim United',
+    short_name: 'Avodim',
     logo: null,
     profile_description: 'A team from the community.',
     profile_history: 'Founded by local football supporters.',
@@ -35,6 +42,10 @@ beforeEach(() => {
     group: { id: 'group-a', season_id: 'season-1', name: 'Group A' },
     teams: [{ id: 'team-1', name: 'Avodim United' }]
   }]);
+});
+
+afterAll(() => {
+  global.fetch = originalFetch;
 });
 
 test('shows editable team information, category membership, upcoming fixtures and recent results', async () => {
@@ -139,7 +150,7 @@ test('shows confirmed championships from completed finals and excludes unresolve
   expect(achievements.querySelectorAll('li')).toHaveLength(1);
 });
 
-test('shows archived 2025 season records without making extra API requests', async () => {
+test('shows archived 2025 season records from the static archive without extra Apps Script requests', async () => {
   api.getSeasons.mockResolvedValue([
     {
       id: 'season-2026',
@@ -156,35 +167,54 @@ test('shows archived 2025 season records without making extra API requests', asy
       archived: true
     }
   ]);
-  api.getMatches.mockResolvedValue([
-    {
-      id: '2025-win',
-      season_id: 'season-2025',
-      status: 'FINISHED',
-      home_team_id: 'team-1',
-      away_team_id: 'team-2',
-      home_score: 2,
-      away_score: 1
-    },
-    {
-      id: '2025-draw',
-      season_id: 'season-2025',
-      status: 'FINISHED',
-      home_team_id: 'team-2',
-      away_team_id: 'team-1',
-      home_score: 0,
-      away_score: 0
-    },
-    {
-      id: '2026-win',
-      season_id: 'season-2026',
-      status: 'FINISHED',
-      home_team_id: 'team-1',
-      away_team_id: 'team-2',
-      home_score: 3,
-      away_score: 0
-    }
-  ]);
+  api.getMatches.mockResolvedValue([]);
+  global.fetch.mockResolvedValue({
+    ok: true,
+    json: async () => ({
+      season: 2025,
+      categories: [{
+        id: 'senior-boys',
+        name: 'Senior Boys',
+        season_name: '2025 Senior Boys Cup',
+        matches: [
+          {
+            stage: 'Group Stage',
+            home_team: 'Avodim',
+            away_team: 'Other FC',
+            home_score: 2,
+            away_score: 1,
+            date: '2025-11-01T14:00:00Z',
+            void: false,
+            awarded: false
+          },
+          {
+            stage: 'Group Stage',
+            home_team: 'Other FC',
+            away_team: 'Avodim',
+            home_score: 0,
+            away_score: 0,
+            date: '2025-11-02T14:00:00Z',
+            void: false,
+            awarded: false
+          }
+        ]
+      }, {
+        id: 'junior-boys',
+        name: 'Junior Boys',
+        season_name: '2025 Junior Boys Cup',
+        matches: [{
+          stage: 'Final',
+          home_team: 'Avodim',
+          away_team: 'Other FC',
+          home_score: 1,
+          away_score: 0,
+          date: '2025-11-03T14:00:00Z',
+          void: false,
+          awarded: false
+        }]
+      }]
+    })
+  });
 
   render(
     <MemoryRouter initialEntries={['/teams/team-1']}>
@@ -197,10 +227,12 @@ test('shows archived 2025 season records without making extra API requests', asy
   const seasonSelector = await screen.findByRole('combobox', {
     name: 'Season record season'
   });
-  fireEvent.change(seasonSelector, { target: { value: 'season-2025' } });
+  fireEvent.change(seasonSelector, {
+    target: { value: 'archive-2025-senior-boys' }
+  });
 
   expect(screen.getByRole('option', {
-    name: 'Senior Boys 2025 (Archived)'
+    name: '2025 Senior Boys Cup (Archived)'
   })).toBeInTheDocument();
   expect(screen.getByText('Played').parentElement).toHaveTextContent('2');
   expect(screen.getByText('Wins').parentElement).toHaveTextContent('1');
@@ -208,8 +240,15 @@ test('shows archived 2025 season records without making extra API requests', asy
   expect(screen.getByText('Losses').parentElement).toHaveTextContent('0');
   expect(screen.getByText('Goals for').parentElement).toHaveTextContent('2');
   expect(screen.getByText('Goals against').parentElement).toHaveTextContent('1');
+  const archivedChampionship = screen.getByRole('region', {
+    name: 'Recorded championship results'
+  });
+  expect(archivedChampionship).toHaveTextContent('2025 Junior Boys Cup');
+  expect(archivedChampionship).toHaveTextContent('Final score: 1–0');
   expect(api.getTeams).toHaveBeenCalledTimes(1);
   expect(api.getMatches).toHaveBeenCalledTimes(1);
   expect(api.getSeasons).toHaveBeenCalledTimes(1);
   expect(api.getGroupsWithTeams).toHaveBeenCalledTimes(1);
+  expect(global.fetch).toHaveBeenCalledTimes(1);
+  expect(global.fetch).toHaveBeenCalledWith('/archive/2025.json');
 });
