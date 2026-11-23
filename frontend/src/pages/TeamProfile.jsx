@@ -6,7 +6,8 @@ import {
   getCompetitionCategoryLabel,
   getLagosDateKey,
   getMatchDateKey,
-  getMatchStatusCode
+  getMatchStatusCode,
+  isFinalMatch
 } from '../utils/competition';
 import './LeaguePolish.css';
 import './TeamProfile.css';
@@ -26,6 +27,43 @@ function getTeamMatches(matches, teamId) {
   return matches.filter(match =>
     getTeamId(match, 'home') === teamId || getTeamId(match, 'away') === teamId
   );
+}
+
+function getConfirmedChampion(match) {
+  const status = getMatchStatusCode(match);
+  if (!isFinalMatch(match) || !['FINISHED', 'AWARDED'].includes(status)) {
+    return null;
+  }
+
+  if (status === 'AWARDED') {
+    const winnerId = String(match.awarded_winner_team_id || '');
+    if (winnerId && winnerId === getTeamId(match, 'home')) return 'home';
+    if (winnerId && winnerId === getTeamId(match, 'away')) return 'away';
+    return null;
+  }
+
+  const homeScore = Number(match.home_score);
+  const awayScore = Number(match.away_score);
+  if (
+    match.home_score === null || match.home_score === undefined || match.home_score === '' ||
+    match.away_score === null || match.away_score === undefined || match.away_score === '' ||
+    !Number.isSafeInteger(homeScore) || !Number.isSafeInteger(awayScore)
+  ) {
+    return null;
+  }
+  if (homeScore > awayScore) return 'home';
+  if (awayScore > homeScore) return 'away';
+
+  const homePenalties = Number(match.home_penalties ?? match.penalty_home);
+  const awayPenalties = Number(match.away_penalties ?? match.penalty_away);
+  if (
+    Number.isSafeInteger(homePenalties) &&
+    Number.isSafeInteger(awayPenalties) &&
+    homePenalties !== awayPenalties
+  ) {
+    return homePenalties > awayPenalties ? 'home' : 'away';
+  }
+  return null;
 }
 
 function sortByMatchDate(matches, direction) {
@@ -170,6 +208,29 @@ export default function TeamProfile() {
     () => new Map((data?.seasons || []).map(season => [String(season.id), season])),
     [data]
   );
+  const confirmedAchievements = useMemo(() => {
+    if (!team || !data) return [];
+    return (data.matches || []).flatMap(match => {
+      const winnerSide = getConfirmedChampion(match);
+      if (!winnerSide || getTeamId(match, winnerSide) !== team.id) return [];
+
+      const seasonId = match.season_id ||
+        (typeof match.season === 'object' ? match.season?.id : match.season);
+      const season = seasonsById.get(String(seasonId));
+      const category = match.season?.category ||
+        match.category ||
+        season?.category;
+      return [{
+        id: match.id,
+        season: season?.name || match.season?.name || 'Recorded season',
+        category: category ? getCompetitionCategoryLabel(category) : null,
+        date: getMatchDateKey(match)
+      }];
+    }).sort((first, second) =>
+      (second.date || '').localeCompare(first.date || '') ||
+      first.season.localeCompare(second.season)
+    );
+  }, [data, seasonsById, team]);
 
   if (loading) {
     return <div className="league-page-empty" role="status">Loading team profile…</div>;
@@ -238,6 +299,25 @@ export default function TeamProfile() {
                 <p className="team-profile-copy">{team.profile_history}</p>
               </div>
             )}
+          </section>
+        )}
+
+        {confirmedAchievements.length > 0 && (
+          <section className="team-profile-panel" aria-label="Confirmed season achievements">
+            <h2>Confirmed season achievements</h2>
+            <ul className="team-profile-achievements">
+              {confirmedAchievements.map(achievement => (
+                <li key={achievement.id}>
+                  <span className="team-profile-achievement-mark" aria-hidden="true">★</span>
+                  <span>
+                    <strong>Champions</strong>
+                    <span className="team-profile-achievement-details">
+                      {[achievement.category, achievement.season].filter(Boolean).join(' · ')}
+                    </span>
+                  </span>
+                </li>
+              ))}
+            </ul>
           </section>
         )}
 

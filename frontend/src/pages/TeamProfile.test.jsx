@@ -86,3 +86,50 @@ test('shows editable team information, category membership, upcoming fixtures an
   expect(screen.getByRole('region', { name: 'Recent results' }))
     .toHaveTextContent('Senior Boys');
 });
+
+test('shows confirmed championships from completed finals and excludes unresolved finals', async () => {
+  api.getMatches.mockResolvedValue([
+    {
+      id: 'final-won',
+      season_id: 'season-1',
+      stage: 'FINAL',
+      status: 'FINISHED',
+      match_date: '2026-03-15',
+      home_team_id: 'team-1',
+      home_team: { id: 'team-1', name: 'Avodim United' },
+      away_team_id: 'team-2',
+      away_team: { id: 'team-2', name: 'Other FC' },
+      home_score: 1,
+      away_score: 1,
+      home_penalties: 5,
+      away_penalties: 4
+    },
+    {
+      id: 'final-unresolved',
+      season_id: 'season-1',
+      stage: 'FINAL',
+      status: 'LIVE',
+      home_team_id: 'team-1',
+      home_team: { id: 'team-1', name: 'Avodim United' },
+      away_team_id: 'team-2',
+      away_team: { id: 'team-2', name: 'Other FC' },
+      home_score: 0,
+      away_score: 0
+    }
+  ]);
+
+  render(
+    <MemoryRouter initialEntries={['/teams/team-1']}>
+      <Routes>
+        <Route path="/teams/:id" element={<TeamProfile />} />
+      </Routes>
+    </MemoryRouter>
+  );
+
+  const achievements = await screen.findByRole('region', {
+    name: 'Confirmed season achievements'
+  });
+  expect(achievements).toHaveTextContent('Champions');
+  expect(achievements).toHaveTextContent('Senior Boys · Senior Boys 2026');
+  expect(achievements.querySelectorAll('li')).toHaveLength(1);
+});

@@ -323,6 +323,57 @@
   font-weight: 700;
 }
 
+.team-profile-schema-status,
+.team-profile-completion,
+.team-profile-incomplete-notice {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid #d5e5d7;
+  border-radius: 9px;
+  background: #f2f8f2;
+  color: #285437;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.team-profile-schema-status.is-error,
+.team-profile-incomplete-notice {
+  border-color: #ebd6a5;
+  background: #fff9eb;
+  color: #74591c;
+}
+
+.team-profile-schema-status p {
+  margin: 0;
+}
+
+.team-profile-completion {
+  grid-column: 1 / -1;
+}
+
+.team-profile-completion span {
+  color: #627568;
+}
+
+.team-profile-admin-image-preview {
+  display: grid;
+  width: 120px;
+  height: 120px;
+  place-items: center;
+  overflow: hidden;
+  border: 2px solid #d6a83d;
+  border-radius: 50%;
+  background: #fff8e6;
+}
+
+.team-profile-admin-image-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
 .history-season-list {
   display: flex;
   flex-direction: column;

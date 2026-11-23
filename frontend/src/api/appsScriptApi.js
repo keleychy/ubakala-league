@@ -30,7 +30,7 @@ function normalizeBoolean(value, fieldName) {
 }
 
 function normalizeTeam(team) {
-  return {
+  const normalized = {
     id: requiredId(team.id, 'Teams.id'),
     name: normalizeText(team.name) || '',
     short_name: normalizeText(team.short_name),
@@ -40,6 +40,17 @@ function normalizeTeam(team) {
     profile_history: normalizeText(team.profile_history),
     home_community: normalizeText(team.home_community)
   };
+  if (team.team_profile_schema && typeof team.team_profile_schema === 'object') {
+    normalized.team_profile_schema = {
+      missing: Array.isArray(team.team_profile_schema.missing)
+        ? team.team_profile_schema.missing.map(String)
+        : [],
+      duplicates: Array.isArray(team.team_profile_schema.duplicates)
+        ? team.team_profile_schema.duplicates.map(String)
+        : []
+    };
+  }
+  return normalized;
 }
 
 function normalizeSeason(season) {
@@ -261,8 +272,22 @@ export function createAppsScriptApi(baseUrl, fetchImpl = fetch) {
 
   return {
     invalidateGroupsWithTeamsCache,
-    async getTeams() {
-      return requireArray(await getAction('teams'), 'teams').map(normalizeTeam);
+    async getTeams(options = {}) {
+      const includeProfileSchema = options.includeProfileSchema === true;
+      const response = await getAction('teams', includeProfileSchema
+        ? { profile_schema: '1' }
+        : {});
+      const teams = Array.isArray(response)
+        ? requireArray(response, 'teams')
+        : requireArray(response?.teams, 'teams');
+      const profileSchema = !Array.isArray(response)
+        ? response?.profile_schema
+        : null;
+      return teams.map((team, index) => normalizeTeam(
+        includeProfileSchema && index === 0 && profileSchema
+          ? { ...team, team_profile_schema: profileSchema }
+          : team
+      ));
     },
     async getSeasons(category) {
       const seasons = requireArray(

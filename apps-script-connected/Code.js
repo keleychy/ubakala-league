@@ -104,8 +104,12 @@ function getAdminErrorMessage_(error) {
   if (/Matches sheet must have one/i.test(message)) {
     return 'The Matches sheet is missing a required column or has duplicate column headers. Check its header row and run testDatabaseStructure() in Apps Script.';
   }
-  if (/Teams sheet must have one (profile_description|profile_history|home_community) column/i.test(message)) {
-    return 'The Teams sheet is missing a team-profile column or has duplicate headers. Add profile_description, profile_history, and home_community to row 1, then retry.';
+  const teamProfileHeaderError =
+    /Teams sheet must have one (profile_description|profile_history|home_community) column/i.exec(message);
+  if (teamProfileHeaderError) {
+    return 'The Teams sheet must contain exactly one "' +
+      teamProfileHeaderError[1] +
+      '" header in row 1. Add it if missing or remove/rename the duplicate, then retry.';
   }
   if (/Record not found/i.test(message)) {
     return 'This match could not be found in the spreadsheet. Refresh the Results Editor and try again.';
@@ -467,9 +471,24 @@ function handleApiGet(parameters) {
   const seasonId = optionalId_(parameters.season_id || parameters.season);
 
   if (action === 'teams') {
+    const records = getSheetRecords('Teams');
+    const teams = records.map(normalizeTeam_);
+    if (parameters.profile_schema === '1') {
+      const schema = getTeamProfileSchema_();
+      if (teams.length) {
+        teams[0].team_profile_schema = schema;
+      }
+      return {
+        success: true,
+        data: {
+          teams: teams,
+          profile_schema: schema
+        }
+      };
+    }
     return {
       success: true,
-      data: getSheetRecords('Teams').map(normalizeTeam_)
+      data: teams
     };
   }
 
@@ -1981,6 +2000,13 @@ function updateTeamProfile_(body, user) {
       120
     )
   };
+  if (body.logo !== undefined) {
+    const logo = optionalText_(body.logo) || '';
+    if (logo && !isValidHttpImageUrl_(logo)) {
+      throw apiError_('Team logo must be a valid HTTP or HTTPS image URL');
+    }
+    updates.logo = logo;
+  }
   const updated = updateRecordFieldsAndAudit_(
     'Teams',
     teamId,
@@ -2001,6 +2027,26 @@ function teamProfileText_(value, fieldName, maxLength) {
     throw apiError_(fieldName + ' must be ' + maxLength + ' characters or fewer');
   }
   return text;
+}
+
+function getTeamProfileSchema_() {
+  const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName('Teams');
+  if (!sheet) {
+    throw new Error('Teams sheet not found');
+  }
+  const headers = getSheetHeaders_(sheet);
+  const requiredHeaders = [
+    'profile_description',
+    'profile_history',
+    'home_community'
+  ];
+  return {
+    missing: requiredHeaders.filter(header => headers.indexOf(header) < 0),
+    duplicates: requiredHeaders.filter(
+      header => headers.indexOf(header) >= 0 &&
+        headers.lastIndexOf(header) !== headers.indexOf(header)
+    )
+  };
 }
 
 function createTeamAssignment_(seasonId, groupId, teamId) {

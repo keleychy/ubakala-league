@@ -37,14 +37,16 @@ describe('Apps Script team profile updates', () => {
       team_id: 'team-1',
       profile_description: '  A community team  ',
       profile_history: '',
-      home_community: ' Ubakala '
+      home_community: ' Ubakala ',
+      logo: 'https://example.com/team.jpg'
     }, { role: 'admin', email: 'admin@example.com' });
 
     expect(updated).toMatchObject({
       id: 'team-1',
       profile_description: 'A community team',
       profile_history: null,
-      home_community: 'Ubakala'
+      home_community: 'Ubakala',
+      logo: 'https://example.com/team.jpg'
     });
     expect(context.updateRecordFieldsAndAudit_).toHaveBeenCalledWith(
       'Teams',
@@ -52,7 +54,8 @@ describe('Apps Script team profile updates', () => {
       {
         profile_description: 'A community team',
         profile_history: '',
-        home_community: 'Ubakala'
+        home_community: 'Ubakala',
+        logo: 'https://example.com/team.jpg'
       },
       { role: 'admin', email: 'admin@example.com' },
       'team.profile_updated',
@@ -87,6 +90,42 @@ describe('Apps Script team profile updates', () => {
     expect(context.updateRecordFieldsAndAudit_).not.toHaveBeenCalled();
     expect(context.getAdminErrorMessage_(
       new Error('Teams sheet must have one home_community column')
-    )).toMatch(/Add profile_description, profile_history, and home_community/);
+    )).toMatch(/exactly one "home_community" header/);
+  });
+
+  test('detects missing and duplicate team-profile headers from the existing Teams tab', () => {
+    const context = createAppsScriptContext();
+    const headers = [
+      'id', 'name', 'profile_description', 'home_community', 'home_community'
+    ];
+    const sheet = {
+      getName: () => 'Teams',
+      getLastColumn: () => headers.length,
+      getRange: () => ({
+        getDisplayValues: () => [headers]
+      })
+    };
+    context.SpreadsheetApp = {
+      openById: () => ({ getSheetByName: () => sheet })
+    };
+
+    expect(context.getTeamProfileSchema_()).toEqual({
+      missing: ['profile_history'],
+      duplicates: ['home_community']
+    });
+  });
+
+  test('rejects invalid image URLs without attempting a team profile update', () => {
+    const context = createAppsScriptContext();
+    context.updateRecordFieldsAndAudit_ = jest.fn();
+
+    expect(() => context.handleAdminPost_({
+      action: 'admin.teams.profile.update',
+      team_id: 'team-1',
+      logo: 'javascript:alert(1)'
+    }, { role: 'admin' })).toThrow(
+      'Team logo must be a valid HTTP or HTTPS image URL'
+    );
+    expect(context.updateRecordFieldsAndAudit_).not.toHaveBeenCalled();
   });
 });

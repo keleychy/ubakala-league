@@ -74,6 +74,44 @@
   border-top: 1px solid var(--league-border);
 }
 
+.team-profile-achievements {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.team-profile-achievements li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid #ead9a9;
+  border-radius: 9px;
+  background: #fffaf0;
+  color: #314960;
+}
+
+.team-profile-achievement-mark {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  place-items: center;
+  border-radius: 50%;
+  background: #f5e6bf;
+  color: #89651e;
+  font-size: 19px;
+}
+
+.team-profile-achievement-details {
+  display: block;
+  margin-top: 2px;
+  color: var(--league-muted);
+  font-size: 12px;
+}
+
 .team-profile-memberships {
   display: flex;
   flex-wrap: wrap;

@@ -62,9 +62,9 @@ export async function fetchJSON(path) {
 }
 
 export const api = {
-  getTeams: () => {
+  getTeams: (options) => {
     const appsScriptApi = getAppsScriptApi();
-    return appsScriptApi ? appsScriptApi.getTeams() : fetchJSON('/teams/');
+    return appsScriptApi ? appsScriptApi.getTeams(options) : fetchJSON('/teams/');
   },
   getMatches: (params) => {
     const appsScriptApi = getAppsScriptApi();

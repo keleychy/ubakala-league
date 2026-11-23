@@ -78,6 +78,33 @@ describe('Apps Script read API', () => {
     expect(matchesUrl.searchParams.get('season_id')).toBe('UFC26-INTERMEDIATE');
   });
 
+  test('requests team profile schema with the existing teams read and normalizes its status', async () => {
+    const fetchImpl = jest.fn().mockResolvedValue(response({
+      teams: [{
+        id: 'TEAM-1',
+        name: 'Avodim',
+        logo: '',
+        archived: false
+      }],
+      profile_schema: {
+        missing: ['profile_history'],
+        duplicates: ['home_community']
+      }
+    }));
+    const client = createAppsScriptApi(endpoint, fetchImpl);
+
+    await expect(client.getTeams({ includeProfileSchema: true })).resolves.toMatchObject([
+      {
+        id: 'TEAM-1',
+        team_profile_schema: {
+          missing: ['profile_history'],
+          duplicates: ['home_community']
+        }
+      }
+    ]);
+    expect(new URL(fetchImpl.mock.calls[0][0]).searchParams.get('profile_schema')).toBe('1');
+  });
+
   test('filters categories locally when the API returns every season', async () => {
     const fetchImpl = jest.fn().mockResolvedValue(response([
       { id: 'season-1', name: 'Junior', category: 'junior_boys' },

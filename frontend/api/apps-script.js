@@ -2,7 +2,7 @@ const DEFAULT_APPS_SCRIPT_API_URL =
   'https://script.google.com/macros/s/AKfycbxk8WnuSRTR40Av-IYppBzgZjAgQL75D4DkIeotwuxTFdEYzWYln5KBU2gfY0lybunv/exec';
 
 const READ_ACTIONS = {
-  teams: [],
+  teams: ['profile_schema'],
   seasons: ['category'],
   groups: ['season_id', 'season'],
   teamgroups: ['season_id', 'season'],

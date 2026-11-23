@@ -35,6 +35,19 @@ describe('Apps Script proxy Support click actions', () => {
     global.fetch = originalFetch;
   });
 
+  test('forwards profile schema preflight as an option on the existing teams read', async () => {
+    const response = createResponse();
+
+    await handler({
+      method: 'GET',
+      query: { action: 'teams', profile_schema: '1' }
+    }, response);
+
+    const forwardedUrl = new URL(global.fetch.mock.calls[0][0]);
+    expect(forwardedUrl.searchParams.get('action')).toBe('teams');
+    expect(forwardedUrl.searchParams.get('profile_schema')).toBe('1');
+  });
+
   test('allows public homepage Support click recording without visitor data', async () => {
     const response = createResponse();
 
