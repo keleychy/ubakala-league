@@ -6,6 +6,7 @@ import './Results.css';
 import './Home.css';
 import usePolling from '../utils/usePolling';
 import { usePredictionsAnnouncement } from '../utils/featureAnnouncements';
+import SponsorsShowcase from './SponsorsShowcase';
 import {
   formatMatchSchedule,
   getMatchPeriodLabel,
@@ -595,6 +596,8 @@ export default function Home() {
             </div>
           )}
         </section>
+
+        <SponsorsShowcase />
 
         <section className="home-section home-teams-section">
           <div className="home-section-heading">

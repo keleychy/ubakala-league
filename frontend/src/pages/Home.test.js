@@ -123,6 +123,8 @@ test('homepage shows the next three future fixtures in date and kickoff order wh
 test('homepage provides direct links to Predictions and Rules & Regulations', async () => {
   renderHomeWithStatus('FINISHED');
 
+  expect(screen.getByRole('heading', { name: 'OUR SPONSORS' }))
+    .toBeInTheDocument();
   expect(await screen.findByRole('link', { name: 'Predictions' }))
     .toHaveAttribute('href', '/predictions');
   expect(screen.getByRole('link', { name: 'Rules & Regulations' }))
