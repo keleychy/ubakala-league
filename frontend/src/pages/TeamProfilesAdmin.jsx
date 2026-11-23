@@ -16,6 +16,7 @@ export default function TeamProfilesAdmin() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  const [previewOpen, setPreviewOpen] = useState(false);
   const [loadAttempt, setLoadAttempt] = useState(0);
 
   const selectedTeam = useMemo(
@@ -125,6 +126,7 @@ export default function TeamProfilesAdmin() {
             <h1 className="league-page-title">Team Profiles</h1>
             <p className="league-page-subtitle">
               Edit public team information shared across the team&apos;s categories.
+              The badge, description, history, and home community are public.
             </p>
           </div>
         </header>
@@ -260,12 +262,64 @@ export default function TeamProfilesAdmin() {
               <button type="submit" disabled={saving || !selectedTeam}>
                 {saving ? 'Saving…' : 'Save team profile'}
               </button>
+              <button
+                type="button"
+                aria-expanded={previewOpen}
+                aria-controls="team-profile-draft-preview"
+                onClick={() => setPreviewOpen(open => !open)}
+              >
+                {previewOpen ? 'Hide draft preview' : 'Preview unsaved profile'}
+              </button>
               {selectedTeam && (
                 <Link to={`/teams/${encodeURIComponent(selectedTeam.id)}`}>
-                  Preview public profile
+                  Open saved public profile
                 </Link>
               )}
             </div>
+
+            {previewOpen && selectedTeam && (
+              <section
+                id="team-profile-draft-preview"
+                className="team-profile-draft-preview"
+                aria-label="Unsaved public profile preview"
+              >
+                <h2>Unsaved profile preview</h2>
+                <p>
+                  This preview uses your current edits. Save the form to publish them.
+                </p>
+                <div className="team-profile-draft-header">
+                  <div className="team-profile-draft-emblem" aria-hidden="true">
+                    {logo.trim() && !logoPreviewFailed
+                      ? (
+                        <img
+                          src={logo}
+                          alt=""
+                          onError={() => setLogoPreviewFailed(true)}
+                        />
+                      )
+                      : selectedTeam.name.split(/\s+/).filter(Boolean).slice(0, 2)
+                        .map(word => word.charAt(0)).join('').toUpperCase()}
+                  </div>
+                  <div>
+                    <span className="team-profile-draft-eyebrow">Team profile</span>
+                    <h3>{selectedTeam.name}</h3>
+                    {community.trim() && <p>{community}</p>}
+                  </div>
+                </div>
+                {description.trim() && (
+                  <div className="team-profile-draft-copy">
+                    <h3>About the team</h3>
+                    <p>{description}</p>
+                  </div>
+                )}
+                {history.trim() && (
+                  <div className="team-profile-draft-copy">
+                    <h3>History and achievements</h3>
+                    <p>{history}</p>
+                  </div>
+                )}
+              </section>
+            )}
           </form>
         )}
       </main>

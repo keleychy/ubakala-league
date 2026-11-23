@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { api } from '../api/api';
 import TeamProfile from './TeamProfile';
@@ -27,7 +27,9 @@ beforeEach(() => {
   api.getSeasons.mockResolvedValue([{
     id: 'season-1',
     name: 'Senior Boys 2026',
-    category: 'senior_boys'
+    category: 'senior_boys',
+    year: 2026,
+    archived: false
   }]);
   api.getGroupsWithTeams.mockResolvedValue([{
     group: { id: 'group-a', season_id: 'season-1', name: 'Group A' },
@@ -127,9 +129,87 @@ test('shows confirmed championships from completed finals and excludes unresolve
   );
 
   const achievements = await screen.findByRole('region', {
-    name: 'Confirmed season achievements'
+    name: 'Recorded championship results'
   });
-  expect(achievements).toHaveTextContent('Champions');
+  expect(achievements).toHaveTextContent('Recorded final winner');
+  expect(achievements).toHaveTextContent('Final score: 1–1; penalties 5–4');
   expect(achievements).toHaveTextContent('Senior Boys · Senior Boys 2026');
+  expect(screen.getByRole('link', { name: /Recorded final winner/ }))
+    .toHaveAttribute('href', '/results?matchId=final-won');
   expect(achievements.querySelectorAll('li')).toHaveLength(1);
+});
+
+test('shows archived 2025 season records without making extra API requests', async () => {
+  api.getSeasons.mockResolvedValue([
+    {
+      id: 'season-2026',
+      name: 'Senior Boys 2026',
+      category: 'senior_boys',
+      year: 2026,
+      archived: false
+    },
+    {
+      id: 'season-2025',
+      name: 'Senior Boys 2025',
+      category: 'senior_boys',
+      year: 2025,
+      archived: true
+    }
+  ]);
+  api.getMatches.mockResolvedValue([
+    {
+      id: '2025-win',
+      season_id: 'season-2025',
+      status: 'FINISHED',
+      home_team_id: 'team-1',
+      away_team_id: 'team-2',
+      home_score: 2,
+      away_score: 1
+    },
+    {
+      id: '2025-draw',
+      season_id: 'season-2025',
+      status: 'FINISHED',
+      home_team_id: 'team-2',
+      away_team_id: 'team-1',
+      home_score: 0,
+      away_score: 0
+    },
+    {
+      id: '2026-win',
+      season_id: 'season-2026',
+      status: 'FINISHED',
+      home_team_id: 'team-1',
+      away_team_id: 'team-2',
+      home_score: 3,
+      away_score: 0
+    }
+  ]);
+
+  render(
+    <MemoryRouter initialEntries={['/teams/team-1']}>
+      <Routes>
+        <Route path="/teams/:id" element={<TeamProfile />} />
+      </Routes>
+    </MemoryRouter>
+  );
+
+  const seasonSelector = await screen.findByRole('combobox', {
+    name: 'Season record season'
+  });
+  fireEvent.change(seasonSelector, { target: { value: 'season-2025' } });
+
+  expect(screen.getByRole('option', {
+    name: 'Senior Boys 2025 (Archived)'
+  })).toBeInTheDocument();
+  expect(screen.getByText('Played').parentElement).toHaveTextContent('2');
+  expect(screen.getByText('Wins').parentElement).toHaveTextContent('1');
+  expect(screen.getByText('Draws').parentElement).toHaveTextContent('1');
+  expect(screen.getByText('Losses').parentElement).toHaveTextContent('0');
+  expect(screen.getByText('Goals for').parentElement).toHaveTextContent('2');
+  expect(screen.getByText('Goals against').parentElement).toHaveTextContent('1');
+  expect(api.getTeams).toHaveBeenCalledTimes(1);
+  expect(api.getMatches).toHaveBeenCalledTimes(1);
+  expect(api.getSeasons).toHaveBeenCalledTimes(1);
+  expect(api.getGroupsWithTeams).toHaveBeenCalledTimes(1);
 });

@@ -78,6 +78,62 @@ function sortByMatchDate(matches, direction) {
   });
 }
 
+function getTeamSeasonRecord(matches, teamId) {
+  return matches.reduce((record, match) => {
+    if (getMatchStatusCode(match) !== 'FINISHED') return record;
+    const homeScore = Number(match.home_score);
+    const awayScore = Number(match.away_score);
+    if (
+      match.home_score === null || match.home_score === undefined || match.home_score === '' ||
+      match.away_score === null || match.away_score === undefined || match.away_score === '' ||
+      !Number.isSafeInteger(homeScore) || homeScore < 0 ||
+      !Number.isSafeInteger(awayScore) || awayScore < 0
+    ) {
+      return record;
+    }
+
+    const isHomeTeam = getTeamId(match, 'home') === teamId;
+    const isAwayTeam = getTeamId(match, 'away') === teamId;
+    if (!isHomeTeam && !isAwayTeam) return record;
+    const teamScore = isHomeTeam ? homeScore : awayScore;
+    const opponentScore = isHomeTeam ? awayScore : homeScore;
+
+    record.played += 1;
+    record.goalsFor += teamScore;
+    record.goalsAgainst += opponentScore;
+    if (teamScore > opponentScore) record.wins += 1;
+    else if (teamScore < opponentScore) record.losses += 1;
+    else record.draws += 1;
+    return record;
+  }, {
+    played: 0,
+    wins: 0,
+    draws: 0,
+    losses: 0,
+    goalsFor: 0,
+    goalsAgainst: 0
+  });
+}
+
+function getFinalResultEvidence(match) {
+  if (getMatchStatusCode(match) === 'AWARDED') {
+    return 'Winner recorded by award';
+  }
+
+  const homeScore = Number(match.home_score);
+  const awayScore = Number(match.away_score);
+  const score = `Final score: ${homeScore}–${awayScore}`;
+  if (homeScore !== awayScore) return score;
+
+  const homePenalties = Number(match.home_penalties ?? match.penalty_home);
+  const awayPenalties = Number(match.away_penalties ?? match.penalty_away);
+  return Number.isSafeInteger(homePenalties) &&
+    Number.isSafeInteger(awayPenalties) &&
+    homePenalties !== awayPenalties
+    ? `${score}; penalties ${homePenalties}–${awayPenalties}`
+    : score;
+}
+
 function MatchList({ title, matches, emptyMessage, seasonsById }) {
   return (
     <section className="team-profile-panel" aria-label={title}>
@@ -134,6 +190,7 @@ export default function TeamProfile() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [loadAttempt, setLoadAttempt] = useState(0);
+  const [recordSeasonId, setRecordSeasonId] = useState('all');
 
   const loadProfile = useCallback(async () => {
     setLoading(true);
@@ -196,6 +253,7 @@ export default function TeamProfile() {
       const season = seasonsById.get(item.group.season_id);
       return [{
         id: `${item.group.season_id}-${item.group.id}`,
+        seasonId: item.group.season_id,
         category: season?.category
           ? getCompetitionCategoryLabel(season.category)
           : null,
@@ -208,6 +266,25 @@ export default function TeamProfile() {
     () => new Map((data?.seasons || []).map(season => [String(season.id), season])),
     [data]
   );
+  const recordSeasonOptions = useMemo(() => {
+    if (!team) return [];
+    const participatingSeasonIds = new Set([
+      ...teamMatches.map(match => String(match.season_id)),
+      ...memberships.map(item => String(item.seasonId))
+    ]);
+    return (data?.seasons || [])
+      .filter(season => participatingSeasonIds.has(String(season.id)))
+      .sort((first, second) =>
+        Number(second.year || 0) - Number(first.year || 0) ||
+        second.name.localeCompare(first.name)
+      );
+  }, [data, memberships, team, teamMatches]);
+  const recordMatches = useMemo(() => {
+    const seasonMatches = recordSeasonId === 'all'
+      ? teamMatches
+      : teamMatches.filter(match => String(match.season_id) === recordSeasonId);
+    return getTeamSeasonRecord(seasonMatches, teamId);
+  }, [recordSeasonId, teamId, teamMatches]);
   const confirmedAchievements = useMemo(() => {
     if (!team || !data) return [];
     return (data.matches || []).flatMap(match => {
@@ -224,7 +301,8 @@ export default function TeamProfile() {
         id: match.id,
         season: season?.name || match.season?.name || 'Recorded season',
         category: category ? getCompetitionCategoryLabel(category) : null,
-        date: getMatchDateKey(match)
+        date: getMatchDateKey(match),
+        evidence: getFinalResultEvidence(match)
       }];
     }).sort((first, second) =>
       (second.date || '').localeCompare(first.date || '') ||
@@ -295,24 +373,82 @@ export default function TeamProfile() {
             )}
             {team.profile_history && (
               <div>
-                <h2>History and achievements</h2>
+                <h2>Team-reported history and achievements</h2>
                 <p className="team-profile-copy">{team.profile_history}</p>
               </div>
             )}
           </section>
         )}
 
+        <section className="team-profile-panel" aria-label="Season record">
+          <div className="team-profile-record-heading">
+            <div>
+              <h2>Season record</h2>
+              <p className="team-profile-record-note">
+                Counts completed matches with a recorded score.
+              </p>
+            </div>
+            <label className="team-profile-season-select">
+              <span>Season</span>
+              <select
+                aria-label="Season record season"
+                value={recordSeasonId}
+                onChange={event => setRecordSeasonId(event.target.value)}
+              >
+                <option value="all">All seasons</option>
+                {recordSeasonOptions.map(season => (
+                  <option key={season.id} value={season.id}>
+                    {season.name}{season.archived ? ' (Archived)' : ''}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          {recordMatches.played > 0 ? (
+            <dl className="team-profile-record-stats">
+              {[
+                ['Played', recordMatches.played],
+                ['Wins', recordMatches.wins],
+                ['Draws', recordMatches.draws],
+                ['Losses', recordMatches.losses],
+                ['Goals for', recordMatches.goalsFor],
+                ['Goals against', recordMatches.goalsAgainst]
+              ].map(([label, value]) => (
+                <div key={label}>
+                  <dt>{label}</dt>
+                  <dd>{value}</dd>
+                </div>
+              ))}
+            </dl>
+          ) : (
+            <p className="team-profile-empty">
+              No completed, scored matches are recorded for this selection.
+            </p>
+          )}
+        </section>
+
         {confirmedAchievements.length > 0 && (
-          <section className="team-profile-panel" aria-label="Confirmed season achievements">
-            <h2>Confirmed season achievements</h2>
+          <section className="team-profile-panel" aria-label="Recorded championship results">
+            <h2>Recorded championship results</h2>
+            <p className="team-profile-record-note">
+              Winners are calculated from recorded final results. Follow a link to review its match result; team-reported history above is not independently verified.
+            </p>
             <ul className="team-profile-achievements">
               {confirmedAchievements.map(achievement => (
                 <li key={achievement.id}>
                   <span className="team-profile-achievement-mark" aria-hidden="true">★</span>
                   <span>
-                    <strong>Champions</strong>
+                    <Link
+                      className="team-profile-achievement-link"
+                      to={`/results?matchId=${encodeURIComponent(achievement.id)}`}
+                    >
+                      Recorded final winner
+                    </Link>
                     <span className="team-profile-achievement-details">
                       {[achievement.category, achievement.season].filter(Boolean).join(' · ')}
+                    </span>
+                    <span className="team-profile-achievement-details">
+                      {achievement.evidence}
                     </span>
                   </span>
                 </li>

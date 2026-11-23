@@ -60,6 +60,70 @@
   font-size: 18px;
 }
 
+.team-profile-record-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.team-profile-record-heading h2 {
+  margin-bottom: 5px;
+}
+
+.team-profile-record-note {
+  margin: 0 0 14px;
+  color: var(--league-muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.team-profile-season-select {
+  display: grid;
+  gap: 5px;
+  min-width: min(230px, 45%);
+  color: var(--league-muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.team-profile-season-select select {
+  min-height: 38px;
+  padding: 7px 9px;
+  border: 1px solid var(--league-border);
+  border-radius: 7px;
+  background: #fff;
+  color: var(--league-navy);
+  font: inherit;
+}
+
+.team-profile-record-stats {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.team-profile-record-stats > div {
+  padding: 12px 10px;
+  border: 1px solid #e5eaf0;
+  border-radius: 9px;
+  background: #fbfcfe;
+  text-align: center;
+}
+
+.team-profile-record-stats dt {
+  color: var(--league-muted);
+  font-size: 11px;
+}
+
+.team-profile-record-stats dd {
+  margin: 4px 0 0;
+  color: var(--league-navy);
+  font-size: 20px;
+  font-weight: 800;
+}
+
 .team-profile-copy {
   margin: 0;
   color: var(--league-muted);
@@ -103,6 +167,18 @@
   background: #f5e6bf;
   color: #89651e;
   font-size: 19px;
+}
+
+.team-profile-achievement-link {
+  color: var(--league-blue);
+  font-weight: 750;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.team-profile-achievement-link:focus-visible {
+  outline: 3px solid #d6a83d;
+  outline-offset: 3px;
 }
 
 .team-profile-achievement-details {
@@ -239,5 +315,17 @@
 
   .team-profile-match-meta {
     flex-wrap: wrap;
+  }
+
+  .team-profile-record-heading {
+    display: grid;
+  }
+
+  .team-profile-season-select {
+    min-width: 100%;
+  }
+
+  .team-profile-record-stats {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }

@@ -121,3 +121,31 @@ test('saves an authentic team badge image through the existing logo field', asyn
     );
   });
 });
+
+test('previews unsaved public profile fields without saving them', async () => {
+  render(
+    <MemoryRouter>
+      <TeamProfilesAdmin />
+    </MemoryRouter>
+  );
+
+  fireEvent.change(await screen.findByRole('textbox', {
+    name: /Short team description/
+  }), {
+    target: { value: 'A new public description' }
+  });
+  fireEvent.change(screen.getByRole('textbox', { name: 'Home community' }), {
+    target: { value: 'Umuahia Road' }
+  });
+  fireEvent.click(screen.getByRole('button', {
+    name: 'Preview unsaved profile'
+  }));
+
+  const preview = screen.getByRole('region', {
+    name: 'Unsaved public profile preview'
+  });
+  expect(preview).toHaveTextContent('A new public description');
+  expect(preview).toHaveTextContent('Umuahia Road');
+  expect(preview).toHaveTextContent('Save the form to publish them.');
+  expect(callAdminApi).not.toHaveBeenCalled();
+});
