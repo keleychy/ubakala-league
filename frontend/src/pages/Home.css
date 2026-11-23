@@ -230,8 +230,8 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  min-height: 44px;
-  padding: 10px 14px;
+  min-height: 48px;
+  padding: 12px 14px;
   border: 1px solid #d5c28e;
   border-radius: 4px;
   color: var(--home-navy);
@@ -890,15 +890,16 @@
 
   .home-page .home-nav-link {
     min-width: 0;
-    min-height: 46px;
-    padding: 10px 8px;
+    min-height: 48px;
+    padding: 10px 7px;
     border-color: rgba(255, 255, 255, 0.17);
     border-radius: 9px;
     background: rgba(255, 255, 255, 0.075);
-    font-size: 11px;
+    font-size: 12px;
     line-height: 1.25;
     text-align: center;
     overflow-wrap: anywhere;
+    -webkit-tap-highlight-color: rgba(217, 189, 125, 0.2);
   }
 
   .home-page .home-nav-primary {
@@ -969,8 +970,21 @@
   }
 
   .home-page .home-match-card {
+    min-height: 44px;
     border-radius: 10px;
     box-shadow: 0 3px 10px rgba(25, 48, 34, 0.055);
+    -webkit-tap-highlight-color: rgba(36, 107, 69, 0.12);
+  }
+
+  .home-page .home-match-card:active {
+    transform: scale(0.99);
+    border-color: #8caf94;
+  }
+
+  .home-match-card-footer {
+    min-height: 48px;
+    padding: 12px 14px;
+    font-size: 11px;
   }
 
   .home-match-topline {

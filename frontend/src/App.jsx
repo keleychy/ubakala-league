@@ -23,6 +23,7 @@ import Header from './components/Header';
 import Footer from './components/Footer';
 import ErrorBoundary from './components/ErrorBoundary';
 import ScrollToTop from './components/ScrollToTop';
+import BackToTop from './components/BackToTop';
 import GroupManager from './pages/GroupManager';
 import Predictions from './pages/Predictions';
 import AdminPredictions from './pages/AdminPredictions';
@@ -85,6 +86,7 @@ export default function App() {
     <AnalyticsConsentProvider>
       <BrowserRouter>
         <ScrollToTop />
+        <BackToTop />
         <AnalyticsTracker />
 
         <ErrorBoundary>
