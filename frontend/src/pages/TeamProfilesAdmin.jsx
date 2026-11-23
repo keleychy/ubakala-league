@@ -217,7 +217,7 @@ export default function TeamProfilesAdmin() {
               <div className="team-profile-admin-image-preview">
                 <img
                   src={logo}
-                  alt={`${selectedTeam?.name || 'Team'} badge or photo preview`}
+                  alt={`${selectedTeam?.name || 'Team'} badge preview`}
                   onError={() => setLogoPreviewFailed(true)}
                 />
               </div>

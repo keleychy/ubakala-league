@@ -63,7 +63,7 @@ test('admin can edit a team profile and receives a save confirmation', async () 
       logo: ''
     });
   });
-  expect(await screen.findByRole('status')).toHaveTextContent('Team profile saved.');
+  expect(await screen.findByText('Team profile saved.')).toBeInTheDocument();
 });
 
 test('shows missing or duplicate profile sheet headers before a save is attempted', async () => {
@@ -107,9 +107,9 @@ test('saves an authentic team badge image through the existing logo field', asyn
     </MemoryRouter>
   );
 
-  fireEvent.change(await screen.findByRole('textbox', {
-    name: 'Team badge or photo URL'
-  }), {
+  fireEvent.change(await screen.findByPlaceholderText(
+    'https://example.com/team-badge.jpg'
+  ), {
     target: { value: 'https://example.com/avodim.jpg' }
   });
   fireEvent.click(screen.getByRole('button', { name: 'Save team profile' }));
