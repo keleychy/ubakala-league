@@ -40,7 +40,7 @@ function sortByMatchDate(matches, direction) {
   });
 }
 
-function MatchList({ title, matches, emptyMessage }) {
+function MatchList({ title, matches, emptyMessage, seasonsById }) {
   return (
     <section className="team-profile-panel" aria-label={title}>
       <h2>{title}</h2>
@@ -49,6 +49,16 @@ function MatchList({ title, matches, emptyMessage }) {
           {matches.map(match => {
             const home = match.home_team?.name || match.home_team_name || 'Home team';
             const away = match.away_team?.name || match.away_team_name || 'Away team';
+            const seasonId = match.season_id ||
+              (typeof match.season === 'object'
+                ? match.season?.id
+                : match.season);
+            const rawCategory = match.season?.category ||
+              match.category ||
+              seasonsById.get(String(seasonId))?.category;
+            const categoryLabel = rawCategory
+              ? getCompetitionCategoryLabel(rawCategory)
+              : null;
             const isCompleted = COMPLETED_STATUSES.has(getMatchStatusCode(match));
             const score = isCompleted
               ? `${match.home_score ?? '-'}–${match.away_score ?? '-'}`
@@ -60,6 +70,9 @@ function MatchList({ title, matches, emptyMessage }) {
               <li key={match.id}>
                 <Link to={`/results?matchId=${encodeURIComponent(match.id)}`}>
                   <span className="team-profile-match-teams">{home} vs {away}</span>
+                  {categoryLabel && (
+                    <span className="team-profile-match-category">{categoryLabel}</span>
+                  )}
                   <span className="team-profile-match-meta">
                     <time>{formatMatchSchedule(match)}</time>
                     <strong>{score}</strong>
@@ -153,6 +166,10 @@ export default function TeamProfile() {
       }];
     });
   }, [data, team]);
+  const seasonsById = useMemo(
+    () => new Map((data?.seasons || []).map(season => [String(season.id), season])),
+    [data]
+  );
 
   if (loading) {
     return <div className="league-page-empty" role="status">Loading team profile…</div>;
@@ -244,11 +261,13 @@ export default function TeamProfile() {
             title="Upcoming fixtures"
             matches={upcomingMatches}
             emptyMessage="No upcoming fixtures are currently listed for this team."
+            seasonsById={seasonsById}
           />
           <MatchList
             title="Recent results"
             matches={recentResults}
             emptyMessage="No completed results are currently listed for this team."
+            seasonsById={seasonsById}
           />
         </div>
       </main>

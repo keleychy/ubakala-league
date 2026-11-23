@@ -135,6 +135,17 @@
   font-weight: 750;
 }
 
+.team-profile-match-category {
+  width: fit-content;
+  padding: 3px 7px;
+  border: 1px solid #e5d7b1;
+  border-radius: 999px;
+  background: #fff9eb;
+  color: #705723;
+  font-size: 10px;
+  font-weight: 750;
+}
+
 .team-profile-match-meta {
   display: flex;
   justify-content: space-between;

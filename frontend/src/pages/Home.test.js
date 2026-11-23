@@ -125,10 +125,20 @@ test('homepage provides direct links to Predictions and Rules & Regulations', as
 
   expect(screen.getByRole('heading', { name: 'OUR SPONSORS' }))
     .toBeInTheDocument();
+  expect(screen.getByRole('link', { name: 'Meet all our sponsors' }))
+    .toHaveAttribute('href', '/sponsors');
   expect(await screen.findByRole('link', { name: 'Predictions' }))
     .toHaveAttribute('href', '/predictions');
   expect(screen.getByRole('link', { name: 'Rules & Regulations' }))
     .toHaveAttribute('href', '/rules-regulations');
+});
+
+test('homepage tells visitors that participating team cards open profiles', () => {
+  renderHomeWithStatus('FINISHED');
+
+  expect(screen.getByText(
+    'Select a team to view its profile, fixtures and results.'
+  )).toBeInTheDocument();
 });
 
 test('homepage shows a discreet link to the Support page', async () => {

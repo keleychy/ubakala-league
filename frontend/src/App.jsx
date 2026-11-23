@@ -9,6 +9,7 @@ import NewsDetail from './pages/NewsDetail';
 import History from './pages/History';
 import RulesRegulations from './pages/RulesRegulations';
 import Support from './pages/Support';
+import Sponsors from './pages/Sponsors';
 import AdminLogin from './pages/AdminLogin';
 import AdminDashboard from './pages/AdminDashboard';
 import TeamProfile from './pages/TeamProfile';
@@ -110,6 +111,7 @@ export default function App() {
                 <Route path="/teams/:id" element={<TeamProfile />} />
                 <Route path="/rules-regulations" element={<RulesRegulations />} />
                 <Route path="/support" element={<Support />} />
+                <Route path="/sponsors" element={<Sponsors />} />
                 <Route path="/predictions" element={<Predictions />} />
                 <Route path="/admin" element={<AdminLogin />} />
                 <Route path="/admin-dashboard" element={

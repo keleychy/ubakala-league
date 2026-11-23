@@ -320,6 +320,13 @@
   font-weight: 650;
 }
 
+.home-team-profile-hint {
+  margin: 6px 0 0;
+  color: var(--home-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
 /* -------------------------
    Match cards
    ------------------------- */

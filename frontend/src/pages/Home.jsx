@@ -604,6 +604,9 @@ export default function Home() {
             <div>
               <p className="home-eyebrow">THE COMPETITORS</p>
               <h2>Participating Teams</h2>
+              <p className="home-team-profile-hint">
+                Select a team to view its profile, fixtures and results.
+              </p>
             </div>
             <span className="home-team-count">
               {teamsLoading

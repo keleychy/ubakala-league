@@ -1,59 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
+import SponsorPortrait from '../components/SponsorPortrait';
+import { SPONSORS } from '../data/sponsors';
 import './SponsorsShowcase.css';
-
-export const SPONSORS = [
-  {
-    name: 'Engr. Nnamdi Ezeigbo',
-    category: 'Junior Boys',
-    image: '/images/sponsors/engr-nnamdi-ezeigbo.jpg'
-  },
-  {
-    name: 'Pastor Harrison Ugochukwu Asonye',
-    category: 'Intermediate',
-    image: '/images/sponsors/Pastor%20Harrison%20Ugochukwu%20Asonye.jpeg'
-  },
-  { name: 'Engr. Stanley Uche', category: 'Girls', image: null },
-  {
-    name: 'Engr. Ezinna Ogbuokiri',
-    category: 'Men Above 50 Years',
-    image: '/images/sponsors/Engr.%20Ezinna%20Ogbuokiri.jpeg'
-  },
-  {
-    name: 'RTD. Commander Macdonald Ubah',
-    category: 'Senior Boys',
-    image: '/images/sponsors/RTD-Commander%20-Macdonald%20Ubah.jpg'
-  }
-];
 
 const ROTATION_INTERVAL = 4500;
 const INTERACTION_PAUSE = 8000;
 const SWIPE_THRESHOLD = 45;
-
-function getSponsorInitials(name) {
-  const words = name
-    .replace(/^(Engr\.|Pastor|RTD\.)\s*/i, '')
-    .split(/\s+/)
-    .filter(Boolean);
-  return words.slice(0, 2).map(word => word[0]).join('').toUpperCase();
-}
-
-function SponsorPortrait({ sponsor }) {
-  const [imageFailed, setImageFailed] = useState(false);
-
-  return (
-    <div className="home-sponsors-portrait" aria-hidden="true">
-      {sponsor.image && !imageFailed ? (
-        <img
-          src={sponsor.image}
-          alt=""
-          onError={() => setImageFailed(true)}
-        />
-      ) : (
-        <span>{getSponsorInitials(sponsor.name)}</span>
-      )}
-    </div>
-  );
-}
 
 export default function SponsorsShowcase() {
   const [activeIndex, setActiveIndex] = useState(0);
@@ -166,7 +119,7 @@ export default function SponsorsShowcase() {
           aria-live="polite"
           key={sponsor.name}
         >
-          <SponsorPortrait key={sponsor.name} sponsor={sponsor} />
+          <SponsorPortrait sponsor={sponsor} className="home-sponsors-portrait" />
           <div className="home-sponsors-copy">
             <p className="home-sponsors-thanks">PROUDLY SUPPORTING</p>
             <h3>{sponsor.name}</h3>
@@ -200,6 +153,11 @@ export default function SponsorsShowcase() {
             {String(activeIndex + 1).padStart(2, '0')} / {String(SPONSORS.length).padStart(2, '0')}
           </span>
         </div>
+      </div>
+      <div className="home-sponsors-directory-link">
+        <Link to="/sponsors">
+          Meet all our sponsors <span aria-hidden="true">→</span>
+        </Link>
       </div>
     </section>
   );

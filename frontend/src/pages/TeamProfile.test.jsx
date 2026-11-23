@@ -40,6 +40,7 @@ test('shows editable team information, category membership, upcoming fixtures an
   api.getMatches.mockResolvedValue([
     {
       id: 'recent-match',
+      season_id: 'season-1',
       match_date: shiftDateKey(today, -2),
       status: 'FINISHED',
       home_team_id: 'team-1',
@@ -51,6 +52,7 @@ test('shows editable team information, category membership, upcoming fixtures an
     },
     {
       id: 'upcoming-match',
+      season_id: 'season-1',
       match_date: shiftDateKey(today, 3),
       status: 'SCHEDULED',
       home_team_id: 'team-2',
@@ -79,4 +81,8 @@ test('shows editable team information, category membership, upcoming fixtures an
   expect(screen.getByText('Other FC vs Avodim United')).toBeInTheDocument();
   expect(screen.getByText('Avodim United vs Other FC')).toBeInTheDocument();
   expect(screen.getByText('2–1')).toBeInTheDocument();
+  expect(screen.getByRole('region', { name: 'Upcoming fixtures' }))
+    .toHaveTextContent('Senior Boys');
+  expect(screen.getByRole('region', { name: 'Recent results' }))
+    .toHaveTextContent('Senior Boys');
 });
