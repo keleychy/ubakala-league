@@ -482,7 +482,9 @@ export default function TeamProfile() {
               ].map(([label, value]) => (
                 <div key={label}>
                   <dt>{label}</dt>
-                  <dd>{value}</dd>
+                  <dd>
+                    {label === 'Goal difference' && value > 0 ? `+${value}` : value}
+                  </dd>
                 </div>
               ))}
             </dl>

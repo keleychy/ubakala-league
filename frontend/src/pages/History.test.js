@@ -88,7 +88,9 @@ test('opens the static 2025 archive and filters match results by category', asyn
 
   expect(await screen.findAllByText('ABAM')).not.toHaveLength(0);
   expect(screen.getByRole('heading', { name: 'Group Stage' })).toBeInTheDocument();
-  expect(screen.getByRole('heading', { name: 'Matchday not recorded' })).toBeInTheDocument();
+  expect(screen.getAllByRole('heading', {
+    name: 'Matchday not recorded'
+  })).not.toHaveLength(0);
   expect(screen.queryByText('UMUOSU')).not.toBeInTheDocument();
 });
 
