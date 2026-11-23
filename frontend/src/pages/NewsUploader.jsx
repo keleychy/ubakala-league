@@ -321,7 +321,9 @@ export default function NewsUploader() {
                                 aria-invalid={Boolean(errors.content)}
                             />
                             <small className="news-uploader-help">
-                                Use clear paragraphs so your story is easy to read.
+                                Separate paragraphs with a blank line. Format text with *bold* or **bold**, _italic_, ~~strikethrough~~, and `inline code`.
+                                <br />
+                                Use ## Heading, - list item, &gt; quote, [link text](https://example.com), or paste a URL to make it clickable.
                             </small>
                             {errors.content && <small className="news-uploader-field-error">{errors.content}</small>}
                         </label>
