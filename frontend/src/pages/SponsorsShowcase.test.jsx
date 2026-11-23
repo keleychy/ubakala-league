@@ -27,19 +27,38 @@ test('shows the supplied sponsors with their correct categories', () => {
   render(<SponsorsShowcase />);
 
   const expectedSponsors = [
-    ['Engr. Nnamdi Ezeigbo', 'Junior Boys'],
-    ['Pastor Harrison Ugochukwu Asonye', 'Intermediate'],
-    ['Engr. Stanley Uche', 'Girls'],
-    ['Engr. Ezinna Ogbuokiri', 'Men Above 50 Years'],
-    ['RTD. Commander Macdonald Ubah', 'Senior Boys']
+    ['Engr. Nnamdi Ezeigbo', 'Junior Boys', '/images/sponsors/engr-nnamdi-ezeigbo.jpg'],
+    [
+      'Pastor Harrison Ugochukwu Asonye',
+      'Intermediate',
+      '/images/sponsors/Pastor%20Harrison%20Ugochukwu%20Asonye.jpeg'
+    ],
+    ['Engr. Stanley Uche', 'Girls', null],
+    [
+      'Engr. Ezinna Ogbuokiri',
+      'Men Above 50 Years',
+      '/images/sponsors/Engr.%20Ezinna%20Ogbuokiri.jpeg'
+    ],
+    [
+      'RTD. Commander Macdonald Ubah',
+      'Senior Boys',
+      '/images/sponsors/RTD-Commander%20-Macdonald%20Ubah.jpg'
+    ]
   ];
 
-  expectedSponsors.forEach(([name, category], index) => {
+  expectedSponsors.forEach(([name, category, image], index) => {
     if (index > 0) {
       fireEvent.click(screen.getByRole('button', { name: 'Show next sponsor' }));
     }
     expect(screen.getByRole('heading', { name })).toBeInTheDocument();
     expect(screen.getByText(category)).toBeInTheDocument();
+    if (image) {
+      expect(screen.getByRole('region', { name: 'Competition sponsors' })
+        .querySelector('.home-sponsors-portrait img')).toHaveAttribute('src', image);
+    } else {
+      expect(screen.getByRole('region', { name: 'Competition sponsors' })
+        .querySelector('.home-sponsors-portrait img')).not.toBeInTheDocument();
+    }
   });
 });
 
