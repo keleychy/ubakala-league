@@ -4,6 +4,7 @@ import { api } from '../api/api';
 import './Bracket.css';
 import './Results.css';
 import {
+    formatMatchSchedule,
     getMatchStageLabel,
     getMatchesForStage,
     PUBLIC_CATEGORIES
@@ -411,6 +412,18 @@ export default function Bracket() {
                         Penalties <strong>{m.home_penalties}–{m.away_penalties}</strong>
                     </div>
                 )}
+            <div className="br-match-details">
+                <div className="br-match-detail">
+                    <span className="br-match-detail-label">Date &amp; time</span>
+                    <time>{formatMatchSchedule(m)}</time>
+                </div>
+                {m.venue && (
+                    <div className="br-match-detail">
+                        <span className="br-match-detail-label">Venue</span>
+                        <span>{m.venue}</span>
+                    </div>
+                )}
+            </div>
         </div>
     );
 

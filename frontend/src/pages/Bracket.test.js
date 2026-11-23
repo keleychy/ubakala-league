@@ -29,7 +29,10 @@ beforeEach(() => {
       home_score: 1,
       away_score: 1,
       home_penalties: 4,
-      away_penalties: 3
+      away_penalties: 3,
+      match_date: '2026-03-15',
+      kickoff_time: '14:30',
+      venue: 'Ubakala Township Stadium'
     }
   ]);
 });
@@ -47,6 +50,35 @@ test('tournament bracket highlights and displays the winner of a penalty shootou
     selector: '.br-team-name'
   }).closest('.br-team')).not.toHaveClass('br-winner');
   expect(match.querySelector('.br-penalty-result')).toHaveTextContent('4–3');
+  expect(within(match).getByText('Date & time')).toBeInTheDocument();
+  expect(within(match).getByText(/Mar 15, 2026/)).toBeInTheDocument();
+  expect(within(match).getByText(/3:30 PM/)).toBeInTheDocument();
+  expect(within(match).getByText('Ubakala Township Stadium')).toBeInTheDocument();
+});
+
+test('bracket match cards show date and time when venue is not provided', async () => {
+  api.getMatches.mockResolvedValue([
+    {
+      id: 'qf-1',
+      season_id: 'season-1',
+      stage: 'QF',
+      status: 'SCHEDULED',
+      home_team: { id: 'team-home', name: 'Eagle FC' },
+      away_team: { id: 'team-away', name: 'Rangers FC' },
+      match_date: '2026-03-15',
+      kickoff_time: '14:30'
+    }
+  ]);
+
+  render(<Bracket />);
+
+  const homeTeam = await screen.findByText('Eagle FC', {
+    selector: '.br-team-name'
+  });
+  const match = homeTeam.closest('.br-match');
+
+  expect(within(match).getByText(/Mar 15, 2026/)).toBeInTheDocument();
+  expect(within(match).queryByText('Venue')).not.toBeInTheDocument();
 });
 
 test('an unfinished level match does not reveal a winner', async () => {
