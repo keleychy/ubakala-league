@@ -191,7 +191,7 @@ export default function TeamProfile() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [loadAttempt, setLoadAttempt] = useState(0);
-  const [recordSeasonId, setRecordSeasonId] = useState('all');
+  const [recordSeasonYear, setRecordSeasonYear] = useState('');
 
   const loadProfile = useCallback(async () => {
     setLoading(true);
@@ -276,24 +276,30 @@ export default function TeamProfile() {
     [data]
   );
   const recordSeasonOptions = useMemo(() => {
-    if (!team) return [];
-    const participatingSeasonIds = new Set([
-      ...teamMatches.map(match => String(match.season_id)),
-      ...memberships.map(item => String(item.seasonId))
-    ]);
-    return (data?.seasons || [])
-      .filter(season => participatingSeasonIds.has(String(season.id)))
-      .sort((first, second) =>
-        Number(second.year || 0) - Number(first.year || 0) ||
-        second.name.localeCompare(first.name)
-      );
-  }, [data, memberships, team, teamMatches]);
+    const years = [...new Set((data?.seasons || [])
+      .map(season => Number(season.year) || Number(
+        String(season.name || '').match(/\b\d{4}\b/)?.[0]
+      ))
+      .filter(year => Number.isInteger(year) && year > 0))]
+      .sort((first, second) => second - first);
+    return years.map(year => ({
+      value: String(year),
+      label: `All seasons ${year}`
+    }));
+  }, [data]);
+  const selectedRecordSeasonYear = recordSeasonYear ||
+    recordSeasonOptions[0]?.value || '';
   const recordMatches = useMemo(() => {
-    const seasonMatches = recordSeasonId === 'all'
-      ? teamMatches
-      : teamMatches.filter(match => String(match.season_id) === recordSeasonId);
+    const seasonMatches = teamMatches.filter(match => {
+      const seasonId = String(match.season_id || match.season?.id || '');
+      const season = seasonsById.get(seasonId);
+      const year = Number(season?.year) || Number(
+        String(season?.name || '').match(/\b\d{4}\b/)?.[0]
+      );
+      return String(year) === selectedRecordSeasonYear;
+    });
     return getTeamSeasonRecord(seasonMatches, teamId);
-  }, [recordSeasonId, teamId, teamMatches]);
+  }, [seasonsById, selectedRecordSeasonYear, teamId, teamMatches]);
   const confirmedAchievements = useMemo(() => {
     if (!team || !data) return [];
     return (data.matches || []).flatMap(match => {
@@ -401,13 +407,12 @@ export default function TeamProfile() {
               <span>Season</span>
               <select
                 aria-label="Season record season"
-                value={recordSeasonId}
-                onChange={event => setRecordSeasonId(event.target.value)}
+                value={selectedRecordSeasonYear}
+                onChange={event => setRecordSeasonYear(event.target.value)}
               >
-                <option value="all">All seasons</option>
                 {recordSeasonOptions.map(season => (
-                  <option key={season.id} value={season.id}>
-                    {season.name}{season.archived ? ' (Archived)' : ''}
+                  <option key={season.value} value={season.value}>
+                    {season.label}
                   </option>
                 ))}
               </select>

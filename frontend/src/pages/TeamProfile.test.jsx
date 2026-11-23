@@ -227,18 +227,20 @@ test('shows archived 2025 season records from the static archive without extra A
   const seasonSelector = await screen.findByRole('combobox', {
     name: 'Season record season'
   });
+  expect(seasonSelector.options[0]).toHaveTextContent('All seasons 2026');
+  expect(seasonSelector.options[1]).toHaveTextContent('All seasons 2025');
   fireEvent.change(seasonSelector, {
-    target: { value: 'archive-2025-senior-boys' }
+    target: { value: '2025' }
   });
 
   expect(screen.getByRole('option', {
-    name: '2025 Senior Boys Cup (Archived)'
+    name: 'All seasons 2025'
   })).toBeInTheDocument();
-  expect(screen.getByText('Played').parentElement).toHaveTextContent('2');
-  expect(screen.getByText('Wins').parentElement).toHaveTextContent('1');
+  expect(screen.getByText('Played').parentElement).toHaveTextContent('3');
+  expect(screen.getByText('Wins').parentElement).toHaveTextContent('2');
   expect(screen.getByText('Draws').parentElement).toHaveTextContent('1');
   expect(screen.getByText('Losses').parentElement).toHaveTextContent('0');
-  expect(screen.getByText('Goals for').parentElement).toHaveTextContent('2');
+  expect(screen.getByText('Goals for').parentElement).toHaveTextContent('3');
   expect(screen.getByText('Goals against').parentElement).toHaveTextContent('1');
   const archivedChampionship = screen.getByRole('region', {
     name: 'Recorded championship results'
