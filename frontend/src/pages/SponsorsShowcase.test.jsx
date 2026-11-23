@@ -47,7 +47,11 @@ test('shows the supplied sponsors with their correct categories', () => {
       'Intermediate',
       '/images/sponsors/Pastor%20Harrison%20Ugochukwu%20Asonye.jpeg'
     ],
-    ['Engr. Stanley Uche', 'Girls', null],
+    [
+      'Engr. Stanley Uche',
+      'Girls',
+      '/images/sponsors/Engr.%20Stanley%20Uche.png'
+    ],
     [
       'Engr. Ezinna Ogbuokiri',
       'Men Above 50 Years',
@@ -64,9 +68,6 @@ test('shows the supplied sponsors with their correct categories', () => {
     if (image) {
       expect(screen.getByRole('region', { name: 'Competition sponsors' })
         .querySelector('.home-sponsors-portrait img')).toHaveAttribute('src', image);
-    } else {
-      expect(screen.getByRole('region', { name: 'Competition sponsors' })
-        .querySelector('.home-sponsors-portrait img')).not.toBeInTheDocument();
     }
   });
 });

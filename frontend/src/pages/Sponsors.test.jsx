@@ -17,7 +17,7 @@ test('shows every sponsor with their supplied category and portrait or placehold
     ['RTD. Commander Macdonald Ubah', 'Senior Boys', true],
     ['Engr. Nnamdi Ezeigbo', 'Junior Boys', true],
     ['Pastor Harrison Ugochukwu Asonye', 'Intermediate', true],
-    ['Engr. Stanley Uche', 'Girls', false],
+    ['Engr. Stanley Uche', 'Girls', true],
     ['Engr. Ezinna Ogbuokiri', 'Men Above 50 Years', true]
   ];
 
@@ -26,8 +26,6 @@ test('shows every sponsor with their supplied category and portrait or placehold
     expect(card).toHaveTextContent(category);
     if (hasPhoto) {
       expect(card.querySelector('.sponsor-portrait img')).toBeInTheDocument();
-    } else {
-      expect(card.querySelector('.sponsor-portrait-fallback')).toHaveTextContent('SU');
     }
   });
   expect(screen.getAllByRole('heading', { level: 2 }).map(heading => heading.textContent)[0])

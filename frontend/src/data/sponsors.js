@@ -14,7 +14,11 @@ export const SPONSORS = [
     category: 'Intermediate',
     image: '/images/sponsors/Pastor%20Harrison%20Ugochukwu%20Asonye.jpeg'
   },
-  { name: 'Engr. Stanley Uche', category: 'Girls', image: null },
+  {
+    name: 'Engr. Stanley Uche',
+    category: 'Girls',
+    image: '/images/sponsors/Engr.%20Stanley%20Uche.png'
+  },
   {
     name: 'Engr. Ezinna Ogbuokiri',
     category: 'Men Above 50 Years',
